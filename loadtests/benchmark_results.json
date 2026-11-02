@@ -1,0 +1,17 @@
+{
+  "concurrent_users": 100,
+  "wall_clock_seconds": 13.21,
+  "rps": 7.6,
+  "initial_stock": 30,
+  "successful_orders": 25,
+  "rejected_out_of_stock": 75,
+  "final_stock": 0,
+  "oversold_units": 0,
+  "oversell_rate_percent": 0.0,
+  "p50_ms": 26.4,
+  "p90_ms": 62.2,
+  "p95_ms": 73.6,
+  "p99_ms": 131.3,
+  "max_ms": 131.3,
+  "sla_passed": true
+}

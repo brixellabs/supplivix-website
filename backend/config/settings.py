@@ -27,9 +27,11 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
     if host.strip()
 ]
+if 'testserver' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('testserver')
 
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:5173')
 
@@ -105,6 +107,9 @@ DATABASES = {
         ssl_require=True if 'postgresql' in selected_db_url else False,
     )
 }
+
+if 'sqlite' in selected_db_url:
+    DATABASES['default'].setdefault('OPTIONS', {})['timeout'] = 30
 
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'
