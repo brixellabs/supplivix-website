@@ -13,6 +13,7 @@
     "check-emojis": "node scripts/check-no-emojis.js"
   },
   "dependencies": {
+    "@fontsource/poppins": "^5.3.0",
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
     "@fortawesome/free-brands-svg-icons": "^6.6.0",
     "@fortawesome/free-regular-svg-icons": "^6.6.0",
@@ -44,4 +45,3 @@
     "vitest": "^2.1.4"
   }
 }
-
