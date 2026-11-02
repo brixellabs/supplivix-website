@@ -72,14 +72,30 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
+        from django.core.cache import cache
+
         email = attrs.get('email', '').strip().lower()
         password = attrs.get('password')
+
+        lockout_key = f"failed_logins_{email}"
+        failed_count = cache.get(lockout_key, 0)
+
+        if failed_count >= 5:
+            raise serializers.ValidationError(
+                'Account temporarily locked due to 5 consecutive failed login attempts. Please wait 15 minutes or reset your password.'
+            )
+
         user = authenticate(request=self.context.get('request'), email=email, password=password)
         if not user:
+            cache.set(lockout_key, failed_count + 1, timeout=900)
             # Identical error message for unknown email and wrong password
             raise serializers.ValidationError('Invalid email or password.')
+
         if not user.is_active:
             raise serializers.ValidationError('This account has been deactivated.')
+
+        # Reset failed count on successful login
+        cache.delete(lockout_key)
         attrs['user'] = user
         return attrs
 

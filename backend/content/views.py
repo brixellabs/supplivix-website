@@ -2,6 +2,9 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.middleware import BotProtectionMiddleware
+from core.models import BotEvent
+
 from .models import SiteSetting, WaitlistEntry
 from .serializers import ContactMessageSerializer, WaitlistSerializer
 
@@ -13,6 +16,21 @@ class WaitlistView(APIView):
     throttle_scope = 'waitlist'
 
     def post(self, request):
+        honeypot = request.data.get('website') or request.data.get('company_name')
+        if honeypot:
+            ip = BotProtectionMiddleware.get_client_ip(request)
+            BotEvent.objects.create(
+                ip=ip,
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                path=request.path,
+                reason='Honeypot triggered on waitlist submission',
+                score=100
+            )
+            return Response(
+                {'message': 'Thank you for joining the waitlist! We will notify you at launch.'},
+                status=status.HTTP_200_OK
+            )
+
         email = request.data.get('email', '').strip().lower()
         if not email or '@' not in email:
             return Response(
