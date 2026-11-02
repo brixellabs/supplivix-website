@@ -323,10 +323,11 @@ export default function CheckoutPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-brand-ink mb-1">
+                      <label htmlFor="checkout-city" className="block text-xs font-semibold text-brand-ink mb-1">
                         City <span className="text-red-500">*</span>
                       </label>
                       <input
+                        id="checkout-city"
                         list="city-suggestions"
                         name="city"
                         value={city}
@@ -346,10 +347,11 @@ export default function CheckoutPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-brand-ink mb-1">
+                      <label htmlFor="checkout-province" className="block text-xs font-semibold text-brand-ink mb-1">
                         Province <span className="text-red-500">*</span>
                       </label>
                       <select
+                        id="checkout-province"
                         name="province"
                         value={province}
                         onChange={(e) => setProvince(e.target.value)}
@@ -373,10 +375,11 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    <label htmlFor="deliveryNotes" className="block text-xs font-semibold text-brand-ink mb-1">
                       Delivery Instructions for Courier Rider (Optional)
                     </label>
                     <textarea
+                      id="deliveryNotes"
                       name="deliveryNotes"
                       rows={2}
                       value={deliveryNotes}

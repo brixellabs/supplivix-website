@@ -33,6 +33,7 @@ export default [
         clearInterval: 'readonly',
         URLSearchParams: 'readonly',
         navigator: 'readonly',
+        Event: 'readonly',
       },
     },
     rules: {
