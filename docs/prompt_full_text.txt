@@ -1,0 +1,896 @@
+Skincare & Multivitamins Store: Agent Build Prompt
+Nov 2, 2026 · @BrixelLabs
+1. Project brief and global rules
+Paste this whole document to the coding agent. Build a production-ready e-commerce website for a skincare and multivitamins brand, with Cash on Delivery (COD) as the only payment method, and with multivitamins as the main focus of the catalog and the design.
+Role for the agent: You are a senior full-stack engineer and QA lead. You build one page or module at a time, test it, and report before moving on.
+Stack (fixed, do not substitute)
+Layer
+Choice
+Frontend
+React (Vite) + Tailwind CSS + React Router
+Icons
+FontAwesome Free via npm (@fortawesome/react-fontawesome), self-hosted, no CDN
+Backend
+Django + Django REST Framework
+Database
+Neon (serverless PostgreSQL), pooled connection string
+Auth
+Django session or JWT (httpOnly cookie), email + password
+Testing
+pytest + pytest-django, Vitest + React Testing Library, Playwright (E2E), Locust (load)
+Currency
+PKR (Rs.), prices stored as whole-rupee integers
+Non-negotiable rules
+No emojis anywhere: not in UI text, buttons, seed data, code comments, commit messages or docs. Every icon is a FontAwesome icon.
+No glassmorphism: no backdrop-blur, no frosted or translucent backgrounds, no blurred overlays on forms or cards. Forms and cards use solid backgrounds, a 1px solid border and a small solid shadow.
+Copy the reference design: the client supplies a reference design and a logo. Reproduce its layout, section order, spacing, colour palette, typography scale and component styles as closely as possible. Use only the client's logo. Do not copy any text, photography, illustrations or brand marks from the reference site; all content is original.
+No copyrighted content: all copy is written fresh. Images are original SVG illustrations or CSS-generated placeholders (see Phase 8). Fonts must be open-licensed (for example Google Fonts under OFL) and self-hosted.
+Health compliance: never claim a product cures, treats or prevents disease. Every supplement page carries the standard disclaimer: "These statements have not been evaluated by a regulator. This product is not intended to diagnose, treat, cure or prevent any disease."
+Validation everywhere: every form validates on the client and again on the server with the same rules and clear inline error messages.
+Security by default: no secrets in code, all configuration in environment variables, HTTPS-only cookies, CSRF protection, strict CORS, rate limiting.
+Accessibility: WCAG 2.1 AA: semantic HTML, labels on every input, visible focus states, 4.5:1 contrast, keyboard navigation, alt text on every image.
+Mobile first: every page works from 360px width up.
+2. How the agent must work
+Work in the phase order below. Never start a phase until the previous one passes its tests.
+Phase 0 and 1: repo, Neon, Django project, data models
+Phase 2: REST API, COD checkout, free shipping, discount tokens
+Phase 3: design system copied from the reference, Tailwind and FontAwesome setup
+Phase 4: pages, one at a time, in the order listed
+Phase 5: admin dashboard
+Phase 6: SEO and AEO
+Phase 7: bot detection and security
+Phase 8: dummy products and original images
+Phase 9: full test suite
+Phase 10: 100-user load test and production-readiness sign-off
+Per-step protocol (repeat for every page and module)
+Restate the task and list the files you will create or change.
+Implement it, following the design system and global rules.
+Write the tests for it from the test cases in Phase 9 and run them.
+Check the page at 360px, 768px and 1280px widths.
+Run the linters (ruff, eslint) and fix every warning.
+Commit with a clear message, no emojis.
+Report in this format: Done / Files changed / Tests run and result / Open issues / Next step.
+Definition of done for any page
+Matches the reference design at all three widths.
+No emoji, no glassmorphism, no CDN icon font, no copyrighted asset.
+All forms validate on client and server.
+Unit and E2E tests for the page pass.
+Title, meta description, canonical and structured data are set (Phase 6).
+Lighthouse on mobile: Performance 85+, Accessibility 95+, SEO 95+, Best Practices 95+.
+If a rule conflicts with the reference design (for example the reference uses blur effects), follow the rules in section 1 and note the difference in your report. If anything is ambiguous, state the assumption you made and continue; do not stop to ask unless it blocks the work.
+3. Phase 0 and 1: setup, Neon and data models
+Prompt to agent: Phase 0 (repo and environment)
+Create a monorepo with backend/ (Django) and frontend/ (Vite React). Add .env.example files, a root README.md, .gitignore, pre-commit hooks (ruff, eslint, prettier) and a docker-compose.yml only if useful for local work. Do not commit secrets.
+Neon setup
+Create one Neon project with three branches: main (production), dev and test. Use the test branch for automated tests and the load test so production data is never touched.
+Use the pooled connection string (PgBouncer, host contains -pooler) for the app. Use the direct string only for migrations.
+Configure DATABASES with dj-database-url, sslmode=require, conn_max_age=0 (the pooler manages connections) and CONN_HEALTH_CHECKS=True.
+Neon suspends idle databases. Add a retry on first connection and a /api/health/ endpoint that runs SELECT 1.
+Required env vars: DATABASE_URL, DIRECT_DATABASE_URL, SECRET_KEY, DEBUG, ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS, CSRF_TRUSTED_ORIGINS, TURNSTILE_SECRET_KEY, SITE_URL.
+Prompt to agent: Phase 1 (Django apps and models)
+Create these apps: accounts, catalog, cart, orders, promotions, content, core. Use a custom user model from the first migration (email as the username). Add indexes on every foreign key and on slug, status and created_at.
+Model
+Key fields
+User
+email (unique), full_name, phone, is_active, is_staff, date_joined
+Address
+user, full_name, phone, line1, line2, city, province, postal_code, is_default
+Category
+name, slug, parent, description, image, sort_order, is_active
+Product
+name, slug, category, brand, short_description, description, price, compare_at_price, sku, stock, is_featured, is_active, product_type (multivitamin or skincare), seo_title, seo_description
+ProductImage
+product, image, alt_text, sort_order
+ProductAttribute
+product, key, value (for example serving size, count, skin type)
+ProductFAQ
+product, question, answer (feeds AEO)
+Review
+product, user, rating (1 to 5), title, body, is_approved
+Cart and CartItem
+user or session_key, product, quantity
+Order
+number (unique, readable), user or guest email, status, payment_method (COD), subtotal, discount_total, shipping_total, grand_total, coupon_code, shipping address snapshot, notes
+OrderItem
+order, product snapshot (name, sku, unit price), quantity, line_total
+OrderStatusHistory
+order, from_status, to_status, changed_by, note, created_at
+Coupon
+code (unique, uppercase), type (percent or fixed), value, min_order_amount, max_discount_amount, starts_at, ends_at, usage_limit_total, usage_limit_per_user, is_active, applies_to_category (optional)
+CouponRedemption
+coupon, user or email, order, created_at
+SiteSetting
+key, value (free_shipping_threshold, flat_shipping_fee, site_mode, store_phone, store_email)
+WaitlistEntry
+email (unique), created_at, source
+BotEvent
+ip, user_agent, path, reason, score, created_at
+ContactMessage
+name, email, subject, message, created_at, is_handled
+Order statuses: pending, confirmed, packed, shipped, delivered, cod_collected, cancelled, returned. Only forward transitions are allowed except cancel, and each change writes an OrderStatusHistory row.
+Acceptance: migrations run on the Neon dev branch, model tests pass, /api/health/ returns 200, and the Django admin can open every model.
+4. Phase 2: API, COD, free shipping and discount tokens
+Prompt to agent
+Build the REST API under /api/v1/ with DRF. Use serializers for all validation, pagination (20 per page), filtering and ordering on the product list, and a consistent error format { "code": "...", "message": "...", "fields": { "field": ["msg"] } }.
+Endpoints
+Area
+Endpoints
+Auth
+POST register, login, logout, password-reset/request, password-reset/confirm, GET/PATCH me, change-password
+Catalog
+GET categories, GET products (filter: category, type, price range, in stock, search, sort), GET products/{slug}, GET products/{slug}/reviews, POST reviews (verified buyers only)
+Cart
+GET cart, POST cart/items, PATCH cart/items/{id}, DELETE cart/items/{id}, POST cart/coupon, DELETE cart/coupon, POST cart/merge (guest to user on login)
+Checkout
+POST checkout/quote (returns totals), POST orders (places a COD order)
+Orders
+GET orders, GET orders/{number}, POST orders/{number}/cancel (only while pending or confirmed)
+Content
+POST waitlist, POST contact, GET settings/public
+COD rules
+payment_method is always COD. Reject any other value.
+Guests may order with name, phone, email and address. Logged-in users can pick a saved address.
+Stock is decremented inside a database transaction using select_for_update(). If stock is insufficient the order fails with a clear message and nothing is written.
+The order confirmation page and email show: order number, items, totals, "Pay Rs. X in cash on delivery", and the delivery address.
+Phone validation accepts Pakistani mobile formats 03XXXXXXXXX and +923XXXXXXXXX and stores them normalized.
+Free shipping rule
+Assumption to confirm with the client: free shipping applies when the cart subtotal after discount is Rs. 2,000 or more. Otherwise a flat fee applies (default Rs. 200). Both values live in SiteSetting (free_shipping_threshold, flat_shipping_fee) and are editable from the admin dashboard. The cart and checkout show a progress message such as "Add Rs. 450 more for free shipping".
+Discount token (coupon) rules
+Codes are case-insensitive, stored uppercase, 4 to 20 characters, letters and digits only.
+Types: percentage or fixed amount. A percentage coupon can have a maximum discount cap.
+Optional minimum order amount, start and end date, active flag, optional category restriction.
+Limits: total uses and uses per user (or per email for guests).
+One coupon per order. A coupon can stack with free shipping.
+Discount never makes the total negative and is never applied to the shipping fee.
+Redemption is recorded inside the same transaction as the order. Two simultaneous orders must not exceed the usage limit (use select_for_update() on the coupon row).
+Error messages are specific: "This code has expired", "Minimum order of Rs. 1,500 required", "You have already used this code", "This code is not valid for the items in your cart".
+Totals are always recomputed on the server. Never trust prices or discounts sent by the client.
+Totals formula
+\text{grand total} = \text{subtotal} - \text{discount} + \text{shipping}, \quad \text{shipping} = \begin{cases} 0 & \text{if } \text{subtotal} - \text{discount} \ge T \\ F & \text{otherwise} \end{cases}
+T is the free shipping threshold and F is the flat fee.
+Acceptance: every endpoint has pytest tests for success, validation failure, permission failure and edge cases listed in Phase 9. Throttling is on for auth, coupon and order endpoints.
+5. Phase 3: reference design and design system
+Prompt to agent
+The client's reference design (screenshots or Figma export) and logo are placed in design-reference/ and frontend/src/assets/brand/. Before writing any page, study every reference screen and produce docs/design-spec.md with the items below. Get the numbers from the reference itself; do not guess.
+Layout map: per page, the ordered list of sections and their grid (columns at 360, 768 and 1280px).
+Colour tokens: background, surface, text, muted text, primary, accent, success, warning, error, border. Check every text and background pair for 4.5:1 contrast. If the reference fails, darken the text colour slightly and note it.
+Typography: font families, size scale, weights and line heights. Choose the closest open-licensed Google Font if the reference font is commercial, self-host it with font-display: swap.
+Spacing, radius and shadow scale.
+Component inventory: header, mega or simple menu, footer, hero, product card, category card, badge, button variants, input, select, checkbox, radio, quantity stepper, accordion, tabs, toast, modal, breadcrumb, pagination, table.
+Then map the tokens into tailwind.config.js (theme.extend.colors, fontFamily, spacing, borderRadius, boxShadow) and build the components in frontend/src/components/ui/.
+FontAwesome setup
+Install @fortawesome/fontawesome-svg-core, @fortawesome/free-solid-svg-icons, @fortawesome/free-regular-svg-icons, @fortawesome/free-brands-svg-icons and @fortawesome/react-fontawesome.
+Import icons individually so unused icons are tree-shaken.
+Create one Icon wrapper component. All icons go through it, with aria-hidden="true" for decorative icons and an accessible label for icon-only buttons.
+Add an ESLint rule or a test that fails if an emoji character appears anywhere in src/.
+Form and card styling rules
+Element
+Required style
+Forbidden
+Card
+Solid bg-white (or the surface token), 1px solid border, rounded-lg, small solid shadow
+backdrop-blur, bg-white/30, frosted or gradient-blurred panels
+Form container
+Solid surface, 1px border, generous padding, labels above inputs
+Translucent panels, blurred backgrounds
+Input
+Solid background, 1px border, visible focus ring, error border and message below
+Placeholder-only labels
+Button
+Solid fills or clear outlines, disabled and loading states
+Glow and blur effects
+Form validation pattern
+Use react-hook-form with zod schemas. Show errors on blur and on submit, focus the first invalid field on submit, disable the submit button while sending, and map server fields errors back to the inputs. Required rules: email format, password at least 8 characters with a letter and a number, phone in Pakistani format, postal code digits only, name 2 to 80 characters, message 10 to 1000 characters, quantity 1 to 10 per item.
+Reusable states
+Every data-driven page needs a loading skeleton (solid grey blocks, no shimmer blur), an empty state, an error state with retry, and a 404 state.
+Acceptance: a /styleguide route (hidden from search engines with noindex) shows every component in every state, and visually matches the reference at the three widths.
+6. Phase 4: pages, one at a time
+Build the pages in this order. For each page, follow the per-step protocol in section 2 and stop after the page's acceptance check. Multivitamins get the most visual weight: the first category in the menu, the largest hero block on the home page, and a dedicated hub page.
+Page 1: Coming Soon
+The site has a site_mode setting (coming_soon or live), switchable from the admin dashboard. In coming_soon mode every public route redirects to this page, except /privacy-policy, /admin-panel and the API. Staff users can preview the live site while the mode is on.
+Logo, a short brand line, a countdown to the launch date (date comes from settings), an email waitlist form, and social links as FontAwesome brand icons.
+Waitlist form: email only, validated, duplicate emails return a friendly "You are already on the list" message, protected by the honeypot and rate limit from Phase 7.
+noindex, nofollow while in this mode.
+Acceptance: valid email saves a WaitlistEntry, invalid shows an inline error, 11th request per minute from one IP returns 429.
+Page 2: Privacy Policy
+Original text written for this store (no copied policy templates). Sections: who we are, data we collect (account, order, delivery, contact, cookies, bot-protection signals), why we use it, COD and delivery data sharing with couriers, retention periods, cookies, security measures, user rights (access, correction, deletion, with a contact email), children, changes to the policy, contact. Add a last-updated date, a table of contents with anchor links, and a footer link on every page. Add a simple cookie notice (accept and decline) that does not block the site. Also create short Terms and Conditions, Shipping and COD Policy, and Returns Policy pages with the same layout.
+Page 3: Home
+Sections in the order of the reference: header with search and cart count, hero (multivitamins campaign), trust strip (COD, free shipping over Rs. 2,000, original products, easy returns, each with a FontAwesome icon), multivitamins category grid, featured multivitamins carousel, skincare categories, bestsellers, benefits or how-to-choose section, reviews, FAQ accordion, newsletter, footer.
+Page 4: Shop and category listing
+Product grid with filters (category, type, price range, in stock), sort, search, pagination, active-filter chips and a mobile filter drawer with a solid background. Filters are reflected in the URL so pages can be shared.
+Page 5: Multivitamins hub
+An editorial landing page for the main category: intro, sub-categories (for example daily multivitamins, men, women, kids, immunity, hair and skin, energy), a how-to-choose guide, comparison table of featured products (serving size, count, key ingredients, price per serving), FAQ and the products grid.
+Page 6: Product detail
+Image gallery with thumbnails and zoom on hover, title, price, compare-at price and savings, stock status, quantity stepper, add to cart, COD badge, free-shipping progress, tabs (description, ingredients or supplement facts, how to use, reviews), supplement disclaimer, related products, FAQ block, sticky add-to-cart bar on mobile.
+Page 7: Cart
+Line items with quantity change and remove, coupon field with applied-state and remove, free-shipping progress bar, order summary (subtotal, discount, shipping, total), empty state, continue-shopping link.
+Page 8: Checkout (COD)
+Single page with sections: contact, delivery address, order summary, payment. The payment section shows only "Cash on Delivery" with a short explanation. Guest checkout allowed. Server quote on every change. Place-order button with loading and double-submit protection (idempotency key). Success page shows order number and next steps.
+Page 9: Auth
+Login, register, forgot password and reset password pages. Show password rules while typing, a show or hide password toggle (FontAwesome eye icons), lockout message after repeated failures.
+Page 10: Account
+Profile, saved addresses, order history, order detail with a status timeline and a cancel button when allowed, change password.
+Page 11: Track order
+Order number plus phone number lookup for guests.
+Page 12: About and Contact
+Original brand story, quality promises, contact form (name, email, subject, message) with validation and bot protection, store email and phone from settings.
+Page 13: 404 and 500
+Branded error pages with links back to home and shop. Both are noindex.
+Shared layout
+Header (logo, menu, search, account, cart), mobile menu with a solid panel, breadcrumbs, footer (links, policies, payment note "Cash on Delivery", social icons), skip-to-content link, and toast notifications.
+7. Phase 5: admin dashboard
+Prompt to agent
+Build a custom admin dashboard in React at /admin-panel (not the default Django admin path), backed by staff-only API endpoints under /api/v1/admin/. Keep the default Django admin enabled only on a non-obvious path for emergencies. Same design system, no glassmorphism. Access requires is_staff, and every admin action is logged (who, what, when, IP).
+Module
+Features
+Overview
+Today and 30-day orders, revenue, COD pending amount, low-stock list, top products, new users, orders by status, a revenue line chart
+Products
+List with search and filters, create and edit with validation, image upload with alt text, stock, price, category, type, SEO fields, FAQ editor, bulk activate or deactivate, bulk price or stock update by CSV
+Categories
+Tree view, create, edit, reorder, activate
+Orders
+List with filters (status, date, city, COD collected), order detail, status change with note, print invoice and packing slip (print stylesheet), mark COD collected, cancel with stock restore, export CSV
+Coupons
+Create and edit tokens with every rule from section 4, usage statistics, redemption list, deactivate, generate random code
+Shipping and settings
+Free shipping threshold, flat fee, store contact details, site mode (coming soon or live), launch date
+Customers
+List, order history, deactivate account
+Reviews
+Approve, reject, delete
+Messages and waitlist
+Contact messages with handled flag, waitlist export to CSV
+Security
+Bot events table, blocked IPs list with add and remove, failed login log
+Rules
+Every list is paginated, searchable and sortable server-side.
+Destructive actions (delete, cancel, bulk update) need a confirmation modal.
+Order status changes follow the allowed transitions from section 3 and are written to OrderStatusHistory.
+Image uploads accept JPEG, PNG, WebP and SVG, maximum 2 MB, content-type checked on the server.
+Dashboard totals come from aggregate queries with indexes, not Python loops.
+Acceptance: a staff user can complete the full life cycle of a product, an order and a coupon from the dashboard, and a non-staff user receives 403 on every admin endpoint.
+8. Phase 6: SEO and AEO
+SEO is search engine optimization. AEO is answer engine optimization: making the content easy for AI assistants and featured snippets to quote correctly.
+Rendering decision (important)
+A plain client-side React app sends crawlers an empty page. To keep React as required, do both of the following:
+Django serves the SPA shell through a catch-all view that injects per-route head tags (title, meta description, canonical, Open Graph, JSON-LD) and a small <noscript> block with the main heading, summary and product list, read from the database.
+Pre-render the static public routes (home, multivitamins hub, policies, about, contact) at build time (for example vite-plugin-prerender) so the full HTML is present without JavaScript.
+Verify with curl (no JavaScript) that the HTML of a product page contains its title, description, price and JSON-LD.
+Technical SEO checklist
+Unique <title> (under 60 characters) and meta description (under 160) for every page, from seo_title and seo_description with a sensible fallback.
+One <h1> per page, logical heading order, descriptive alt text, readable URLs (/multivitamins/daily-multivitamin-60-tablets).
+Canonical URL on every page, filters and sort parameters canonicalized to the base listing.
+robots.txt blocks /admin-panel, /api/, /cart, /checkout, /account; allows everything else and links the sitemap.
+sitemap.xml generated from the database (products, categories, content pages) with lastmod, split if over 5,000 URLs.
+Open Graph and Twitter card tags with an original share image per page type.
+hreflang is not needed (single language and region); set lang="en" on <html>.
+301 redirects for changed slugs. Trailing-slash policy is one consistent rule.
+Core Web Vitals targets on mobile: LCP under 2.5 s, CLS under 0.1, INP under 200 ms. Use lazy loading, srcset, WebP, font preloading and code splitting by route.
+Structured data (JSON-LD)
+Page
+Schema types
+Every page
+Organization (name, logo, url, contact), WebSite with SearchAction
+Breadcrumb pages
+BreadcrumbList
+Product
+Product with offers (price in PKR, availability, priceValidUntil), brand, sku, aggregateRating and review only when real approved reviews exist
+Category and hub
+CollectionPage and ItemList
+FAQ blocks
+FAQPage (only for questions visibly shown on the page)
+Contact
+ContactPage
+Validate every type with the Rich Results Test and fix all errors. Dummy reviews must not feed aggregateRating in production.
+AEO checklist
+Start each product and hub page with a 40 to 60 word direct summary that answers "what is it, who is it for, how is it used".
+Add question-style headings with short, factual answers (for example "How many multivitamin tablets should I take daily?" answered with "follow the label directions; typical products list one tablet per day"). No medical claims.
+Every multivitamin product has at least 4 FAQ entries in ProductFAQ, rendered on the page and in FAQPage schema.
+Use semantic tables for supplement facts and comparisons; use lists for steps.
+Show author or brand, a last-updated date and the supplement disclaimer on content pages to support trust signals.
+Add /llms.txt with a short site description and links to the key pages, and allow reputable AI crawlers in robots.txt.
+Keep facts consistent across pages (price, count, serving size) because assistants cross-check them.
+Acceptance: Lighthouse SEO 95+ on every public page type, no errors in the structured data validator, sitemap and robots reachable, and the no-JavaScript curl check passes.
+9. Phase 7: bot detection and security
+Prompt to agent
+Implement layered bot protection. No single layer is enough, so each one adds to a risk score. A request above the block score is rejected, a request in the middle band gets a challenge, and everything is logged to BotEvent.
+Layer
+What to build
+Honeypot field
+A hidden, off-screen input (website) on register, login, contact, waitlist and checkout forms. Any value means bot: return a normal-looking success response and log it, so bots get no signal.
+Time trap
+The form carries a signed timestamp. Submissions faster than 2 seconds after render are suspicious (add to the score), and tokens older than 2 hours are rejected.
+Challenge
+Cloudflare Turnstile (free, privacy friendly) on register, login after 3 failures, contact, waitlist and checkout. The server verifies the token with the secret key on every protected POST. Make it configurable so tests can use the official Turnstile test keys.
+Rate limiting
+DRF throttles per IP and per account. Defaults: login 5 per minute, register 5 per hour, coupon check 10 per minute, order placement 5 per 10 minutes, contact 3 per hour, waitlist 10 per minute, anonymous API 100 per minute. Return 429 with Retry-After.
+Account lockout
+5 failed logins on one email locks it for 15 minutes with an email notice. Use identical error messages for unknown email and wrong password.
+Header and UA checks
+Add score for empty or known-automation user agents (curl, python-requests, headless markers), missing Accept-Language, and impossible header combinations. Allow-list real search engine bots verified by reverse DNS.
+Behaviour signals
+Add score for many different coupon codes tried quickly (coupon guessing), many accounts created from one IP, many carts created without browsing, and repeated failed checkouts.
+IP controls
+Admin-managed block list, automatic temporary block (1 hour) for repeat offenders, and X-Forwarded-For handled correctly behind the proxy.
+Scraping defence
+Throttle product list and detail endpoints per IP, and no sequential public IDs (use slugs and order numbers with a random part).
+Other security requirements
+Passwords hashed with Argon2, Django password validators on.
+SECURE_SSL_REDIRECT, HSTS, SESSION_COOKIE_SECURE, CSRF_COOKIE_SECURE, SameSite=Lax, X_FRAME_OPTIONS=DENY.
+Content Security Policy that allows only the site, Turnstile and self-hosted assets.
+Strict CORS allow-list. No wildcard.
+All queries via the ORM, all output escaped by React, no dangerouslySetInnerHTML except sanitized policy content.
+Object-level permission checks: a user can only read their own orders and addresses.
+File uploads validated for type, size and content.
+pip-audit and npm audit clean of high and critical issues before release.
+Logs never contain passwords, tokens or full phone numbers.
+Acceptance: the bot tests in Phase 9 all pass, and a scripted bot run (section 12) is blocked or challenged at a rate of 95% or more while the 100 normal users are blocked at 0%.
+10. Phase 8: dummy products and original content
+Prompt to agent
+Create a management command python manage.py seed_demo that is safe to run repeatedly (idempotent) and refuses to run when DEBUG is false unless --force is passed. Seed the data below. Everything is fictional: invented brand names, invented product names, invented ingredient amounts clearly labelled as demo data.
+Catalog to seed
+Category
+Count
+Examples of original product names
+Daily multivitamins
+8
+Daily Balance Multivitamin, Daily Balance Gold, Active Daily Multi
+Men's multivitamins
+4
+Men Core Multi, Men Active 50+
+Women's multivitamins
+4
+Women Core Multi, Women Prenatal Style Demo
+Kids' multivitamins
+3
+Kids Gummy Multi Demo, Kids Chewable Multi
+Immunity
+4
+Immune Shield Blend, Vitamin C Plus Zinc
+Hair, skin and nails
+3
+Beauty Bloom Complex, Biotin Plus
+Energy and focus
+3
+Energy B-Complex, Focus Daily
+Cleansers and face wash
+4
+Gentle Foam Cleanser, Clear Gel Wash
+Moisturizers
+4
+Daily Hydra Cream, Light Gel Moisturizer
+Serums
+4
+Vitamin C Glow Serum, Niacinamide Balance Serum
+Sunscreens
+3
+Daily Shield SPF 50
+Lip and body care
+4
+Soft Lip Balm, Body Butter
+That is about 48 products, with multivitamins and supplements at 29 of them (60 percent), matching the focus of the store.
+For every product generate: slug, original short and long description (60 to 150 words), supplement facts or ingredients table, how-to-use text, 3 to 5 FAQ entries, price between Rs. 450 and Rs. 6,500 (some above Rs. 2,000 so free shipping can be tested, some below), compare-at price on about one third of them, stock between 0 and 200 (include a few at 0 and a few at 3 or less for low-stock tests), 6 to 12 approved demo reviews, and SEO fields.
+Original images (no downloads, no stock photos)
+Generate product images as original SVG illustrations in the project: a bottle, jar, tube or box shape, filled with the brand palette, with the invented product name as text. Make 3 image variants per product (front, label detail, lifestyle shape) by changing shape, colour and layout.
+Hero and category banners are abstract SVG compositions (circles, leaves, capsules and curves) using the brand palette.
+Export WebP and AVIF fallbacks at build time with a script, and store the SVG sources in frontend/src/assets/demo/.
+Every image has meaningful alt text. A DEMO marker is stored in the file metadata or name (demo-) so all demo images can be removed before launch.
+Other seed data
+20 demo users (demo+N@example.com, one shared test password from env), 3 saved addresses, 30 orders across all statuses, 6 coupons (percentage, fixed, expired, not started, usage-limit reached, category-restricted), default settings (threshold 2000, fee 200), 5 demo FAQ items for the home page, 1 staff user from env variables.
+A purge_demo command removes all demo data and demo images in one step before going live.
+Acceptance: after seed_demo, every page renders with populated data, purge_demo leaves an empty but working store, and a script confirms there is no emoji and no non-original image file in the repo.
+11. Phase 9: full test case suite
+Prompt to agent
+Implement every test case below as an automated test: backend cases in pytest, component and form cases in Vitest, user journeys in Playwright (Chromium, Firefox, WebKit, plus a mobile viewport). Use the Neon test branch and the Turnstile test keys. Tag each test with its ID. Produce a coverage report (target: backend 90%, frontend 80%) and a final TEST_REPORT.md listing each ID as pass or fail. A failing test blocks the next phase.
+A. Authentication and account
+ID
+Case
+Expected result
+AUTH-01
+Register with valid data
+201, user created, password hashed, welcome state shown
+AUTH-02
+Register with an existing email (different letter case)
+400 with field error, no second user
+AUTH-03
+Register with invalid email, short password, password without number
+Inline errors per field, no request sent on client
+AUTH-04
+Login with correct credentials
+Session set, cookie flags Secure and HttpOnly
+AUTH-05
+Login with wrong password and with unknown email
+Identical error message and similar response time
+AUTH-06
+5 failed logins on one email
+Account locked 15 minutes, 6th attempt rejected even with the correct password
+AUTH-07
+Password reset request for unknown email
+Same generic success message, no user enumeration
+AUTH-08
+Reset link used twice, and expired reset link
+Second use and expired link both rejected
+AUTH-09
+User A requests user B's order or address by ID
+404 or 403, no data leaked
+AUTH-10
+Guest cart merges into the user cart on login
+Quantities added, no duplicates, stock respected
+B. Catalog, search and filters
+ID
+Case
+Expected result
+CAT-01
+Product list default
+20 items, correct total count, active products only
+CAT-02
+Filter by category, type, price range, in stock together
+Results match all filters, URL reflects them
+CAT-03
+Sort by price low to high, high to low, newest
+Correct order, stable pagination
+CAT-04
+Search for a partial name, a misspelling and a term with no result
+Relevant results, graceful empty state
+CAT-05
+Inactive product URL
+404, absent from list, search and sitemap
+CAT-06
+Out-of-stock product
+Shows "Out of stock", add to cart disabled
+CAT-07
+Review submission by a user who never bought the product
+Rejected
+CAT-08
+Product list with 1,000 products
+Response under 300 ms, no N+1 queries (query count asserted)
+C. Cart
+ID
+Case
+Expected result
+CART-01
+Add item, change quantity, remove item
+Totals update immediately and match the server
+CART-02
+Quantity 0, negative, 11, decimal, text
+Rejected with a message
+CART-03
+Quantity above stock
+Capped or rejected with stock message
+CART-04
+Product price changes while it is in the cart
+Cart shows the new price with a notice
+CART-05
+Product becomes inactive while in cart
+Item flagged, checkout blocked until removed
+CART-06
+Cart persists after refresh and after closing the browser (guest)
+Items remain
+CART-07
+Client sends a manipulated price or total
+Ignored, server price used
+D. Free shipping (threshold Rs. 2,000, fee Rs. 200)
+ID
+Case
+Expected result
+SHIP-01
+Subtotal Rs. 1,999
+Shipping Rs. 200, message "Add Rs. 1 more for free shipping"
+SHIP-02
+Subtotal exactly Rs. 2,000
+Shipping Rs. 0
+SHIP-03
+Subtotal Rs. 2,001 and above
+Shipping Rs. 0
+SHIP-04
+Subtotal Rs. 2,300, coupon takes it to Rs. 1,900
+Shipping Rs. 200 (threshold applies after discount)
+SHIP-05
+Threshold changed to Rs. 3,000 in admin
+New value used on the next quote without redeploy
+SHIP-06
+Progress bar at 0%, 50%, 99% and 100%
+Correct width, text and accessible label
+E. Discount tokens
+ID
+Case
+Expected result
+COUP-01
+Valid percentage code
+Correct discount, rounded consistently
+COUP-02
+Percentage code with a maximum cap
+Discount never exceeds the cap
+COUP-03
+Valid fixed code larger than the subtotal
+Total never below zero
+COUP-04
+Lowercase and mixed-case entry, spaces around code
+Accepted after normalization
+COUP-05
+Unknown code
+"This code is not valid"
+COUP-06
+Expired code, not-yet-started code
+Specific message for each
+COUP-07
+Inactive code
+Rejected
+COUP-08
+Minimum order not reached
+Message shows the required amount
+COUP-09
+Category-restricted code with non-matching cart
+Rejected with message
+COUP-10
+Per-user limit reached (logged in and guest by email)
+Rejected
+COUP-11
+Total usage limit of 1, two simultaneous orders
+Exactly one succeeds (race condition test with threads)
+COUP-12
+Applying a second code
+Replaces the first or is rejected, never stacks
+COUP-13
+Remove code
+Totals restored
+COUP-14
+Cart changes after applying code, so code is no longer valid
+Code removed with a notice
+COUP-15
+Order cancelled
+Redemption released (documented behaviour)
+COUP-16
+15 wrong codes in one minute
+Throttled with 429
+F. Checkout and COD
+ID
+Case
+Expected result
+COD-01
+Guest places a valid COD order
+201, order number, status pending, stock reduced, email sent
+COD-02
+Logged-in user with a saved address
+Address snapshot saved on the order
+COD-03
+Payment method other than COD in the payload
+Rejected
+COD-04
+Missing or invalid name, phone, email, address, city, province
+Inline errors, nothing saved
+COD-05
+Phone formats 03001234567, +923001234567, 0300-1234567, 12345, letters
+First three normalized and accepted, last two rejected
+COD-06
+Stock is 1 and two buyers submit together
+One order succeeds, the other gets a clear error, stock never below 0
+COD-07
+Double-click on place order, and repeated request with the same idempotency key
+One order only
+COD-08
+Empty cart checkout
+Redirect to cart with message
+COD-09
+Order totals with coupon and shipping
+grand_total = subtotal - discount + shipping, snapshot of item prices stored
+COD-10
+Product price changes after the order
+Order keeps the original price
+COD-11
+Cancel an order in pending
+Stock restored, coupon released, history row written
+COD-12
+Cancel an order in shipped
+Rejected
+COD-13
+Track order with correct and wrong number and phone
+Correct data only on a match
+COD-14
+Network failure during place order
+No duplicate order, user can retry safely
+G. Forms (every form)
+Run this matrix on login, register, forgot password, reset password, profile, address, checkout, coupon, contact, waitlist, review and every admin form.
+ID
+Case
+Expected result
+FORM-01
+Submit empty required fields
+Every required field shows its error, focus moves to the first
+FORM-02
+Leading and trailing spaces, only spaces
+Trimmed; spaces-only rejected
+FORM-03
+Maximum length plus one character
+Rejected on client and server
+FORM-04
+HTML and script input (<script>alert(1)</script>)
+Stored safely escaped, never executed
+FORM-05
+SQL-like input (' OR 1=1 --)
+Treated as plain text
+FORM-06
+Unicode input, Urdu text, long names
+Accepted and displayed correctly
+FORM-07
+Server returns field errors
+Mapped to the correct inputs
+FORM-08
+Submit button during request
+Disabled with a loading state
+FORM-09
+Labels, aria-invalid, aria-describedby on errors
+Present and read by a screen reader
+FORM-10
+Keyboard only: Tab, Shift+Tab, Enter to submit
+Works with a visible focus ring
+FORM-11
+Honeypot filled
+Silent success to the bot, logged as a bot event, nothing saved
+FORM-12
+Submission under 2 seconds after render
+Score added, challenge shown
+H. Site mode, policies and content pages
+ID
+Case
+Expected result
+MODE-01
+coming_soon mode, open any public route
+Redirect to Coming Soon page, noindex header
+MODE-02
+coming_soon mode, open privacy policy and API health
+Reachable
+MODE-03
+Staff user in coming_soon mode
+Can preview the live site
+MODE-04
+Switch to live in admin
+Site opens immediately, Coming Soon returns 404 or redirects home
+MODE-05
+Waitlist: valid, invalid and duplicate email
+Saved, error, friendly duplicate message
+MODE-06
+Countdown reaches zero
+Shows a launch message, no negative numbers
+POL-01
+Privacy policy, terms, shipping and returns pages
+Render, linked in footer, anchors work, last-updated date shown
+POL-02
+Cookie notice accept, decline, reload
+Choice remembered, site works either way
+POL-03
+Contact form saves a message and shows in admin
+Present and filterable
+I. Admin dashboard
+ID
+Case
+Expected result
+ADM-01
+Non-staff and anonymous access to every admin endpoint and route
+403 or redirect to login
+ADM-02
+Create, edit, deactivate, delete product with validation
+Works, invalid input rejected, public site reflects changes
+ADM-03
+Upload a 3 MB file, a .exe renamed to .jpg, a valid WebP
+First two rejected, last accepted
+ADM-04
+Move order through valid and invalid status transitions
+Valid saved with history, invalid rejected
+ADM-05
+Mark COD collected
+Status and amount recorded, shown in the overview
+ADM-06
+Create each coupon type, edit, deactivate
+Behaves as in COUP tests
+ADM-07
+Change free shipping threshold and fee
+Applied (SHIP-05)
+ADM-08
+Bulk update and CSV import with a bad row
+Valid rows applied or all rolled back, error report shown
+ADM-09
+Overview figures against raw database counts
+Equal
+ADM-10
+Every destructive action
+Confirmation modal, audit log entry
+J. SEO and AEO
+ID
+Case
+Expected result
+SEO-01
+curl each page type without JavaScript
+Title, description, h1, canonical and JSON-LD present
+SEO-02
+Titles and descriptions
+Unique across the site, within length limits
+SEO-03
+sitemap.xml and robots.txt
+Valid, no private or inactive URLs, sitemap linked in robots
+SEO-04
+JSON-LD validation for Product, BreadcrumbList, FAQPage, Organization, CollectionPage
+Zero errors
+SEO-05
+Product with no reviews
+No aggregateRating in schema
+SEO-06
+Filter and sort URLs
+Canonical points to the base listing
+SEO-07
+Cart, checkout, account, admin, 404 pages
+noindex
+SEO-08
+Broken link crawl of the whole site
+Zero 404 internal links
+SEO-09
+Every image
+Has alt text, dimensions and lazy loading except the first screen
+AEO-01
+Hub and product pages
+Start with a 40 to 60 word direct summary
+AEO-02
+FAQ content
+Visible on the page and identical to FAQPage schema
+AEO-03
+/llms.txt
+Reachable and lists key pages
+AEO-04
+Search the content for disease or cure claims
+None found (automated word list check)
+K. Bots and security
+ID
+Case
+Expected result
+SEC-01
+Script posts the register form 20 times in a minute
+Throttled after the limit, 429 with Retry-After
+SEC-02
+Request without Turnstile token or with a bad token
+Rejected
+SEC-03
+Automation user agent and missing headers
+Score added, challenge or block
+SEC-04
+Real Googlebot user agent from a non-Google IP
+Treated as fake
+SEC-05
+Credential-stuffing test (100 emails, 1 password)
+Blocked by IP throttle
+SEC-06
+Coupon guessing script
+Blocked (COUP-16)
+SEC-07
+CSRF: POST without token from another origin
+Rejected
+SEC-08
+CORS preflight from an unknown origin
+Not allowed
+SEC-09
+Response headers
+CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy present
+SEC-10
+Automated scan with OWASP ZAP baseline
+No high or medium findings
+SEC-11
+Logs and error pages
+No stack traces, secrets or passwords
+SEC-12
+Blocked IP added in admin
+Immediately blocked, removal restores access
+L. Design rules, accessibility and responsiveness
+ID
+Case
+Expected result
+UI-01
+Scan src/ and seeded data for emoji characters
+Zero matches
+UI-02
+Scan CSS and class names for backdrop-blur, backdrop-filter, translucent form or card backgrounds
+Zero matches
+UI-03
+Check imports and the page source for CDN icon fonts
+Zero, only FontAwesome SVG icons from npm
+UI-04
+Visual comparison against the reference at 360, 768 and 1280 px
+Layout, colours and spacing match within the agreed tolerance
+UI-05
+Logo
+Client logo used, correct size and clear space
+UI-06
+Axe accessibility scan of every page
+Zero serious or critical issues
+UI-07
+Colour contrast of all text and buttons
+At least 4.5:1
+UI-08
+Keyboard walkthrough of the buy flow
+Completable without a mouse
+UI-09
+Browsers: Chrome, Firefox, Safari, Edge, Android Chrome, iOS Safari
+No layout break
+UI-10
+Horizontal scroll at 360 px
+None on any page
+UI-11
+Image and asset audit
+Every file listed as original, no third-party image or text
+UI-12
+Lighthouse mobile on each page type
+Performance 85+, Accessibility 95+, SEO 95+, Best Practices 95+
+M. Database and reliability (Neon)
+ID
+Case
+Expected result
+DB-01
+First request after Neon auto-suspend
+Succeeds after a retry, under 5 seconds
+DB-02
+Migrations on a fresh branch and on a branch with seeded data
+Succeed, reversible where possible
+DB-03
+Order placement transaction forced to fail halfway
+Full rollback: no order, no stock change, no coupon use
+DB-04
+Connection pool under 100 concurrent users
+No "too many connections" errors
+DB-05
+Backup and restore drill using a Neon branch from a past point in time
+Data restored and verified
+12. Phase 10: 100-user load test and production readiness
+Prompt to agent
+Create python manage.py seed_load_users --count 100, which creates 100 dummy users (load+N@example.com) with addresses and verified emails on the Neon test branch, and a loadtests/locustfile.py that drives them. Never run this against the main branch. Run on a staging deployment that matches production settings (DEBUG=False, real web server, HTTPS, the pooled Neon string).
+Load profile
+Ramp from 0 to 100 concurrent users over 2 minutes, hold for 10 minutes, ramp down over 1 minute. Run it three times: once with cold Neon (after auto-suspend), once warm, once with a spike to 150 users for 1 minute.
+Share of users
+Behaviour
+50
+Browse: home, multivitamins hub, category, search, 3 product pages, leave
+20
+Build cart: browse, add 1 to 4 items, change quantity, apply a coupon, leave
+20
+Buy: login or guest, add items, quote, place COD order, open confirmation
+5
+Account: login, view orders, cancel one pending order
+5
+Edge cases: invalid coupons, out-of-stock add, wrong login, invalid forms
+Also run a separate bot run at the same time: 50 scripted clients that spam registration, login, contact, waitlist and coupon endpoints, scrape the product list quickly, and send automation user agents.
+Pass thresholds
+Metric
+Required
+API response time
+p95 under 800 ms, p99 under 2 s, home and product pages server time under 400 ms p95
+Error rate
+Under 1% of requests, counting only 5xx and unexpected failures
+Checkout success
+At least 99% of valid orders succeed
+Data integrity
+Zero oversold stock, zero duplicate orders, zero coupon usage above its limit, order totals match recalculation for all orders
+Database
+No connection errors, pool usage under 80% at peak, slowest query under 200 ms, no table scans on hot paths (check EXPLAIN)
+Bot protection
+95% or more of bot requests blocked or challenged, 0% of the 100 normal users blocked
+Memory and CPU
+No memory growth over the 10-minute hold, CPU under 75% at peak
+Frontend
+Lighthouse targets in section 2 still met on the staging site
+Report
+Produce LOAD_TEST_REPORT.md with: Locust summary tables per run, a response-time chart, the top 10 slowest endpoints with the fix applied, query counts for key endpoints, the integrity checks above, the bot-run results, and a clear verdict: READY or NOT READY with the list of blockers. If any threshold fails, fix the cause (add indexes, caching with select_related and prefetch_related, response caching for catalog reads, query reduction, worker count) and rerun until it passes.
+Production sign-off checklist
+☐ All Phase 9 tests pass and TEST_REPORT.md is attached
+☐ LOAD_TEST_REPORT.md verdict is READY
+☐ DEBUG=False, secrets rotated, new SECRET_KEY, strong staff password, 2FA for staff if available
+☐ Neon main branch used, automatic backups and point-in-time restore verified
+☐ purge_demo run, real products and real images loaded by the client
+☐ Real aggregateRating only from real reviews
+☐ Client logo and final copy approved; privacy policy reviewed by the client (and a lawyer if required)
+☐ Free shipping threshold, shipping fee, support email and phone entered in settings
+☐ Email sending configured (SPF, DKIM) and order emails tested on real inboxes
+☐ Domain, HTTPS, redirects from www, and HSTS active
+☐ Error monitoring (for example Sentry) and uptime monitoring on /api/health/
+☐ Google Search Console and sitemap submitted, analytics added with the cookie notice respected
+☐ Site mode switched from coming_soon to live at launch time
+☐ Rollback plan written and the previous release tagged
+Final handover
+The agent delivers: source code, README.md with setup and deployment steps, docs/design-spec.md, TEST_REPORT.md, LOAD_TEST_REPORT.md, an admin user guide of one page per module, and a list of every assumption made (free shipping threshold rule, shipping fee, Turnstile as the challenge provider, pre-rendering approach).
