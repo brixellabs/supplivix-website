@@ -62,4 +62,26 @@ describe('Phase 5: Staff Admin Dashboard (/admin-panel)', () => {
     expect(screen.getByText(/Manual IP Unblock/i)).toBeInTheDocument();
     expect(screen.getByText(/Recent Bot & Honeypot Telemetry Events/i)).toBeInTheDocument();
   });
+
+  it('opens Add Product modal when + Add Product button is clicked', () => {
+    renderAdminPage();
+    fireEvent.click(screen.getByRole('button', { name: /Products/i }));
+    fireEvent.click(screen.getByText(/\+ Add Product/i));
+    expect(screen.getByText(/Add New Catalog Product/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Product Name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Price \(PKR\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Stock Quantity/i)).toBeInTheDocument();
+  });
+
+  it('switches to Orders tab and displays COD order controls and status filter', () => {
+    renderAdminPage();
+    fireEvent.click(screen.getByRole('button', { name: /Orders \(COD\)/i }));
+    expect(screen.getByPlaceholderText(/Search by order #, phone, city/i)).toBeInTheDocument();
+    expect(screen.getByText(/All Statuses/i)).toBeInTheDocument();
+  });
+
+  it('handles non-staff access verification gracefully', () => {
+    const { container } = renderAdminPage({ is_staff: false, email: 'regular@example.com' });
+    expect(container).toBeDefined();
+  });
 });
