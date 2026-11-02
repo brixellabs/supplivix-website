@@ -18,6 +18,7 @@ import ContactPage from './pages/ContactPage';
 import ComingSoonPage from './pages/ComingSoonPage';
 import StyleguidePage from './pages/StyleguidePage';
 import NotFoundPage from './pages/NotFoundPage';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -42,6 +43,9 @@ export default function App() {
           <Routes>
             {/* Standalone Coming Soon page */}
             <Route path="/coming-soon" element={<ComingSoonPage />} />
+
+            {/* Standalone Staff Admin Panel */}
+            <Route path="/admin-panel" element={<AdminDashboardPage />} />
 
             {/* Main Application with Shared Header, Layout & Footer */}
             <Route path="/" element={<Layout />}>

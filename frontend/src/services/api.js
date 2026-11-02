@@ -161,4 +161,65 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+
+  // Admin Dashboard (/api/v1/admin/)
+  getAdminOverview: () => apiRequest('/admin/overview/'),
+  getAdminProducts: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiRequest(`/admin/products/${q ? `?${q}` : ''}`);
+  },
+  createAdminProduct: (payload) =>
+    apiRequest('/admin/products/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAdminProduct: (id, payload) =>
+    apiRequest(`/admin/products/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  getAdminOrders: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiRequest(`/admin/orders/${q ? `?${q}` : ''}`);
+  },
+  getAdminOrderDetail: (number) => apiRequest(`/admin/orders/${number}/`),
+  transitionAdminOrder: (number, status, notes = '') =>
+    apiRequest(`/admin/orders/${number}/transition/`, {
+      method: 'POST',
+      body: JSON.stringify({ status, notes }),
+    }),
+  getAdminCategories: () => apiRequest('/admin/categories/'),
+  createAdminCategory: (payload) =>
+    apiRequest('/admin/categories/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getAdminCoupons: () => apiRequest('/admin/coupons/'),
+  createAdminCoupon: (payload) =>
+    apiRequest('/admin/coupons/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getAdminCustomers: () => apiRequest('/admin/customers/'),
+  toggleAdminCustomer: (id) =>
+    apiRequest(`/admin/customers/${id}/toggle-status/`, {
+      method: 'POST',
+    }),
+  getAdminReviews: () => apiRequest('/admin/reviews/'),
+  moderateAdminReview: (id, approved) =>
+    apiRequest(`/admin/reviews/${id}/moderate/`, {
+      method: 'POST',
+      body: JSON.stringify({ approved }),
+    }),
+  getAdminMessages: () => apiRequest('/admin/messages/'),
+  markAdminMessageRead: (id) =>
+    apiRequest(`/admin/messages/${id}/mark-read/`, {
+      method: 'POST',
+    }),
+  getAdminSecurityLogs: () => apiRequest('/admin/security/logs/'),
+  unblockAdminIP: (ip) =>
+    apiRequest('/admin/security/unblock-ip/', {
+      method: 'POST',
+      body: JSON.stringify({ ip }),
+    }),
 };

@@ -32,6 +32,7 @@ export default [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         URLSearchParams: 'readonly',
+        navigator: 'readonly',
       },
     },
     rules: {
