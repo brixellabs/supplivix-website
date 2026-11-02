@@ -184,14 +184,68 @@ class TestOrderModels:
 
         assert order.status == Order.STATUS_PENDING
 
-        # Valid transition: pending -> confirmed
+        # Valid forward transition: pending -> confirmed
         order.transition_to(Order.STATUS_CONFIRMED, note='Confirmed via customer call')
         assert order.status == Order.STATUS_CONFIRMED
         assert order.status_history.count() == 1
+        history1 = order.status_history.last()
+        assert history1.from_status == Order.STATUS_PENDING
+        assert history1.to_status == Order.STATUS_CONFIRMED
+        assert history1.note == 'Confirmed via customer call'
 
         # Invalid transition: confirmed -> delivered (must pack and ship first)
         with pytest.raises(ValidationError):
             order.transition_to(Order.STATUS_DELIVERED)
+
+        # Invalid backward transition: confirmed -> pending
+        with pytest.raises(ValidationError):
+            order.transition_to(Order.STATUS_PENDING)
+
+        # Complete forward lifecycle: confirmed -> packed -> shipped -> delivered -> cod_collected -> returned
+        order.transition_to(Order.STATUS_PACKED, note='Packed at warehouse')
+        assert order.status == Order.STATUS_PACKED
+        assert order.status_history.count() == 2
+
+        order.transition_to(Order.STATUS_SHIPPED, note='Dispatched via courier')
+        assert order.status == Order.STATUS_SHIPPED
+        assert order.status_history.count() == 3
+
+        order.transition_to(Order.STATUS_DELIVERED, note='Delivered to customer')
+        assert order.status == Order.STATUS_DELIVERED
+        assert order.status_history.count() == 4
+
+        order.transition_to(Order.STATUS_COD_COLLECTED, note='Cash on delivery collected')
+        assert order.status == Order.STATUS_COD_COLLECTED
+        assert order.status_history.count() == 5
+
+        order.transition_to(Order.STATUS_RETURNED, note='Customer returned item')
+        assert order.status == Order.STATUS_RETURNED
+        assert order.status_history.count() == 6
+
+        # Terminal state: returned cannot transition to anything
+        with pytest.raises(ValidationError):
+            order.transition_to(Order.STATUS_PENDING)
+        with pytest.raises(ValidationError):
+            order.transition_to(Order.STATUS_CONFIRMED)
+
+    def test_order_cancellation_from_unfulfilled_states(self):
+        """Cancel is permitted from pending, confirmed, packed, and shipped."""
+        for start_status in [Order.STATUS_PENDING, Order.STATUS_CONFIRMED, Order.STATUS_PACKED, Order.STATUS_SHIPPED]:
+            order = Order.objects.create(
+                number=Order.generate_order_number(),
+                guest_email='cancel_test@example.com',
+                status=start_status,
+                payment_method='COD',
+                subtotal=1000,
+                grand_total=1000
+            )
+            order.transition_to(Order.STATUS_CANCELLED, note=f'Cancelled from {start_status}')
+            assert order.status == Order.STATUS_CANCELLED
+            assert order.status_history.filter(to_status=Order.STATUS_CANCELLED).exists()
+
+            # Terminal state: cancelled cannot transition anywhere
+            with pytest.raises(ValidationError):
+                order.transition_to(Order.STATUS_CONFIRMED)
 
 
 @pytest.mark.django_db
@@ -241,3 +295,64 @@ class TestContentAndCoreModels:
             score=50
         )
         assert event.score == 50
+
+
+@pytest.mark.django_db
+class TestDjangoAdmin:
+    """Verify acceptance criterion: Django admin can open every model."""
+
+    def test_admin_can_open_every_model(self, client):
+        from django.contrib import admin
+        from django.urls import reverse
+
+        superuser = User.objects.create_superuser(
+            email='superadmin@supplivix.com',
+            password='AdminPassword123!',
+            full_name='Super Admin'
+        )
+        client.force_login(superuser)
+
+        # 1. Admin index returns 200
+        index_res = client.get('/admin/')
+        assert index_res.status_code == 200
+
+        # Required models from the specification
+        required_model_names = {
+            'accounts.user',
+            'accounts.address',
+            'catalog.category',
+            'catalog.product',
+            'catalog.productimage',
+            'catalog.productattribute',
+            'catalog.productfaq',
+            'catalog.review',
+            'cart.cart',
+            'cart.cartitem',
+            'orders.order',
+            'orders.orderitem',
+            'orders.orderstatushistory',
+            'promotions.coupon',
+            'promotions.couponredemption',
+            'content.sitesetting',
+            'content.waitlistentry',
+            'content.contactmessage',
+            'core.botevent',
+            'core.blockedip',
+        }
+
+        registered_keys = {
+            f"{m._meta.app_label}.{m._meta.model_name}"
+            for m in admin.site._registry.keys()
+        }
+
+        # Verify all required models are registered
+        missing = required_model_names - registered_keys
+        assert not missing, f"Missing models in admin registry: {missing}"
+
+        # 2. Django admin can open every model's changelist URL
+        for model in admin.site._registry.keys():
+            app_label = model._meta.app_label
+            model_name = model._meta.model_name
+            changelist_url = reverse(f'admin:{app_label}_{model_name}_changelist')
+            res = client.get(changelist_url)
+            assert res.status_code == 200, f"Admin failed to open model {app_label}.{model_name}: status {res.status_code}"

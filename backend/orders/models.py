@@ -34,7 +34,7 @@ class Order(models.Model):
         STATUS_PENDING: [STATUS_CONFIRMED, STATUS_CANCELLED],
         STATUS_CONFIRMED: [STATUS_PACKED, STATUS_CANCELLED],
         STATUS_PACKED: [STATUS_SHIPPED, STATUS_CANCELLED],
-        STATUS_SHIPPED: [STATUS_DELIVERED, STATUS_RETURNED],
+        STATUS_SHIPPED: [STATUS_DELIVERED, STATUS_RETURNED, STATUS_CANCELLED],
         STATUS_DELIVERED: [STATUS_COD_COLLECTED, STATUS_RETURNED],
         STATUS_COD_COLLECTED: [STATUS_RETURNED],
         STATUS_CANCELLED: [],
@@ -140,8 +140,8 @@ class OrderStatusHistory(models.Model):
     """Audit history of all order status changes."""
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='status_history')
-    from_status = models.CharField(max_length=30)
-    to_status = models.CharField(max_length=30)
+    from_status = models.CharField(max_length=30, db_index=True)
+    to_status = models.CharField(max_length=30, db_index=True)
     changed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

@@ -14,7 +14,7 @@ def robots_txt(request):
     """Serve robots.txt with disallow directives for admin/cart/checkout and link to sitemap."""
     base_url = getattr(settings, 'SITE_BASE_URL', 'https://supplivix.com').rstrip('/')
     content = f"""User-agent: *
-Disallow: /admin-secret/
+Disallow: /admin/
 Disallow: /admin-panel/
 Disallow: /api/
 Disallow: /cart

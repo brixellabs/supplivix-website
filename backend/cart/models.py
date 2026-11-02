@@ -48,7 +48,7 @@ class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items')
     quantity = models.PositiveIntegerField(default=1)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         verbose_name = 'Cart Item'
@@ -56,6 +56,7 @@ class CartItem(models.Model):
         unique_together = ('cart', 'product')
         indexes = [
             models.Index(fields=['cart', 'product']),
+            models.Index(fields=['created_at']),
         ]
 
     def __str__(self):

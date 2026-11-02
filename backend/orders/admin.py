@@ -22,3 +22,17 @@ class OrderAdmin(admin.ModelAdmin):
     search_fields = ('number', 'user__email', 'guest_email', 'notes')
     readonly_fields = ('number', 'subtotal', 'discount_total', 'shipping_total', 'grand_total', 'created_at', 'updated_at')
     inlines = [OrderItemInline, OrderStatusHistoryInline]
+
+
+@admin.register(OrderItem)
+class OrderItemAdmin(admin.ModelAdmin):
+    list_display = ('id', 'order', 'product_name', 'sku', 'unit_price', 'quantity', 'line_total')
+    list_filter = ('order__status',)
+    search_fields = ('order__number', 'product_name', 'sku')
+
+
+@admin.register(OrderStatusHistory)
+class OrderStatusHistoryAdmin(admin.ModelAdmin):
+    list_display = ('id', 'order', 'from_status', 'to_status', 'changed_by', 'created_at')
+    list_filter = ('from_status', 'to_status', 'created_at')
+    search_fields = ('order__number', 'note')

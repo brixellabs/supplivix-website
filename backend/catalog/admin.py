@@ -35,6 +35,27 @@ class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImageInline, ProductAttributeInline, ProductFAQInline]
 
 
+@admin.register(ProductImage)
+class ProductImageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'product', 'alt_text', 'sort_order')
+    list_filter = ('product',)
+    search_fields = ('product__name', 'alt_text')
+
+
+@admin.register(ProductAttribute)
+class ProductAttributeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'product', 'key', 'value')
+    list_filter = ('key', 'product')
+    search_fields = ('product__name', 'key', 'value')
+
+
+@admin.register(ProductFAQ)
+class ProductFAQAdmin(admin.ModelAdmin):
+    list_display = ('id', 'product', 'question', 'sort_order')
+    list_filter = ('product',)
+    search_fields = ('product__name', 'question', 'answer')
+
+
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
     list_display = ('product', 'user', 'rating', 'title', 'is_approved', 'created_at')
