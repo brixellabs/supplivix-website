@@ -42,3 +42,4 @@ if (foundErrors > 0) {
   console.log('Emoji check passed: Zero emojis found in src/.');
   process.exit(0);
 }
+
