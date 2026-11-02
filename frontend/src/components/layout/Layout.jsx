@@ -1,11 +1,37 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
 import CookieNotice from '../ui/CookieNotice';
 import Icon from '../ui/Icon';
+import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 
 export default function Layout() {
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getPublicSettings()
+      .then((settings) => {
+        if (!isMounted) return;
+        if (settings && settings.site_mode === 'coming_soon') {
+          // Exemptions: /privacy-policy, /admin-panel, and staff users previewing
+          const isExempt = location.pathname === '/privacy-policy' || location.pathname.startsWith('/admin-panel');
+          const isStaff = Boolean(user && user.is_staff);
+          if (!isExempt && !isStaff) {
+            navigate('/coming-soon', { replace: true });
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [location.pathname, user, navigate]);
+
   return (
     <div className="min-h-screen flex flex-col bg-white text-brand-ink font-sans">
       {/* Skip to Content for WCAG 2.1 AA Keyboard Accessibility */}
