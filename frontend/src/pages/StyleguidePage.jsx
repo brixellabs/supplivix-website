@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import Select from '../components/ui/Select';
+import Checkbox from '../components/ui/Checkbox';
+import Radio from '../components/ui/Radio';
+import Tabs from '../components/ui/Tabs';
+import Pagination from '../components/ui/Pagination';
+import Table from '../components/ui/Table';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import QuantityStepper from '../components/ui/QuantityStepper';
@@ -11,6 +17,7 @@ import ErrorState from '../components/ui/ErrorState';
 import Modal from '../components/ui/Modal';
 import Icon from '../components/ui/Icon';
 import ProductIllustration from '../components/ui/ProductIllustration';
+import Breadcrumbs from '../components/layout/Breadcrumbs';
 import { useToast } from '../components/ui/Toast';
 
 export default function StyleguidePage() {
@@ -18,6 +25,11 @@ export default function StyleguidePage() {
   const [stepperVal, setStepperVal] = useState(2);
   const [modalOpen, setModalOpen] = useState(false);
   const [sampleInput, setSampleInput] = useState('');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [agreedTerms, setAgreedTerms] = useState(true);
+  const [paymentOption, setPaymentOption] = useState('cod');
+  const [selectedCity, setSelectedCity] = useState('lahore');
 
   return (
     <div className="min-h-screen bg-white text-brand-ink py-10 px-4 sm:px-6 md:px-8 max-w-site mx-auto">
@@ -25,7 +37,7 @@ export default function StyleguidePage() {
       <meta name="robots" content="noindex, nofollow" />
 
       {/* Header */}
-      <div className="border-b border-surface-border pb-6 mb-10">
+      <div className="border-b border-surface-border pb-6 mb-8">
         <Badge variant="pill" className="mb-3">Design System · WCAG 2.1 AA</Badge>
         <h1 className="text-3xl md:text-4xl font-bold uppercase tracking-tight text-brand-ink">
           Supplivix Styleguide
@@ -34,6 +46,18 @@ export default function StyleguidePage() {
           Living component specification and design tokens replicated from reference index.html.
           Zero emojis, zero glassmorphism, 100% solid surfaces and self-hosted FontAwesome SVG icons.
         </p>
+      </div>
+
+      {/* Navigation Breadcrumbs Demo */}
+      <div className="mb-10 p-4 border border-surface-border rounded-md bg-surface-subtle">
+        <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block mb-2">Breadcrumb Navigation</span>
+        <Breadcrumbs
+          items={[
+            { label: 'Shop', href: '/shop' },
+            { label: 'Multivitamins Hub', href: '/multivitamins' },
+            { label: 'Vitamax Men Multivitamin' },
+          ]}
+        />
       </div>
 
       {/* 1. Color Tokens Palette */}
@@ -146,7 +170,7 @@ export default function StyleguidePage() {
         </div>
       </section>
 
-      {/* 4. Form Inputs */}
+      {/* 4. Form Inputs & Select / Checkbox / Radio */}
       <section className="mb-12">
         <h2 className="text-xl font-bold uppercase tracking-wide border-b border-surface-border pb-2 mb-6">
           4. Form Inputs & Validation States
@@ -168,6 +192,19 @@ export default function StyleguidePage() {
             required
             error="Please enter a valid Pakistani mobile number (03XXXXXXXXX)."
           />
+          <Select
+            label="Delivery City"
+            name="citySelect"
+            value={selectedCity}
+            onChange={(e) => setSelectedCity(e.target.value)}
+            options={[
+              { value: 'lahore', label: 'Lahore (Punjab)' },
+              { value: 'karachi', label: 'Karachi (Sindh)' },
+              { value: 'islamabad', label: 'Islamabad (Capital)' },
+              { value: 'faisalabad', label: 'Faisalabad (Punjab)' },
+            ]}
+            helperText="Nationwide delivery available."
+          />
           <Input
             label="Disabled Field"
             name="disabledField"
@@ -175,6 +212,29 @@ export default function StyleguidePage() {
             disabled
             helperText="Pre-configured setting."
           />
+          <div className="flex flex-col gap-2 pt-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-brand-ink">Terms Agreement</span>
+            <Checkbox
+              label="I accept terms and COD conditions"
+              id="sg-terms-check"
+              name="terms"
+              checked={agreedTerms}
+              onChange={(e) => setAgreedTerms(e.target.checked)}
+              helperText="Required for final order dispatch."
+            />
+          </div>
+          <div className="flex flex-col gap-2 pt-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-brand-ink">Payment Method</span>
+            <Radio
+              label="Cash on Delivery (COD)"
+              id="sg-radio-cod"
+              name="payment"
+              value="cod"
+              checked={paymentOption === 'cod'}
+              onChange={() => setPaymentOption('cod')}
+            />
+            <p className="text-xs text-ink-muted">Cash on Delivery is the sole payment method.</p>
+          </div>
         </div>
       </section>
 
@@ -277,19 +337,36 @@ export default function StyleguidePage() {
         </div>
       </section>
 
-      {/* 6. Stepper, Accordion & States */}
+      {/* 6. Stepper, Tabs & Accordion */}
       <section className="mb-12">
         <h2 className="text-xl font-bold uppercase tracking-wide border-b border-surface-border pb-2 mb-6">
-          6. Interactive Controls & Reusable States
+          6. Interactive Controls & Tabs
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <h3 className="text-sm font-bold uppercase text-ink-muted mb-3">Quantity Stepper</h3>
+            <h3 className="text-sm font-bold uppercase text-ink-muted mb-3">Tabs Component</h3>
+            <Tabs
+              tabs={[
+                { id: 'overview', label: 'Overview', count: 12 },
+                { id: 'facts', label: 'Supplement Facts' },
+                { id: 'reviews', label: 'Reviews', count: 312 },
+              ]}
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              className="mb-4"
+            />
+            <div className="p-4 bg-surface-subtle border border-surface-border rounded-sm text-xs text-brand-ink">
+              Active Tab Content: <span className="font-bold uppercase text-brand-green">{activeTab}</span>
+            </div>
+
+            <h3 className="text-sm font-bold uppercase text-ink-muted mt-6 mb-3">Quantity Stepper</h3>
             <div className="flex items-center gap-4 mb-6">
               <QuantityStepper value={stepperVal} onChange={setStepperVal} min={1} max={10} />
               <span className="text-xs text-ink-muted">Selected Quantity: {stepperVal}</span>
             </div>
+          </div>
 
+          <div>
             <h3 className="text-sm font-bold uppercase text-ink-muted mb-3">Accordion</h3>
             <div className="space-y-3">
               <Accordion title="Suggested Usage Directions" defaultOpen>
@@ -299,10 +376,8 @@ export default function StyleguidePage() {
                 Cash on Delivery is the sole payment method supported. Hand the exact order total in Pakistani Rupees to the delivery courier upon arrival.
               </Accordion>
             </div>
-          </div>
 
-          <div>
-            <h3 className="text-sm font-bold uppercase text-ink-muted mb-3">Loading Skeletons (Solid Grey Blocks, No Shimmer)</h3>
+            <h3 className="text-sm font-bold uppercase text-ink-muted mt-6 mb-3">Loading Skeletons (Solid Grey Blocks, No Shimmer)</h3>
             <div className="space-y-3 p-4 border border-surface-border rounded-lg bg-surface-subtle">
               <Skeleton width="40%" height="22px" />
               <Skeleton width="90%" height="16px" />
@@ -316,12 +391,12 @@ export default function StyleguidePage() {
         </div>
       </section>
 
-      {/* 7. Empty & Error States */}
+      {/* 7. Reusable States, Data Table & Pagination */}
       <section className="mb-12">
         <h2 className="text-xl font-bold uppercase tracking-wide border-b border-surface-border pb-2 mb-6">
-          7. Empty & Error States
+          7. Empty & Error States, Table & Pagination
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <EmptyState
             title="Your Cart is Empty"
             description="Explore our range of daily multivitamins and supplements to get started."
@@ -334,6 +409,31 @@ export default function StyleguidePage() {
             onRetry={() => showToast('Retrying network request...')}
           />
         </div>
+
+        <h3 className="text-sm font-bold uppercase text-ink-muted mb-3">Responsive Data Table</h3>
+        <Table headers={['Product Name', 'Category', 'Price (PKR)', 'Status', 'Actions']}>
+          <tr>
+            <td className="px-4 py-3 font-semibold">Vitamax Men Multivitamin</td>
+            <td className="px-4 py-3 text-ink-muted">Daily Multivitamins</td>
+            <td className="px-4 py-3 font-bold text-brand-green">Rs. 1,450</td>
+            <td className="px-4 py-3"><Badge variant="default" size="xs">In Stock</Badge></td>
+            <td className="px-4 py-3"><Button variant="outline" size="sm">Details</Button></td>
+          </tr>
+          <tr>
+            <td className="px-4 py-3 font-semibold">Vitamin C Glow Serum</td>
+            <td className="px-4 py-3 text-ink-muted">Skincare Serums</td>
+            <td className="px-4 py-3 font-bold text-brand-green">Rs. 1,690</td>
+            <td className="px-4 py-3"><Badge variant="sale" size="xs">Sale</Badge></td>
+            <td className="px-4 py-3"><Button variant="outline" size="sm">Details</Button></td>
+          </tr>
+        </Table>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={5}
+          onPageChange={setCurrentPage}
+          className="mt-6"
+        />
       </section>
 
       {/* Confirmation Modal */}
