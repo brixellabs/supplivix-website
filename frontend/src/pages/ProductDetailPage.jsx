@@ -10,6 +10,7 @@ import Input from '../components/ui/Input';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../services/api';
+import SEOHead from '../components/seo/SEOHead';
 
 const SAMPLE_PRODUCT = {
   id: 1,
@@ -137,6 +138,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="bg-white min-h-screen pb-16">
+      <SEOHead title={product.name} description={product.short_description || product.description} canonical={`/products/${product.slug}`} ogType="product" />
       <Breadcrumbs items={breadcrumbs} />
 
       <div className="max-w-site mx-auto px-4 sm:px-6 py-8">

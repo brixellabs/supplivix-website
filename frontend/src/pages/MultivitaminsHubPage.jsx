@@ -4,6 +4,7 @@ import Breadcrumbs from '../components/layout/Breadcrumbs';
 import Icon from '../components/ui/Icon';
 import Button from '../components/ui/Button';
 import Accordion from '../components/ui/Accordion';
+import SEOHead from '../components/seo/SEOHead';
 
 const COMPARISON_DATA = [
   {
@@ -74,6 +75,7 @@ const FAQS = [
 export default function MultivitaminsHubPage() {
   return (
     <div className="bg-white">
+      <SEOHead title="Multivitamins Hub - Complete Daily Formulas" description="Discover bioavailable multivitamins formulated for optimal cellular absorption. 100% Cash on Delivery across Pakistan." canonical="/multivitamins" />
       <Breadcrumbs items={[{ label: 'Multivitamins Hub', href: '/multivitamins' }]} />
 
       {/* Flagship Hero Header */}

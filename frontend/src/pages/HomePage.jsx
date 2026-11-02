@@ -6,6 +6,7 @@ import Badge from '../components/ui/Badge';
 import ProductIllustration from '../components/ui/ProductIllustration';
 import ProductCard from '../components/product/ProductCard';
 import Input from '../components/ui/Input';
+import SEOHead from '../components/seo/SEOHead';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../services/api';
 
@@ -188,6 +189,7 @@ export default function HomePage() {
 
   return (
     <div className="bg-white">
+      <SEOHead title="Bioavailable Multivitamins & Skincare Pakistan" description="Pakistan's premier multivitamins and science-backed skincare formulations. Crafted for maximum bioavailability with Cash on Delivery nationwide." canonical="/" />
       {/* 1. Hero Section: Multivitamins Focus */}
       <section className="bg-surface-subtle border-b border-surface-border py-12 md:py-16">
         <div className="max-w-site mx-auto px-4 sm:px-6">
