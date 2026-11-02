@@ -120,6 +120,9 @@ class ApplyCouponView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'coupon'
 
+    def delete(self, request):
+        return RemoveCouponView().delete(request)
+
     def post(self, request):
         cart = get_or_create_cart(request)
         serializer = ApplyCouponSerializer(data=request.data)

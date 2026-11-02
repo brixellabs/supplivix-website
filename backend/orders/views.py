@@ -101,14 +101,20 @@ class PlaceOrderView(APIView):
 
 
 class OrderListView(APIView):
-    """List orders for authenticated customer."""
+    """List orders for authenticated customer or create an order via POST."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
 
     def get(self, request):
         orders = Order.objects.filter(user=request.user).order_by('-created_at')
         serializer = OrderListSerializer(orders, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        return PlaceOrderView().post(request)
 
 
 class OrderDetailView(APIView):

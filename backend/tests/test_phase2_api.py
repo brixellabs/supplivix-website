@@ -114,6 +114,36 @@ class TestAuthenticationAPI:
         res = api_client.get(f'/api/v1/orders/{order_b.number}/')
         assert res.status_code == 403
 
+    def test_auth_direct_aliases_and_me_endpoints(self, api_client, auth_user):
+        # Direct /api/v1/login/
+        login_res = api_client.post('/api/v1/login/', {'email': 'customer@example.com', 'password': 'Password123!'}, format='json')
+        assert login_res.status_code == 200
+
+        api_client.force_authenticate(user=auth_user)
+
+        # GET /api/v1/me/
+        me_res = api_client.get('/api/v1/me/')
+        assert me_res.status_code == 200
+        assert me_res.data['email'] == auth_user.email
+
+        # PATCH /api/v1/me/
+        patch_res = api_client.patch('/api/v1/me/', {'full_name': 'Updated Name'}, format='json')
+        assert patch_res.status_code == 200
+        assert patch_res.data['full_name'] == 'Updated Name'
+
+        # POST /api/v1/change-password/
+        pw_res = api_client.post('/api/v1/change-password/', {
+            'old_password': 'Password123!',
+            'new_password': 'BrandNewPassword2026!'
+        }, format='json')
+        assert pw_res.status_code == 200
+        auth_user.refresh_from_db()
+        assert auth_user.check_password('BrandNewPassword2026!')
+
+        # POST /api/v1/logout/
+        logout_res = api_client.post('/api/v1/logout/')
+        assert logout_res.status_code == 200
+
 
 # B. Catalog, Search and Reviews (CAT-01 to CAT-07)
 @pytest.mark.django_db
@@ -193,6 +223,15 @@ class TestCatalogAPI:
         assert res_after.status_code == 201
         assert res_after.data['review']['rating'] == 5
 
+        # Direct POST /api/v1/reviews/
+        res_direct_rev = api_client.post('/api/v1/reviews/', {
+            'product_slug': sample_product.slug,
+            'rating': 4,
+            'title': 'Good results',
+            'body': 'Good daily multivitamin.'
+        }, format='json')
+        assert res_direct_rev.status_code == 201
+
 
 # C & D. Cart & Free Shipping (CART-01 to CART-07, SHIP-01 to SHIP-05)
 @pytest.mark.django_db
@@ -258,6 +297,29 @@ class TestCartAndShippingAPI:
         assert res_exact.data['free_shipping_eligible'] is True
         assert res_exact.data['grand_total'] == 2000
 
+    def test_cart_coupon_delete_and_merge(self, api_client, auth_user, sample_product):
+        Coupon.objects.create(code='PROMO50', type=Coupon.TYPE_FIXED, value=50)
+
+        # Guest adds product and applies coupon
+        api_client.post('/api/v1/cart/items/', {'product_id': sample_product.id, 'quantity': 1}, format='json')
+        api_client.post('/api/v1/cart/coupon/', {'code': 'PROMO50'}, format='json')
+
+        # DELETE /api/v1/cart/coupon/
+        del_coupon_res = api_client.delete('/api/v1/cart/coupon/')
+        assert del_coupon_res.status_code == 200
+        assert del_coupon_res.data['coupon_code'] == ''
+
+        # Merge guest cart to user cart
+        guest_session_key = 'test-session-merge-123'
+        from cart.models import Cart, CartItem
+        guest_cart = Cart.objects.create(session_key=guest_session_key)
+        CartItem.objects.create(cart=guest_cart, product=sample_product, quantity=2)
+
+        api_client.force_authenticate(user=auth_user)
+        merge_res = api_client.post('/api/v1/cart/merge/', {'session_key': guest_session_key}, format='json')
+        assert merge_res.status_code == 200
+        assert merge_res.data['total_items'] >= 2
+
 
 # E. Discount Tokens / Coupons (COUP-01 to COUP-14)
 @pytest.mark.django_db
@@ -306,6 +368,36 @@ class TestCouponAPI:
         res = api_client.post('/api/v1/cart/coupon/', {'code': 'ONCEONLY'}, format='json')
         assert res.status_code == 400
         assert 'already used' in res.data['message']
+
+    def test_coupon_expired_and_category_mismatch(self, api_client, sample_product, sample_category):
+        import datetime
+
+        from django.utils import timezone
+
+        # Expired coupon
+        past_date = timezone.now() - datetime.timedelta(days=2)
+        Coupon.objects.create(
+            code='EXPIRED10',
+            type=Coupon.TYPE_PERCENT,
+            value=10,
+            ends_at=past_date
+        )
+        api_client.post('/api/v1/cart/items/', {'product_id': sample_product.id, 'quantity': 1}, format='json')
+        res_exp = api_client.post('/api/v1/cart/coupon/', {'code': 'EXPIRED10'}, format='json')
+        assert res_exp.status_code == 400
+        assert 'expired' in res_exp.data['message'].lower()
+
+        # Category mismatch coupon
+        other_cat = Category.objects.create(name='Other Cat', slug='other-cat')
+        Coupon.objects.create(
+            code='CATONLY',
+            type=Coupon.TYPE_FIXED,
+            value=100,
+            applies_to_category=other_cat
+        )
+        res_cat = api_client.post('/api/v1/cart/coupon/', {'code': 'CATONLY'}, format='json')
+        assert res_cat.status_code == 400
+        assert 'not valid for the items in your cart' in res_cat.data['message']
 
 
 # F. Checkout and COD (COD-01 to COD-14)
@@ -417,6 +509,59 @@ class TestCheckoutAndCodAPI:
         # Wrong phone
         track_wrong = api_client.post('/api/v1/orders/track/', {'order_number': num, 'phone': '03009999999'}, format='json')
         assert track_wrong.status_code == 404
+
+    def test_checkout_quote_calculation(self, api_client, sample_product):
+        SiteSetting.objects.create(key='free_shipping_threshold', value='2000')
+        SiteSetting.objects.create(key='flat_shipping_fee', value='200')
+        Coupon.objects.create(code='OFF100', type=Coupon.TYPE_FIXED, value=100)
+
+        # 1 item: 1450. Discount 100 -> 1350. Subtotal after discount < 2000 -> Shipping 200. Grand total = 1450 - 100 + 200 = 1550
+        api_client.post('/api/v1/cart/items/', {'product_id': sample_product.id, 'quantity': 1}, format='json')
+        quote_res = api_client.post('/api/v1/checkout/quote/', {'coupon_code': 'OFF100'}, format='json')
+        assert quote_res.status_code == 200
+        assert quote_res.data['subtotal'] == 1450
+        assert quote_res.data['discount_total'] == 100
+        assert quote_res.data['shipping_total'] == 200
+        assert quote_res.data['grand_total'] == 1550
+
+    def test_cod_direct_order_endpoint_and_insufficient_stock(self, api_client, auth_user, sample_product):
+        api_client.force_authenticate(user=auth_user)
+
+        # 1. Direct POST /api/v1/orders/
+        api_client.post('/api/v1/cart/items/', {'product_id': sample_product.id, 'quantity': 1}, format='json')
+        payload = {
+            'full_name': 'Direct Order User',
+            'email': auth_user.email,
+            'phone': '03001234567',
+            'line1': 'Plot 4, Street 2',
+            'city': 'Lahore',
+            'province': 'Punjab',
+            'payment_method': 'COD'
+        }
+        res_direct = api_client.post('/api/v1/orders/', payload, format='json')
+        assert res_direct.status_code == 201
+        assert res_direct.data['order']['payment_method'] == 'COD'
+
+        # GET /api/v1/orders/
+        list_res = api_client.get('/api/v1/orders/')
+        assert list_res.status_code == 200
+        assert len(list_res.data) >= 1
+
+        # 2. Insufficient stock transaction test
+        sample_product.stock = 1
+        sample_product.save(update_fields=['stock'])
+
+        # Try to buy 5 items
+        from cart.models import Cart, CartItem
+        user_cart, _ = Cart.objects.get_or_create(user=auth_user)
+        CartItem.objects.create(cart=user_cart, product=sample_product, quantity=5)
+
+        orders_before = Order.objects.count()
+        res_fail = api_client.post('/api/v1/orders/', payload, format='json')
+        assert res_fail.status_code == 400
+        assert 'Insufficient stock' in str(res_fail.data)
+        # Verify nothing written (atomic transaction)
+        assert Order.objects.count() == orders_before
 
 
 # G. Content & Waitlist API

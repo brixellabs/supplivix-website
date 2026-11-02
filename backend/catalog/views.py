@@ -104,7 +104,7 @@ class ProductDetailView(generics.RetrieveAPIView):
 
 
 class ProductReviewsListView(generics.ListAPIView):
-    """List approved reviews for a specific product."""
+    """List approved reviews for a specific product or create a review."""
 
     permission_classes = [permissions.AllowAny]
     serializer_class = ReviewSerializer
@@ -113,14 +113,29 @@ class ProductReviewsListView(generics.ListAPIView):
         slug = self.kwargs.get('slug')
         return Review.objects.filter(product__slug=slug, is_approved=True).order_by('-created_at')
 
+    def post(self, request, slug=None):
+        return CreateReviewView().post(request, slug=slug)
+
 
 class CreateReviewView(APIView):
     """Submit a review for a product, restricted to verified buyers only."""
 
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request, slug):
-        product = generics.get_object_or_404(Product, slug=slug, is_active=True)
+    def post(self, request, slug=None):
+        target_slug = slug or request.data.get('slug') or request.data.get('product_slug')
+        product_id = request.data.get('product') or request.data.get('product_id')
+
+        if target_slug:
+            product = generics.get_object_or_404(Product, slug=target_slug, is_active=True)
+        elif product_id:
+            product = generics.get_object_or_404(Product, id=product_id, is_active=True)
+        else:
+            return Response(
+                {'code': 'validation_error', 'message': 'Product identifier is required.', 'fields': {'slug': ['Required.']}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         user = request.user
 
         # Verified buyer check: has user bought this product in an uncancelled order?

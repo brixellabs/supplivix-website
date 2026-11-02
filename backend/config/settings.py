@@ -157,16 +157,17 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/min',
         'user': '1000/min',
-        'login': '5/min',
+        'login': '15/min',
         'register': '5/hour',
-        'coupon': '10/min',
-        'order': '5/10min',
-        'contact': '3/hour',
-        'waitlist': '10/min',
+        'coupon': '20/min',
+        'order': '30/min',
+        'contact': '10/hour',
+        'waitlist': '20/min',
     },
 }
 
