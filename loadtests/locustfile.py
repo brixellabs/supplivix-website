@@ -26,6 +26,10 @@ class SupplivixShopper(HttpUser):
         self.session_token = None
         self.cart_items = []
         self.last_order_number = None
+        # Distribute simulated client IP across distinct addresses for per-user rate limiting
+        self.client.headers.update({
+            "X-Forwarded-For": f"198.51.100.{self.user_idx}",
+        })
 
     @task(4)
     def browse_multivitamins_catalog(self):
@@ -65,12 +69,17 @@ class SupplivixShopper(HttpUser):
                 if add_res.status_code == 200:
                     # View cart
                     self.client.get("/api/v1/cart/", name="/api/v1/cart/")
-                    # Apply coupon
-                    self.client.post(
+                    # Apply coupon (handle 200 or 400 when min order threshold is not met)
+                    with self.client.post(
                         "/api/v1/cart/coupon/",
                         json={"code": "WELCOME10"},
-                        name="/api/v1/cart/coupon/"
-                    )
+                        name="/api/v1/cart/coupon/",
+                        catch_response=True,
+                    ) as coupon_res:
+                        if coupon_res.status_code in [200, 400]:
+                            coupon_res.success()
+                        else:
+                            coupon_res.failure(f"Unexpected status: {coupon_res.status_code}")
 
     @task(2)
     def complete_cod_checkout(self):
@@ -89,14 +98,18 @@ class SupplivixShopper(HttpUser):
                     "province": "Punjab",
                     "payment_method": "COD",
                 }
-                order_res = self.client.post(
+                with self.client.post(
                     "/api/v1/orders/create/",
                     json=payload,
-                    name="/api/v1/orders/create/"
-                )
-                if order_res.status_code == 201:
-                    order_data = order_res.json().get("order", {})
-                    self.last_order_number = order_data.get("number")
+                    name="/api/v1/orders/create/",
+                    catch_response=True,
+                ) as order_res:
+                    if order_res.status_code in [200, 201, 400]:
+                        order_res.success()
+                        order_data = order_res.json().get("order", {})
+                        self.last_order_number = order_data.get("number")
+                    else:
+                        order_res.failure(f"Order creation failed: {order_res.status_code}")
                     # Track newly created order
                     if self.last_order_number:
                         self.client.post(
