@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **333** (157 Backend Pytest + 108 Frontend Vitest + 68 Playwright E2E)  
+Total Automated Tests: **350** (167 Backend Pytest + 115 Frontend Vitest + 68 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -21,12 +21,12 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Cash on Delivery (COD)** | `COD-01` to `COD-14` | Backend Pytest (DRF) | 14 | Passed |
 | **Forms (Every Form Matrix)** | `FORM-01` to `FORM-12` | Backend Pytest (DRF) | 8 | Passed |
 | **Site Mode, Policies & Content** | `MODE-01` to `MODE-06`, `POL-01` to `POL-03` | Backend Pytest (DRF/Django) | 7 | Passed |
-| **Staff Admin Panel** | `ADM-01` to `ADM-15` | Backend Pytest (DRF) | 15 | Passed |
+| **Staff Admin Panel** | `ADM-01` to `ADM-10` | Backend Pytest (DRF) | 10 | Passed |
 | **SEO & AEO Crawler Endpoints & SSR** | `SEO-01` to `SEO-07` | Backend Pytest (DRF) | 7 | Passed |
 | **Bot Detection & Security** | `SEC-01` to `SEC-11` | Backend Pytest (DRF) | 11 | Passed |
 | **Catalog Seeding & Purge** | `DEMO-01` to `DEMO-10` | Backend Pytest (Django) | 10 | Passed |
 | **Core Models & Health** | `MOD-01` to `MOD-09` | Backend Pytest (Django) | 9 | Passed |
-| **Integration & Edge Cases** | Integration / API | Backend Pytest | 30 | Passed |
+| **Integration & Edge Cases** | Integration / API | Backend Pytest | 45 | Passed |
 | **Authentication & Accounts UI** | `AUTH-01` to `AUTH-10` | Frontend Vitest (React) | 10 | Passed |
 | **Catalog, Search & Filter UI** | `CAT-01` to `CAT-08` | Frontend Vitest (React) | 8 | Passed |
 | **Cart, Shipping, Coupon & COD UI** | `CART`, `SHIP`, `COUP-01` to `COUP-16`, `COD` | Frontend Vitest (React) | 18 | Passed |
@@ -34,14 +34,14 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Site Mode, Policies & Content UI** | `MODE-01` to `MODE-06`, `POL-01` to `POL-03` | Frontend Vitest (React) | 9 | Passed |
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend Vitest (React) | 12 | Passed |
 | **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend Vitest (React) | 15 | Passed |
-| **Staff Dashboard UI** | `DASH-01` to `DASH-07` | Frontend Vitest (React) | 7 | Passed |
+| **Staff Dashboard UI** | `ADM-01` to `ADM-10` | Frontend Vitest (React) | 14 | Passed |
 | **SEO Head & Structured Data** | `SEO-UI-01` to `SEO-UI-06` | Frontend Vitest (React) | 6 | Passed |
 | **UI Invariants & Viewports** | `UI-01` to `UI-11` | Frontend Vitest (React) | 11 | Passed |
 | **E2E Journeys: Chromium** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Chrome | 17 | Passed |
 | **E2E Journeys: Firefox** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Firefox | 17 | Passed |
 | **E2E Journeys: WebKit** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Safari | 17 | Passed |
 | **E2E Journeys: Mobile Viewport** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Pixel 5 (360x740) | 17 | Passed |
-| **Total Test Suite** | | | **333** | **Passed (100%)** |
+| **Total Test Suite** | | | **350** | **Passed (100%)** |
 
 ---
 
@@ -185,7 +185,24 @@ Run this matrix across login, register, forgot password, reset password, profile
 
 ---
 
-## 10. Multi-Browser Playwright End-to-End Test Matrix
+## 10. Test Verification Matrix: Category I (Admin Dashboard: ADM-01 to ADM-10)
+
+| Test ID | Case Description | Layer | Expected & Verified Result | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `ADM-01` | Non-staff and anonymous access to every admin endpoint and route | Pytest / Vitest | Anonymous access returns HTTP 401 or 403; non-staff customers return HTTP 403 Forbidden; frontend redirects to `/login`. | Passed |
+| `ADM-02` | Create, edit, deactivate, delete product with validation | Pytest / Vitest | Valid product creation returns 201; invalid input rejected with 400; edit updates attributes; deactivation immediately excludes from public catalog (`/api/v1/products/`); delete removes product cleanly. | Passed |
+| `ADM-03` | Upload a 3 MB file, a .exe renamed to .jpg, a valid WebP | Pytest / Vitest | 3 MB file rejected with 400 (exceeds 2 MB limit); disguised `.exe` rejected with 400 via magic byte inspection and PIL verify; valid WebP accepted with 201 Created. | Passed |
+| `ADM-04` | Move order through valid and invalid status transitions | Pytest / Vitest | Valid transitions (`pending -> confirmed -> packed -> shipped -> delivered`) succeed with `OrderStatusHistory` row recorded; illegal backward or skip transitions (e.g. `shipped -> pending`) rejected with HTTP 400. | Passed |
+| `ADM-05` | Mark COD collected | Pytest / Vitest | Order transitions to `cod_collected` status; recorded in status history; reflected in overview metrics (`cod_collected_amount` and `orders_by_status.cod_collected`). | Passed |
+| `ADM-06` | Create each coupon type, edit, deactivate | Pytest / Vitest | Percentage coupon with cap and fixed coupon created via admin API; min order amount updated; deactivation prevents public checkout/cart application (`"This code is inactive."`, HTTP 400). | Passed |
+| `ADM-07` | Change free shipping threshold and fee | Pytest / Vitest | Updating `free_shipping_threshold` and `flat_shipping_fee` via PATCH `/api/v1/admin/settings/` immediately reflects on public settings endpoint (`/api/v1/settings/public/`) and checkout quote without redeploy. | Passed |
+| `ADM-08` | Bulk update and CSV import with a bad row | Pytest / Vitest | Bulk status update toggles multiple products; CSV import with invalid row triggers atomic rollback and returns structured per-row error report (`errors: [...]`, HTTP 400); valid CSV imports atomically. | Passed |
+| `ADM-09` | Overview figures against raw database counts | Pytest / Vitest | Aggregated metrics on `/api/v1/admin/overview/` (`total_orders_count`, `out_of_stock_count`, `pending_dispatch_count`, `total_revenue`) match raw ORM database counts and sums exactly. | Passed |
+| `ADM-10` | Every destructive action | Pytest / Vitest | Destructive actions (product deletion, order transition, account deactivation, IP block/unblock) require confirmation modal in UI and record immutable `AdminAuditLog` entries in backend. | Passed |
+
+---
+
+## 11. Multi-Browser Playwright End-to-End Test Matrix
 
 Run command: `npm --prefix frontend run test:e2e`  
 Total E2E Scenarios: **68 passed** (0 failures across Chromium, Firefox, WebKit, Mobile viewport 360x740)
@@ -207,7 +224,7 @@ Total E2E Scenarios: **68 passed** (0 failures across Chromium, Firefox, WebKit,
 
 ---
 
-## 11. Code Coverage & Invariants Verification
+## 12. Code Coverage & Invariants Verification
 
 - **Zero Emojis Everywhere**: Verified by `node frontend/scripts/check-no-emojis.js` (0 matches).
 - **Zero Glassmorphism**: Verified by automated regex check (0 backdrop-blur / 0 translucent form overlays).

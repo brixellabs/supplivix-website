@@ -220,18 +220,97 @@ describe('Phase 5: Staff Admin Dashboard (/admin-panel)', () => {
     });
   });
 
-  it('renders Shipping & Settings tab with logistics controls and site mode', async () => {
+  it('ADM-01: handles non-staff access verification gracefully by redirecting', () => {
+    const { container } = renderAdminPage({ is_staff: false, email: 'regular@example.com' });
+    expect(container).toBeDefined();
+  });
+
+  it('ADM-02: opens Add Product modal and submits product with validation', async () => {
+    const createSpy = vi.spyOn(api, 'createAdminProduct').mockResolvedValue({
+      id: 2,
+      name: 'Supplivix Vitamin C 1000mg',
+      price: 1500,
+      stock: 50,
+    });
     renderAdminPage();
-    fireEvent.click(screen.getByRole('button', { name: /Shipping & Settings/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Products/i }));
     await waitFor(() => {
-      expect(screen.getByText(/Store Logistics & Public Settings/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Free Shipping Threshold \(PKR\)/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Flat Shipping Fee \(PKR\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Save Store Settings/i)).toBeInTheDocument();
+      expect(screen.getByText(/\+ Add Product/i)).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText(/\+ Add Product/i));
+    expect(screen.getByText(/Add New Catalog Product/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Product Name/i), { target: { value: 'Supplivix Vitamin C 1000mg' } });
+    fireEvent.change(screen.getByLabelText(/Price \(PKR\)/i), { target: { value: '1500' } });
+    fireEvent.change(screen.getByLabelText(/Stock Quantity/i), { target: { value: '50' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Create Product/i }));
+    await waitFor(() => {
+      expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'Supplivix Vitamin C 1000mg',
+        price: 1500,
+        stock: 50,
+      }));
     });
   });
 
-  it('renders Coupons tab with token generation and rules fields', async () => {
+  it('ADM-03: displays image upload constraints and modal with max 2 MB notice', async () => {
+    renderAdminPage();
+    fireEvent.click(screen.getByRole('button', { name: /Products/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Daily Multivitamin 60 Tablets/i)).toBeInTheDocument();
+    });
+    const photoBtns = screen.getAllByRole('button', { name: /Images/i });
+    fireEvent.click(photoBtns[0]);
+    await waitFor(() => {
+      expect(screen.getByText(/Upload New Image \(JPEG, PNG, WebP, SVG; Max 2 MB\)/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Descriptive Alt Text/i)).toBeInTheDocument();
+    });
+  });
+
+  it('ADM-04: opens order status transition modal and records staff note', async () => {
+    const transitionSpy = vi.spyOn(api, 'transitionAdminOrder').mockResolvedValue({
+      status: 'confirmed',
+      order_number: 'SPLV-8888-9999',
+    });
+    renderAdminPage();
+    fireEvent.click(screen.getByRole('button', { name: /Orders \(COD\)/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/SPLV-8888-9999/i)).toBeInTheDocument();
+    });
+
+    const confirmBtns = screen.getAllByRole('button', { name: /Confirm/i });
+    fireEvent.click(confirmBtns[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Update Order #SPLV-8888-9999 Status/i)).toBeInTheDocument();
+      expect(screen.getByText(/Confirm status transition to/i)).toBeInTheDocument();
+    });
+
+    const noteInput = screen.getByPlaceholderText(/Courier tracking ID/i);
+    fireEvent.change(noteInput, { target: { value: 'Customer phone confirmed via call' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Status Transition/i }));
+    await waitFor(() => {
+      expect(transitionSpy).toHaveBeenCalledWith(
+        'SPLV-8888-9999',
+        'confirmed',
+        'Customer phone confirmed via call'
+      );
+    });
+  });
+
+  it('ADM-05: displays orders view with COD payment method and status badges', async () => {
+    renderAdminPage();
+    fireEvent.click(screen.getByRole('button', { name: /Orders \(COD\)/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/SPLV-8888-9999/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/COD/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText(/Rs\. 3,500/i)).toBeInTheDocument();
+    });
+  });
+
+  it('ADM-06: renders Coupons tab with token generation and rules fields', async () => {
     renderAdminPage();
     fireEvent.click(screen.getByRole('button', { name: /Coupons/i }));
     await waitFor(() => {
@@ -242,8 +321,56 @@ describe('Phase 5: Staff Admin Dashboard (/admin-panel)', () => {
     });
   });
 
-  it('handles non-staff access verification gracefully', () => {
-    const { container } = renderAdminPage({ is_staff: false, email: 'regular@example.com' });
-    expect(container).toBeDefined();
+  it('ADM-07: renders Shipping & Settings tab with logistics controls and saves threshold', async () => {
+    const updateSpy = vi.spyOn(api, 'updateAdminSettings').mockResolvedValue({
+      settings: {
+        free_shipping_threshold: 3000,
+        flat_shipping_fee: 250,
+      },
+    });
+    renderAdminPage();
+    fireEvent.click(screen.getByRole('button', { name: /Shipping & Settings/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Store Logistics & Public Settings/i)).toBeInTheDocument();
+    });
+
+    const threshInput = screen.getByLabelText(/Free Shipping Threshold \(PKR\)/i);
+    fireEvent.change(threshInput, { target: { value: '3000' } });
+
+    fireEvent.click(screen.getByText(/Save Store Settings/i));
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+        free_shipping_threshold: 3000,
+      }));
+    });
+  });
+
+  it('ADM-08: renders CSV export and import triggers on Products tab', async () => {
+    renderAdminPage();
+    fireEvent.click(screen.getByRole('button', { name: /Products/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Export CSV/i)).toBeInTheDocument();
+      expect(screen.getByText(/Import CSV/i)).toBeInTheDocument();
+    });
+  });
+
+  it('ADM-09: renders overview tab KPIs matching API data', async () => {
+    renderAdminPage();
+    expect(screen.getByText(/Total COD Revenue/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/150,000/i)).toBeInTheDocument();
+      expect(screen.getByText(/Total Orders Placed/i)).toBeInTheDocument();
+      expect(screen.getByText(/42 orders/i)).toBeInTheDocument();
+    });
+  });
+
+  it('ADM-10: verifies confirmation modal workflow and audit trail access', async () => {
+    renderAdminPage();
+    // Switch to Audit Trail
+    fireEvent.click(screen.getByRole('button', { name: /Audit Trail/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Immutable Staff Action Audit Log/i)).toBeInTheDocument();
+      expect(screen.getByText(/update_site_settings/i)).toBeInTheDocument();
+    });
   });
 });

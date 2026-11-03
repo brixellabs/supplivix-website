@@ -1729,3 +1729,396 @@ class TestFormSuite:
         status, risk = verify_time_token(token)
         assert status == "too_fast"
         assert risk == 40
+
+
+# ==============================================================================
+# ADM-01 to ADM-10: Staff Admin Dashboard Suite
+# ==============================================================================
+@pytest.mark.django_db
+class TestAdminSuite:
+    @pytest.fixture
+    def admin_client(self, test_staff):
+        client = APIClient()
+        client.force_authenticate(user=test_staff)
+        return client
+
+    def test_adm_01_non_staff_and_anonymous_access_forbidden(self, api_client, test_customer):
+        """ADM-01: Non-staff and anonymous access to every admin endpoint -> 403 or redirect/unauthorized."""
+        admin_endpoints = [
+            "/api/v1/admin/overview/",
+            "/api/v1/admin/products/",
+            "/api/v1/admin/orders/",
+            "/api/v1/admin/coupons/",
+            "/api/v1/admin/settings/",
+            "/api/v1/admin/audit-logs/",
+        ]
+        # Anonymous access
+        for ep in admin_endpoints:
+            res = api_client.get(ep)
+            assert res.status_code in [401, 403], f"Anonymous access to {ep} returned {res.status_code}"
+
+        # Authenticated non-staff customer access
+        api_client.force_authenticate(user=test_customer)
+        for ep in admin_endpoints:
+            res = api_client.get(ep)
+            assert res.status_code == 403, f"Customer access to {ep} returned {res.status_code}"
+
+    def test_adm_02_product_crud_lifecycle_and_validation(self, admin_client, api_client, test_category):
+        """ADM-02: Create, edit, deactivate, delete product with validation -> Works, invalid rejected, public reflects."""
+        # 1. Invalid input: missing name and negative price
+        invalid_res = admin_client.post(
+            "/api/v1/admin/products/",
+            {
+                "name": "",
+                "slug": "invalid-prod",
+                "price": -500,
+                "category_id": test_category.id,
+            },
+            format="json",
+        )
+        assert invalid_res.status_code == 400
+
+        # 2. Valid create
+        create_res = admin_client.post(
+            "/api/v1/admin/products/",
+            {
+                "name": "Supplivix Omega-3 Pure 60s",
+                "slug": "supplivix-omega-3-pure-60s",
+                "category_id": test_category.id,
+                "product_type": "multivitamin",
+                "price": 2800,
+                "stock": 40,
+            },
+            format="json",
+        )
+        assert create_res.status_code == 201
+        prod_id = create_res.data["id"]
+
+        # 3. Edit product
+        edit_res = admin_client.patch(
+            f"/api/v1/admin/products/{prod_id}/",
+            {
+                "price": 3100,
+                "stock": 50,
+            },
+            format="json",
+        )
+        assert edit_res.status_code == 200
+        assert edit_res.data["product"]["price"] == 3100
+        assert edit_res.data["product"]["stock"] == 50
+
+        # 4. Deactivate product and verify public catalog reflects changes
+        deact_res = admin_client.patch(
+            f"/api/v1/admin/products/{prod_id}/",
+            {
+                "is_active": False,
+            },
+            format="json",
+        )
+        assert deact_res.status_code == 200
+
+        public_res = api_client.get("/api/v1/products/?search=Omega-3")
+        assert public_res.status_code == 200
+        found_ids = [p["id"] for p in public_res.data["results"]]
+        assert prod_id not in found_ids
+
+        # 5. Delete product
+        del_res = admin_client.delete(f"/api/v1/admin/products/{prod_id}/")
+        assert del_res.status_code == 200
+        assert not Product.objects.filter(id=prod_id).exists()
+
+    def test_adm_03_image_upload_validation_3mb_exe_and_webp(self, admin_client, test_product):
+        """ADM-03: Upload a 3 MB file, a .exe renamed to .jpg, a valid WebP -> First two rejected, last accepted."""
+        from io import BytesIO
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image as PILImage
+
+        # 1. 3 MB file (> 2 MB cap)
+        huge_bytes = b"0" * (3 * 1024 * 1024)
+        huge_file = SimpleUploadedFile("oversized.jpg", huge_bytes, content_type="image/jpeg")
+        res_huge = admin_client.post(
+            f"/api/v1/admin/products/{test_product.id}/images/",
+            {"image": huge_file, "alt_text": "Oversized image"},
+            format="multipart",
+        )
+        assert res_huge.status_code == 400
+        assert "2 MB" in res_huge.data["message"]
+
+        # 2. .exe renamed to .jpg
+        exe_bytes = b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00" + (b"\x00" * 200)
+        fake_exe = SimpleUploadedFile("trojan.jpg", exe_bytes, content_type="image/jpeg")
+        res_exe = admin_client.post(
+            f"/api/v1/admin/products/{test_product.id}/images/",
+            {"image": fake_exe, "alt_text": "Fake JPEG executable"},
+            format="multipart",
+        )
+        assert res_exe.status_code == 400
+
+        # 3. Valid WebP image
+        webp_buf = BytesIO()
+        pil_img = PILImage.new("RGB", (64, 64), color="green")
+        pil_img.save(webp_buf, format="WEBP")
+        webp_bytes = webp_buf.getvalue()
+        valid_webp = SimpleUploadedFile("product_photo.webp", webp_bytes, content_type="image/webp")
+
+        res_webp = admin_client.post(
+            f"/api/v1/admin/products/{test_product.id}/images/",
+            {"image": valid_webp, "alt_text": "Supplivix Core Bottle Front"},
+            format="multipart",
+        )
+        assert res_webp.status_code == 201
+        assert "image_url" in res_webp.data
+        assert res_webp.data["alt_text"] == "Supplivix Core Bottle Front"
+
+    def test_adm_04_order_status_transitions_valid_and_invalid(self, admin_client):
+        """ADM-04: Move order through valid and invalid status transitions -> Valid saved with history, invalid rejected."""
+        order = Order.objects.create(
+            number="SPLV-TRNS-1122",
+            guest_email="buyer.transition@example.com",
+            shipping_address_snapshot={"full_name": "Tariq Ali", "phone": "+923001234567", "city": "Lahore"},
+            status="pending",
+            subtotal=2400,
+            grand_total=2400,
+            payment_method="COD",
+        )
+        # Valid: pending -> confirmed
+        res1 = admin_client.post(
+            f"/api/v1/admin/orders/{order.number}/transition/",
+            {"status": "confirmed", "notes": "Phone verified"},
+        )
+        assert res1.status_code == 200
+        order.refresh_from_db()
+        assert order.status == "confirmed"
+        assert order.status_history.filter(to_status="confirmed").exists()
+
+        # Valid: confirmed -> packed
+        res2 = admin_client.post(
+            f"/api/v1/admin/orders/{order.number}/transition/",
+            {"status": "packed", "notes": "Packed in warehouse"},
+        )
+        assert res2.status_code == 200
+        order.refresh_from_db()
+        assert order.status == "packed"
+
+        # Valid: packed -> shipped
+        res3 = admin_client.post(
+            f"/api/v1/admin/orders/{order.number}/transition/",
+            {"status": "shipped", "notes": "Dispatched via Leopard"},
+        )
+        assert res3.status_code == 200
+        order.refresh_from_db()
+        assert order.status == "shipped"
+
+        # Invalid transition: shipped -> pending (illegal backward jump)
+        res_inv = admin_client.post(
+            f"/api/v1/admin/orders/{order.number}/transition/",
+            {"status": "pending"},
+        )
+        assert res_inv.status_code == 400
+        order.refresh_from_db()
+        assert order.status == "shipped"
+
+        # Valid: shipped -> delivered
+        res4 = admin_client.post(
+            f"/api/v1/admin/orders/{order.number}/transition/",
+            {"status": "delivered", "notes": "Delivered to customer"},
+        )
+        assert res4.status_code == 200
+        order.refresh_from_db()
+        assert order.status == "delivered"
+
+    def test_adm_05_mark_cod_collected_updates_status_and_overview(self, admin_client):
+        """ADM-05: Mark COD collected -> Status and amount recorded, shown in the overview."""
+        order = Order.objects.create(
+            number="SPLV-COD-9988",
+            guest_email="cod.buyer@example.com",
+            shipping_address_snapshot={"full_name": "Kashif Bilal", "phone": "+923009988776", "city": "Faisalabad"},
+            status="delivered",
+            subtotal=4200,
+            grand_total=4200,
+            payment_method="COD",
+        )
+        res = admin_client.post(f"/api/v1/admin/orders/{order.number}/mark-cod-collected/")
+        assert res.status_code == 200
+        order.refresh_from_db()
+        assert order.status == "cod_collected"
+
+        # Status history recorded
+        assert order.status_history.filter(to_status="cod_collected").exists()
+
+        # Shown in admin overview
+        overview_res = admin_client.get("/api/v1/admin/overview/")
+        assert overview_res.status_code == 200
+        data = overview_res.data
+        assert data["cod_collected_amount"] >= 4200
+        assert data["orders_by_status"]["cod_collected"] >= 1
+
+    def test_adm_06_create_each_coupon_type_edit_deactivate(self, admin_client, api_client):
+        """ADM-06: Create each coupon type, edit, deactivate -> Behaves as in COUP tests."""
+        # 1. Percentage coupon with cap
+        res_perc = admin_client.post(
+            "/api/v1/admin/coupons/",
+            {
+                "code": "ADMPCT20",
+                "discount_type": "percentage",
+                "discount_value": 20,
+                "max_discount_amount": 500,
+                "min_order_amount": 1000,
+            },
+            format="json",
+        )
+        assert res_perc.status_code == 201
+        c_id = res_perc.data["id"]
+
+        # 2. Fixed coupon
+        res_fix = admin_client.post(
+            "/api/v1/admin/coupons/",
+            {
+                "code": "ADMFIX300",
+                "discount_type": "fixed",
+                "discount_value": 300,
+                "min_order_amount": 1500,
+            },
+            format="json",
+        )
+        assert res_fix.status_code == 201
+
+        # 3. Edit percentage coupon min_order_amount
+        edit_res = admin_client.patch(
+            f"/api/v1/admin/coupons/{c_id}/",
+            {
+                "min_order_amount": 1200,
+            },
+            format="json",
+        )
+        assert edit_res.status_code == 200
+
+        # 4. Deactivate coupon
+        deact_res = admin_client.patch(
+            f"/api/v1/admin/coupons/{c_id}/",
+            {
+                "is_active": False,
+            },
+            format="json",
+        )
+        assert deact_res.status_code == 200
+
+        # Attempt to apply inactive coupon in public cart quote
+        cart_res = api_client.post("/api/v1/cart/coupon/", {"code": "ADMPCT20"}, format="json")
+        assert cart_res.status_code == 400
+        assert "inactive" in cart_res.data["message"].lower()
+
+    def test_adm_07_change_free_shipping_threshold_and_fee(self, admin_client, api_client):
+        """ADM-07: Change free shipping threshold and fee -> Applied without redeploy (SHIP-05)."""
+        patch_res = admin_client.patch(
+            "/api/v1/admin/settings/",
+            {
+                "free_shipping_threshold": 3000,
+                "flat_shipping_fee": 250,
+            },
+            format="json",
+        )
+        assert patch_res.status_code == 200
+
+        # Verify on public settings endpoint immediately
+        pub_res = api_client.get("/api/v1/settings/public/")
+        assert pub_res.status_code == 200
+        assert pub_res.data["free_shipping_threshold"] == 3000
+        assert pub_res.data["flat_shipping_fee"] == 250
+
+    def test_adm_08_bulk_update_and_csv_import_with_bad_row(self, admin_client, test_category):
+        """ADM-08: Bulk update and CSV import with a bad row -> Valid rows applied or all rolled back, error report shown."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # Part 1: Bulk status update
+        p1 = Product.objects.create(name="Bulk 1", slug="bulk-1", sku="SPLV-B1", category=test_category, price=1000, is_active=True)
+        p2 = Product.objects.create(name="Bulk 2", slug="bulk-2", sku="SPLV-B2", category=test_category, price=2000, is_active=True)
+        bulk_res = admin_client.post(
+            "/api/v1/admin/products/bulk-status/",
+            {"ids": [p1.id, p2.id], "is_active": False},
+            format="json",
+        )
+        assert bulk_res.status_code == 200
+        p1.refresh_from_db()
+        p2.refresh_from_db()
+        assert p1.is_active is False
+        assert p2.is_active is False
+
+        # Part 2: CSV import with bad row (invalid price string)
+        bad_csv = (
+            "Slug,Name,Price_PKR,Stock,Type\n"
+            "good-item-1,Good Vitamin 1,1800,20,multivitamin\n"
+            "bad-item-2,Bad Vitamin 2,invalid_price,15,multivitamin\n"
+        ).encode("utf-8")
+        bad_file = SimpleUploadedFile("import_bad.csv", bad_csv, content_type="text/csv")
+
+        csv_res_bad = admin_client.post(
+            "/api/v1/admin/products/import-csv/",
+            {"file": bad_file},
+            format="multipart",
+        )
+        assert csv_res_bad.status_code == 400
+        assert len(csv_res_bad.data["errors"]) >= 1
+        assert csv_res_bad.data["errors"][0]["row"] == 3
+        # Verify rollback: good-item-1 was not persisted
+        assert not Product.objects.filter(slug="good-item-1").exists()
+
+        # Part 3: CSV import with valid rows
+        good_csv = (
+            "Slug,Name,Price_PKR,Stock,Type\n"
+            "valid-item-1,Valid Vitamin 1,1800,25,multivitamin\n"
+            "valid-item-2,Valid Vitamin 2,2400,30,multivitamin\n"
+        ).encode("utf-8")
+        good_file = SimpleUploadedFile("import_good.csv", good_csv, content_type="text/csv")
+        csv_res_good = admin_client.post(
+            "/api/v1/admin/products/import-csv/",
+            {"file": good_file},
+            format="multipart",
+        )
+        assert csv_res_good.status_code == 200
+        assert Product.objects.filter(slug="valid-item-1").exists()
+        assert Product.objects.filter(slug="valid-item-2").exists()
+
+    def test_adm_09_overview_figures_equal_raw_database_counts(self, admin_client):
+        """ADM-09: Overview figures against raw database counts -> Equal."""
+        from django.db.models import Sum
+
+        res = admin_client.get("/api/v1/admin/overview/")
+        assert res.status_code == 200
+        data = res.data
+
+        # Database comparisons
+        assert data["total_orders_count"] == Order.objects.count()
+        assert data["out_of_stock_count"] == Product.objects.filter(stock__lte=0).count()
+        assert data["pending_dispatch_count"] == Order.objects.filter(status__in=["pending", "confirmed", "packed"]).count()
+
+        expected_revenue = (
+            Order.objects.filter(status__in=["delivered", "cod_collected"]).aggregate(total=Sum("grand_total"))["total"] or 0
+        )
+        assert data["total_revenue"] == expected_revenue
+
+    def test_adm_10_every_destructive_action_records_audit_log(self, admin_client, test_category):
+        """ADM-10: Every destructive action -> Confirmation modal (frontend) and audit log entry (backend)."""
+        from core.models import AdminAuditLog
+
+        initial_log_count = AdminAuditLog.objects.count()
+
+        # 1. Product deletion
+        p = Product.objects.create(name="Delete Me", slug="delete-me", sku="SPLV-DEL", category=test_category, price=1000)
+        admin_client.delete(f"/api/v1/admin/products/{p.id}/")
+        assert AdminAuditLog.objects.filter(action="delete_product", target_id=str(p.id)).exists()
+
+        # 2. Block IP & Unblock IP
+        admin_client.post("/api/v1/admin/security/block-ip/", {"ip": "198.51.100.99", "reason": "Test Block"})
+        assert AdminAuditLog.objects.filter(action="block_ip").exists()
+
+        admin_client.post("/api/v1/admin/security/unblock-ip/", {"ip_address": "198.51.100.99"})
+        assert AdminAuditLog.objects.filter(action="unblock_ip").exists()
+
+        # 3. Customer status toggle (deactivation)
+        user = User.objects.create_user(email="test.toggle@example.com", password="Password123!", full_name="Toggle User")
+        admin_client.post(f"/api/v1/admin/customers/{user.id}/toggle-status/")
+        assert AdminAuditLog.objects.filter(action="block_customer", target_id=str(user.id)).exists()
+
+        assert AdminAuditLog.objects.count() >= initial_log_count + 4

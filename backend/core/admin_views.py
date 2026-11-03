@@ -79,10 +79,11 @@ class AdminOverviewView(views.APIView):
         today = now.date()
         thirty_days_ago = now - timedelta(days=30)
 
-        # 1. Total delivered revenue and total orders
-        delivered_orders = Order.objects.filter(status='delivered')
-        total_revenue = delivered_orders.aggregate(total=Sum('grand_total'))['total'] or 0
+        # 1. Total revenue (delivered and cod_collected) and total orders
+        completed_orders = Order.objects.filter(status__in=['delivered', 'cod_collected'])
+        total_revenue = completed_orders.aggregate(total=Sum('grand_total'))['total'] or 0
         total_orders_count = Order.objects.count()
+        cod_collected_amount = Order.objects.filter(status='cod_collected').aggregate(total=Sum('grand_total'))['total'] or 0
 
         # 2. Today orders count and revenue (aggregate query)
         today_stats = Order.objects.filter(created_at__date=today).exclude(status='cancelled').aggregate(
@@ -185,6 +186,7 @@ class AdminOverviewView(views.APIView):
         return Response({
             'total_revenue': total_revenue,
             'total_orders_count': total_orders_count,
+            'cod_collected_amount': cod_collected_amount,
             'today_orders_count': today_orders_count,
             'today_revenue': today_revenue,
             'thirty_day_orders_count': thirty_day_orders_count,
@@ -401,7 +403,17 @@ class AdminProductDetailView(views.APIView):
 
         product.save()
         log_admin_action(request, 'update_product', 'Product', product.id, f"Updated fields on {product.name}")
-        return Response({'message': 'Product updated successfully.'})
+        return Response({
+            'message': 'Product updated successfully.',
+            'product': {
+                'id': product.id,
+                'name': product.name,
+                'slug': product.slug,
+                'price': product.price,
+                'stock': product.stock,
+                'is_active': product.is_active,
+            }
+        })
 
     def delete(self, request, pk):
         try:
@@ -456,12 +468,41 @@ class AdminProductImageUploadView(views.APIView):
         if image_file.size > self.MAX_FILE_SIZE:
             return Response({'message': 'Image exceeds maximum allowed size of 2 MB.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Inspect binary magic bytes to reject executables and non-image binaries
+        initial_bytes = image_file.read(16)
+        image_file.seek(0)
+        file_name = getattr(image_file, 'name', '').lower()
+        if (
+            initial_bytes.startswith(b'MZ')
+            or initial_bytes.startswith(b'\x7fELF')
+            or initial_bytes.startswith(b'#!')
+            or file_name.endswith(('.exe', '.dll', '.bat', '.sh', '.cmd', '.com'))
+        ):
+            return Response(
+                {'message': 'Executable and binary files are strictly prohibited.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         content_type = getattr(image_file, 'content_type', '')
         if content_type not in self.ALLOWED_MIME_TYPES:
             return Response(
                 {'message': f'Unsupported format {content_type}. Accepted formats: JPEG, PNG, WebP, SVG.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Deep format verification using PIL for raster formats
+        if content_type != 'image/svg+xml':
+            try:
+                from PIL import Image as PILImage
+                image_file.seek(0)
+                img_verify = PILImage.open(image_file)
+                img_verify.verify()
+                image_file.seek(0)
+            except Exception:
+                return Response(
+                    {'message': 'Invalid image format or corrupted file.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         alt_text = request.data.get('alt_text', '').strip() or product.name
         sort_order = int(request.data.get('sort_order', product.images.count()))
@@ -558,7 +599,7 @@ class AdminProductCSVExportView(views.APIView):
 
 
 class AdminProductCSVImportView(views.APIView):
-    """Bulk update prices and stocks or create products from CSV."""
+    """Bulk update prices and stocks or create products from CSV with validation and atomic rollback."""
     permission_classes = [IsAdminUser]
 
     def post(self, request):
@@ -566,41 +607,99 @@ class AdminProductCSVImportView(views.APIView):
         if not file:
             return Response({'message': 'No CSV file provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        decoded_file = file.read().decode('utf-8')
+        try:
+            decoded_file = file.read().decode('utf-8')
+        except Exception:
+            return Response({'message': 'Invalid CSV encoding. Must be UTF-8.'}, status=status.HTTP_400_BAD_REQUEST)
+
         io_string = io.StringIO(decoded_file)
         reader = csv.DictReader(io_string)
 
         created_count = 0
         updated_count = 0
+        errors = []
+        rows_to_apply = []
 
-        for row in reader:
-            slug = row.get('Slug', '').strip().lower()
-            if not slug:
+        for row_idx, row in enumerate(reader, start=2):
+            slug = (row.get('Slug') or row.get('slug') or '').strip().lower()
+            name = (row.get('Name') or row.get('name') or '').strip()
+            raw_price = row.get('Price_PKR') if 'Price_PKR' in row else row.get('price')
+            raw_stock = row.get('Stock') if 'Stock' in row else row.get('stock')
+
+            # Skip empty lines
+            if not slug and not name and raw_price is None and raw_stock is None:
                 continue
 
-            name = row.get('Name', '').strip()
-            price = int(row.get('Price_PKR', row.get('price', 0)))
-            stock = int(row.get('Stock', row.get('stock', 0)))
-            sku = row.get('SKU', '').strip() or f"SPLV-{uuid.uuid4().hex[:6].upper()}"
+            row_errs = []
+            if not slug:
+                row_errs.append('Slug is required')
+            if not name:
+                row_errs.append('Name is required')
 
-            product, created = Product.objects.update_or_create(
-                slug=slug,
-                defaults={
-                    'name': name,
-                    'sku': sku,
-                    'price': price,
-                    'stock': stock,
-                    'product_type': row.get('Type', 'multivitamin'),
-                }
-            )
-            if created:
-                created_count += 1
+            price = 0
+            if raw_price is not None and str(raw_price).strip() != '':
+                try:
+                    price = int(float(str(raw_price).strip()))
+                    if price < 0:
+                        row_errs.append('Price cannot be negative')
+                except (ValueError, TypeError):
+                    row_errs.append(f"Invalid price value '{raw_price}'")
             else:
-                updated_count += 1
+                row_errs.append('Price is required')
+
+            stock = 0
+            if raw_stock is not None and str(raw_stock).strip() != '':
+                try:
+                    stock = int(float(str(raw_stock).strip()))
+                    if stock < 0:
+                        row_errs.append('Stock cannot be negative')
+                except (ValueError, TypeError):
+                    row_errs.append(f"Invalid stock value '{raw_stock}'")
+            else:
+                row_errs.append('Stock is required')
+
+            if row_errs:
+                errors.append({'row': row_idx, 'errors': row_errs, 'slug': slug or '(none)'})
+            else:
+                sku = (row.get('SKU') or row.get('sku') or '').strip() or f"SPLV-{uuid.uuid4().hex[:6].upper()}"
+                prod_type = (row.get('Type') or row.get('product_type') or 'multivitamin').strip() or 'multivitamin'
+                rows_to_apply.append((slug, name, sku, price, stock, prod_type))
+
+        if errors:
+            return Response({
+                'message': f'CSV import rejected: {len(errors)} bad row(s) found. All changes rolled back.',
+                'errors': errors,
+                'created': 0,
+                'updated': 0,
+                'valid_applied': False,
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.db import transaction
+        default_cat = Category.objects.first()
+        if not default_cat:
+            default_cat = Category.objects.create(name='Multivitamins', slug='multivitamins')
+
+        with transaction.atomic():
+            for slug, name, sku, price, stock, prod_type in rows_to_apply:
+                product, created = Product.objects.update_or_create(
+                    slug=slug,
+                    defaults={
+                        'name': name,
+                        'sku': sku,
+                        'price': price,
+                        'stock': stock,
+                        'product_type': prod_type,
+                        'category': default_cat,
+                    }
+                )
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
 
         msg = f'CSV update completed: {created_count} created, {updated_count} updated.'
         log_admin_action(request, 'import_products_csv', 'Product', '', msg)
-        return Response({'message': msg, 'created': created_count, 'updated': updated_count})
+        return Response({'message': msg, 'created': created_count, 'updated': updated_count, 'errors': []})
 
 
 # ==============================================================================
