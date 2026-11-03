@@ -10,10 +10,11 @@ import re
 from pathlib import Path
 
 from django.conf import settings
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.utils import timezone
 
 from catalog.models import Category, Product
+from content.models import SiteSetting
 
 
 def robots_txt(request):
@@ -233,6 +234,28 @@ def spa_shell_view(request, path=""):
     """
     base_url = getattr(settings, 'SITE_BASE_URL', 'https://supplivix.com').rstrip('/')
     clean_path = path.strip('/')
+
+    # Site mode enforcement (coming_soon vs live)
+    site_mode = SiteSetting.get_setting('site_mode', 'live')
+    user = getattr(request, 'user', None)
+    is_staff = bool(user and user.is_authenticated and user.is_staff)
+
+    if site_mode == 'coming_soon':
+        # Exemptions: /privacy-policy, /admin-panel, /coming-soon, emergency vault, and staff preview
+        is_exempt = (
+            clean_path in ['coming-soon', 'privacy-policy'] or
+            clean_path.startswith('admin-panel') or
+            clean_path.startswith('api/') or
+            clean_path.startswith('emergency-vault-admin')
+        )
+        if not is_exempt and not is_staff:
+            redirect_res = HttpResponseRedirect('/coming-soon')
+            redirect_res['X-Robots-Tag'] = 'noindex, nofollow'
+            return redirect_res
+    elif site_mode == 'live':
+        if clean_path == 'coming-soon':
+            return HttpResponseRedirect('/')
+
     template_html = get_base_html_template()
 
     # Default metadata
@@ -467,10 +490,10 @@ def spa_shell_view(request, path=""):
         title = titles.get(clean_path, 'Policy | Supplivix')
         canonical = f"{base_url}/{clean_path}/"
 
-    # 6. Admin / Private routes
-    elif clean_path in ['admin-panel', 'cart', 'checkout', 'account']:
+    # 6. Admin / Private / Coming Soon routes
+    elif clean_path in ['admin-panel', 'cart', 'checkout', 'account', 'coming-soon'] or site_mode == 'coming_soon':
         robots = 'noindex, nofollow'
-        title = 'Supplivix Portal'
+        title = 'Coming Soon | Supplivix' if (clean_path == 'coming-soon' or site_mode == 'coming_soon') else 'Supplivix Portal'
 
     # Build head injection
     head_injections = [
@@ -500,4 +523,7 @@ def spa_shell_view(request, path=""):
     # Inject noscript right after <body>
     rendered_html = re.sub(r'(<body[^>]*>)', rf'\1\n    {noscript_content}', rendered_html)
 
-    return HttpResponse(rendered_html, content_type='text/html; charset=utf-8')
+    response = HttpResponse(rendered_html, content_type='text/html; charset=utf-8')
+    if robots == 'noindex, nofollow' or site_mode == 'coming_soon':
+        response['X-Robots-Tag'] = 'noindex, nofollow'
+    return response

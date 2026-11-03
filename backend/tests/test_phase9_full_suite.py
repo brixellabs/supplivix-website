@@ -27,7 +27,7 @@ from rest_framework.test import APIClient
 from accounts.models import Address, User
 from cart.models import Cart, CartItem
 from catalog.models import Category, Product, Review
-from content.models import ContactMessage, SiteSetting
+from content.models import ContactMessage, SiteSetting, WaitlistEntry
 from core.models import BotEvent
 from core.security import generate_time_token, verify_time_token
 from orders.models import Order, OrderItem
@@ -1396,28 +1396,95 @@ class TestCodSuite:
 
 
 # ==============================================================================
-# MODE-01 to MODE-04: Coming Soon vs Active Mode
+# MODE-01 to MODE-06: Coming Soon vs Live Mode Suite
 # ==============================================================================
 @pytest.mark.django_db
 class TestModeSuite:
-    def test_mode_toggle_and_public_settings(self, api_client):
+    def test_mode_01_coming_soon_redirects_public_routes_with_noindex_header(self, client):
+        """MODE-01: coming_soon mode, open any public route -> Redirect to Coming Soon page, noindex header."""
         SiteSetting.objects.update_or_create(key="site_mode", defaults={"value": "coming_soon"})
-        res = api_client.get("/api/v1/settings/public/")
-        assert res.status_code == 200
-        assert res.data["site_mode"] == "coming_soon"
+        res = client.get("/")
+        assert res.status_code == 302
+        assert res.headers.get("Location") == "/coming-soon"
+        assert "noindex, nofollow" in res.headers.get("X-Robots-Tag", "")
 
+        res_shop = client.get("/shop/")
+        assert res_shop.status_code == 302
+        assert res_shop.headers.get("Location") == "/coming-soon"
+
+        # Direct access to coming soon renders 200 with noindex
+        res_cs = client.get("/coming-soon/")
+        assert res_cs.status_code == 200
+        assert "noindex, nofollow" in res_cs.headers.get("X-Robots-Tag", "")
+        assert 'content="noindex, nofollow"' in res_cs.content.decode("utf-8")
+
+    def test_mode_02_coming_soon_allows_privacy_policy_and_api_health(self, client):
+        """MODE-02: coming_soon mode, open privacy policy and API health -> Reachable."""
+        SiteSetting.objects.update_or_create(key="site_mode", defaults={"value": "coming_soon"})
+        res_policy = client.get("/privacy-policy/")
+        assert res_policy.status_code == 200
+
+        res_health = client.get("/api/health/")
+        assert res_health.status_code == 200
+        assert res_health.json()["status"] == "healthy"
+
+    def test_mode_03_staff_user_can_preview_live_site_in_coming_soon(self, client, admin_user):
+        """MODE-03: Staff user in coming_soon mode -> Can preview the live site without redirect."""
+        SiteSetting.objects.update_or_create(key="site_mode", defaults={"value": "coming_soon"})
+        client.force_login(admin_user)
+        res = client.get("/")
+        assert res.status_code == 200
+        res_shop = client.get("/shop/")
+        assert res_shop.status_code == 200
+
+    def test_mode_04_switch_to_live_in_admin_opens_site_coming_soon_redirects(self, client):
+        """MODE-04: Switch to live in admin -> Site opens immediately, Coming Soon returns 404 or redirects home."""
         SiteSetting.objects.update_or_create(key="site_mode", defaults={"value": "live"})
-        res2 = api_client.get("/api/v1/settings/public/")
-        assert res2.status_code == 200
-        assert res2.data["site_mode"] == "live"
+        res_home = client.get("/")
+        assert res_home.status_code == 200
+
+        res_cs = client.get("/coming-soon/")
+        assert res_cs.status_code == 302
+        assert res_cs.headers.get("Location") == "/"
+
+    def test_mode_05_waitlist_valid_invalid_and_duplicate_email(self, api_client):
+        """MODE-05: Waitlist: valid, invalid and duplicate email -> Saved, error, friendly duplicate message."""
+        # 1. Valid email
+        valid_res = api_client.post("/api/v1/waitlist/", {"email": "futurebuyer@example.com"}, format="json")
+        assert valid_res.status_code == 201
+        assert WaitlistEntry.objects.filter(email="futurebuyer@example.com").exists()
+
+        # 2. Invalid email
+        invalid_res = api_client.post("/api/v1/waitlist/", {"email": "invalid-address"}, format="json")
+        assert invalid_res.status_code == 400
+        assert "email" in invalid_res.data.get("fields", {})
+
+        # 3. Duplicate email
+        dup_res = api_client.post("/api/v1/waitlist/", {"email": "futurebuyer@example.com"}, format="json")
+        assert dup_res.status_code == 200
+        assert "already on the list" in dup_res.data["message"].lower()
 
 
 # ==============================================================================
-# POL-01 to POL-04: Policies & Content
+# POL-01 to POL-03: Policies & Content Pages
 # ==============================================================================
 @pytest.mark.django_db
 class TestPolicySuite:
-    def test_contact_message_submission(self, api_client):
+    def test_pol_01_privacy_terms_shipping_returns_pages_render(self, client):
+        """POL-01: Privacy policy, terms, shipping and returns pages -> Render, linked in footer, anchors work, last-updated date shown."""
+        for path, title in [
+            ("/privacy-policy/", "Privacy Policy"),
+            ("/terms/", "Terms of Service"),
+            ("/shipping-policy/", "Shipping"),
+            ("/returns-policy/", "Return Policy"),
+        ]:
+            res = client.get(path)
+            assert res.status_code == 200
+            content = res.content.decode("utf-8")
+            assert title.lower() in content.lower()
+
+    def test_pol_03_contact_form_saves_and_shows_in_admin_filterable(self, api_client, admin_client):
+        """POL-03: Contact form saves a message and shows in admin -> Present and filterable."""
         payload = {
             "name": "Hamza Khan",
             "email": "hamza@example.com",
@@ -1428,6 +1495,28 @@ class TestPolicySuite:
         res = api_client.post("/api/v1/contact/", payload, format="json")
         assert res.status_code == 201
         assert "thank you" in res.data["message"].lower()
+
+        # Verify present in admin messages
+        admin_res = admin_client.get("/api/v1/admin/messages/?handled=false")
+        assert admin_res.status_code == 200
+        data = admin_res.json() if hasattr(admin_res, 'json') else admin_res.data
+        msg_list = data["results"]
+        matched = [m for m in msg_list if m["email"] == "hamza@example.com"]
+        assert len(matched) >= 1
+        msg_id = matched[0]["id"]
+
+        # Toggle handled state
+        toggle_res = admin_client.post(f"/api/v1/admin/messages/{msg_id}/toggle/")
+        assert toggle_res.status_code == 200
+        t_data = toggle_res.json() if hasattr(toggle_res, 'json') else toggle_res.data
+        assert t_data["is_handled"] is True
+
+        # Verify filterable by handled=true
+        admin_handled_res = admin_client.get("/api/v1/admin/messages/?handled=true")
+        assert admin_handled_res.status_code == 200
+        h_data = admin_handled_res.json() if hasattr(admin_handled_res, 'json') else admin_handled_res.data
+        handled_ids = [m["id"] for m in h_data["results"]]
+        assert msg_id in handled_ids
 
 
 # ==============================================================================

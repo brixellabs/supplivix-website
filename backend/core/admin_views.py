@@ -1304,7 +1304,7 @@ class AdminMessageListView(views.APIView):
                 'id': m.id,
                 'name': m.name,
                 'email': m.email,
-                'phone': m.phone,
+                'phone': getattr(m, 'phone', ''),
                 'subject': m.subject,
                 'message': m.message,
                 'is_handled': m.is_handled,

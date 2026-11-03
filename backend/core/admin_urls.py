@@ -89,6 +89,7 @@ urlpatterns = [
     path('messages/', AdminMessageListView.as_view(), name='admin-messages'),
     path('messages/<int:pk>/mark-read/', AdminMessageMarkReadView.as_view(), name='admin-message-read'),
     path('messages/<int:pk>/toggle-handled/', AdminMessageToggleHandledView.as_view(), name='admin-message-toggle-handled'),
+    path('messages/<int:pk>/toggle/', AdminMessageToggleHandledView.as_view(), name='admin-message-toggle'),
     path('waitlist/', AdminWaitlistListView.as_view(), name='admin-waitlist'),
     path('waitlist/export-csv/', AdminWaitlistCSVExportView.as_view(), name='admin-waitlist-export-csv'),
 

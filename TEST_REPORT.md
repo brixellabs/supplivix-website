@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **319** (152 Backend Pytest + 99 Frontend Vitest + 68 Playwright E2E)  
+Total Automated Tests: **333** (157 Backend Pytest + 108 Frontend Vitest + 68 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -20,16 +20,18 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Coupons & Discount Tokens** | `COUP-01` to `COUP-16` | Backend Pytest (DRF) | 16 | Passed |
 | **Cash on Delivery (COD)** | `COD-01` to `COD-14` | Backend Pytest (DRF) | 14 | Passed |
 | **Forms (Every Form Matrix)** | `FORM-01` to `FORM-12` | Backend Pytest (DRF) | 8 | Passed |
+| **Site Mode, Policies & Content** | `MODE-01` to `MODE-06`, `POL-01` to `POL-03` | Backend Pytest (DRF/Django) | 7 | Passed |
 | **Staff Admin Panel** | `ADM-01` to `ADM-15` | Backend Pytest (DRF) | 15 | Passed |
 | **SEO & AEO Crawler Endpoints & SSR** | `SEO-01` to `SEO-07` | Backend Pytest (DRF) | 7 | Passed |
 | **Bot Detection & Security** | `SEC-01` to `SEC-11` | Backend Pytest (DRF) | 11 | Passed |
 | **Catalog Seeding & Purge** | `DEMO-01` to `DEMO-10` | Backend Pytest (Django) | 10 | Passed |
-| **Core Models, Mode & Health** | `MOD-01` to `MOD-09`, `MODE`, `POL` | Backend Pytest (Django) | 11 | Passed |
+| **Core Models & Health** | `MOD-01` to `MOD-09` | Backend Pytest (Django) | 9 | Passed |
 | **Integration & Edge Cases** | Integration / API | Backend Pytest | 30 | Passed |
 | **Authentication & Accounts UI** | `AUTH-01` to `AUTH-10` | Frontend Vitest (React) | 10 | Passed |
 | **Catalog, Search & Filter UI** | `CAT-01` to `CAT-08` | Frontend Vitest (React) | 8 | Passed |
 | **Cart, Shipping, Coupon & COD UI** | `CART`, `SHIP`, `COUP-01` to `COUP-16`, `COD` | Frontend Vitest (React) | 18 | Passed |
 | **Forms Accessibility & Matrix UI** | `FORM-01` to `FORM-12` | Frontend Vitest (React) | 12 | Passed |
+| **Site Mode, Policies & Content UI** | `MODE-01` to `MODE-06`, `POL-01` to `POL-03` | Frontend Vitest (React) | 9 | Passed |
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend Vitest (React) | 12 | Passed |
 | **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend Vitest (React) | 15 | Passed |
 | **Staff Dashboard UI** | `DASH-01` to `DASH-07` | Frontend Vitest (React) | 7 | Passed |
@@ -39,7 +41,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **E2E Journeys: Firefox** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Firefox | 17 | Passed |
 | **E2E Journeys: WebKit** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Safari | 17 | Passed |
 | **E2E Journeys: Mobile Viewport** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Pixel 5 (360x740) | 17 | Passed |
-| **Total Test Suite** | | | **319** | **Passed (100%)** |
+| **Total Test Suite** | | | **333** | **Passed (100%)** |
 
 ---
 
@@ -167,7 +169,23 @@ Run this matrix across login, register, forgot password, reset password, profile
 
 ---
 
-## 9. Multi-Browser Playwright End-to-End Test Matrix
+## 9. Test Verification Matrix: Category H (Site Mode, Policies & Content Pages)
+
+| Test ID | Case Description | Layer | Expected & Verified Result | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `MODE-01` | coming_soon mode, open any public route | Pytest / Vitest | HTTP 302 redirect to Coming Soon page, response headers and meta carry `noindex, nofollow`. | Passed |
+| `MODE-02` | coming_soon mode, open privacy policy and API health | Pytest / Vitest | `/privacy-policy` and `/api/health/` remain fully accessible (HTTP 200) without redirect. | Passed |
+| `MODE-03` | Staff user in coming_soon mode | Pytest / Vitest | Authenticated staff accounts (`is_staff=True`) can preview the live site without redirect. | Passed |
+| `MODE-04` | Switch to live in admin | Pytest / Vitest | Public catalog opens immediately; direct visits to `/coming-soon` cleanly redirect home (`/`). | Passed |
+| `MODE-05` | Waitlist: valid, invalid and duplicate email | Pytest / Vitest | Valid email saved in `WaitlistEntry` (HTTP 201); invalid returns field error (HTTP 400); duplicate email returns friendly message `"You are already on the list!"` (HTTP 200). | Passed |
+| `MODE-06` | Countdown reaches zero | Vitest | Renders launch announcement `"We are going live! Check back shortly."`; all countdown values bounded at 0, no negative numbers. | Passed |
+| `POL-01` | Privacy policy, terms, shipping and returns pages | Pytest / Vitest | All four policy routes render with official headers, last-updated dates, table of contents anchor links, and footer links. | Passed |
+| `POL-02` | Cookie notice accept, decline, reload | Vitest | Bottom banner records user preference (`splv_cookie_consent`) in localStorage; choice remembered on reload; site fully functional either way. | Passed |
+| `POL-03` | Contact form saves a message and shows in admin | Pytest / Vitest | Customer inquiries submitted via `/api/v1/contact/` are saved to `ContactMessage`, displayed in the staff dashboard, and filterable by handled status. | Passed |
+
+---
+
+## 10. Multi-Browser Playwright End-to-End Test Matrix
 
 Run command: `npm --prefix frontend run test:e2e`  
 Total E2E Scenarios: **68 passed** (0 failures across Chromium, Firefox, WebKit, Mobile viewport 360x740)
@@ -189,7 +207,7 @@ Total E2E Scenarios: **68 passed** (0 failures across Chromium, Firefox, WebKit,
 
 ---
 
-## 10. Code Coverage & Invariants Verification
+## 11. Code Coverage & Invariants Verification
 
 - **Zero Emojis Everywhere**: Verified by `node frontend/scripts/check-no-emojis.js` (0 matches).
 - **Zero Glassmorphism**: Verified by automated regex check (0 backdrop-blur / 0 translucent form overlays).

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Icon from '../components/ui/Icon';
@@ -9,6 +9,7 @@ import { api } from '../services/api';
 import logoImg from '../assets/brand/logo.png';
 
 export default function ComingSoonPage() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [honeypot, setHoneypot] = useState('');
@@ -18,16 +19,20 @@ export default function ComingSoonPage() {
   const [launchDate, setLaunchDate] = useState('2026-12-01T00:00:00Z');
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, launched: false });
 
-  // Fetch settings for launch date
+  // Fetch settings for launch date and site mode (redirects home if live)
   useEffect(() => {
     api.getPublicSettings()
       .then((data) => {
-        if (data.launch_date) {
+        if (data && data.site_mode === 'live') {
+          navigate('/', { replace: true });
+          return;
+        }
+        if (data && data.launch_date) {
           setLaunchDate(data.launch_date);
         }
       })
       .catch(() => {});
-  }, []);
+  }, [navigate]);
 
   // Countdown timer calculation
   useEffect(() => {
