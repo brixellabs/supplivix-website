@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: 136 (85 Backend Pytest + 51 Frontend Vitest)  
+Total Automated Tests: 142 (91 Backend Pytest + 51 Frontend Vitest)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD)
 
 ---
@@ -21,7 +21,7 @@ The entire test suite for the Supplivix e-commerce platform has executed with a 
 | **Cash on Delivery (COD)** | `COD-01` to `COD-14` | Backend / DRF | 9 | Passed |
 | **Staff Admin Panel** | `ADM-01` to `ADM-15` | Backend / DRF | 15 | Passed |
 | **SEO & AEO Crawler Endpoints & SSR** | `SEO-01` to `SEO-07` | Backend / DRF | 7 | Passed |
-| **Bot Detection & Security** | `SEC-01` to `SEC-08` | Backend / DRF | 5 | Passed |
+| **Bot Detection & Security** | `SEC-01` to `SEC-11` | Backend / DRF | 11 | Passed |
 | **Catalog Seeding & Purge** | `DEMO-01` to `DEMO-05` | Backend / DRF | 5 | Passed |
 | **Core Models & Database** | `MOD-01` to `MOD-09` | Backend / Django | 9 | Passed |
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend / Vitest | 12 | Passed |
@@ -29,7 +29,7 @@ The entire test suite for the Supplivix e-commerce platform has executed with a 
 | **Staff Dashboard UI** | `DASH-01` to `DASH-07` | Frontend / Vitest | 7 | Passed |
 | **SEO Head & Structured Data** | `SEO-UI-01` to `SEO-UI-06` | Frontend / Vitest | 6 | Passed |
 | **UI Invariants & Viewports** | `UI-01` to `UI-11` | Frontend / Vitest | 11 | Passed |
-| **Total** | | | **136** | **Passed** |
+| **Total** | | | **142** | **Passed** |
 
 ---
 
@@ -120,13 +120,18 @@ The entire test suite for the Supplivix e-commerce platform has executed with a 
 - `SEO-06`: Dedicated `/multivitamins` hub SSR shell populated with formulation list. (Passed)
 - `SEO-07`: Private routes (`/admin-panel/`, `/cart`, `/checkout`, `/account`) strictly served with `noindex, nofollow`. (Passed)
 
-### I. Security & Bot Defense (SEC-01 to SEC-08)
+### I. Security & Bot Defense (SEC-01 to SEC-11)
 - `SEC-01`: `BlockedIP` middleware returns 403 Forbidden with `ip_blocked` code. (Passed)
 - `SEC-02`: Expired IP blocks are automatically purged on subsequent requests. (Passed)
-- `SEC-03`: 5 consecutive failed logins trigger 15-minute lockout. (Passed)
-- `SEC-04`: Security headers present (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`). (Passed)
-- `SEC-05`: Honeypot fields silently trap automated bot submissions and record `BotEvent` telemetry. (Passed)
-- `SEC-06`: Argon2 password hashing verified. (Passed)
+- `SEC-03`: Rate limiting with `Retry-After` header across endpoints (DRF throttles: login 5/min, register 5/hr, coupon 10/min, orders 30/hr, contact 3/hr, waitlist 10/min, anon 100/min). (Passed)
+- `SEC-04`: 5 consecutive failed logins trigger 15-minute account lockout + Turnstile challenge requirement after 3 failures. (Passed)
+- `SEC-05`: Security headers present across all responses (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Content-Security-Policy`). (Passed)
+- `SEC-06`: Honeypot fields (`website`, `company_name`) silently trap automated bot submissions, return fake success (200/201), and record `BotEvent` telemetry. (Passed)
+- `SEC-07`: Cryptographic time traps evaluate sub-2-second bot submissions (+40 score) and reject > 2-hour expired tokens (400 `token_expired`). (Passed)
+- `SEC-08`: Cloudflare Turnstile token validation handles official test keys (`1x...AA`, `2x...AA`) and server-side verification. (Passed)
+- `SEC-09`: Reverse DNS verification flags spoofed search engine crawlers (fake Googlebot UA with non-Google IP flags +60 score). (Passed)
+- `SEC-10`: Rapid coupon guessing (> 3 failed codes in 5 min) and registration velocity flags high-risk behavioral signals. (Passed)
+- `SEC-11`: Scripted bot run acceptance test confirms >= 95% automated bot traffic mitigation and 0% false positives for normal users. (Passed)
 
 ### J. UI & Design System Invariants (UI-01 to UI-11, DS-01 to DS-12, PAGE-01 to PAGE-15)
 - `UI-01`: Zero emojis verified across all 16 pages, components, buttons, and badges. (Passed)
