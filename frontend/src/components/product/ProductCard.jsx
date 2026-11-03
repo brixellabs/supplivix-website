@@ -79,7 +79,8 @@ export default function ProductCard({ product }) {
       <Link
         to={`/products/${product.slug}`}
         className="block bg-surface-subtle p-6 flex items-center justify-center relative overflow-hidden border-b border-surface-border group-hover:bg-surface-accent transition-colors"
-        aria-label={`View details for ${product.name}`}
+        tabIndex="-1"
+        aria-hidden="true"
       >
         {product.thumbnail ? (
           <img

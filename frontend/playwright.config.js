@@ -38,6 +38,14 @@ export default defineConfig({
         viewport: { width: 360, height: 740 },
       },
     },
+    {
+      name: 'edge',
+      use: { ...devices['Desktop Edge'] },
+    },
+    {
+      name: 'mobile-safari',
+      use: { ...devices['iPhone 12'] },
+    },
   ],
 });
 

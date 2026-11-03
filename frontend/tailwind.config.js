@@ -27,7 +27,7 @@ export default {
           muted: '#666666',
         },
         status: {
-          sale: '#e95144',
+          sale: '#c83226',
           success: '#0b4f27',
           error: '#c53030',
         }

@@ -124,8 +124,8 @@ export default function ProductIllustration({
     <svg
       viewBox="0 0 200 240"
       className={className}
-      role="img"
-      aria-label={name}
+      aria-hidden="true"
+      
       xmlns="http://www.w3.org/2000/svg"
     >
       {shadow}

@@ -168,7 +168,7 @@ export default function ContactPage() {
                   href="https://wa.me/923000000000"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white py-3 px-4 rounded-sm text-xs font-bold uppercase tracking-wider transition-colors shadow-solid-sm"
+                  className="w-full inline-flex items-center justify-center gap-2 bg-[#075E54] hover:bg-[#128C7E] text-white py-3 px-4 rounded-sm text-xs font-bold uppercase tracking-wider transition-colors shadow-solid-sm"
                 >
                   <Icon name="whatsapp" className="text-base" />
                   <span>Chat on WhatsApp (Instant Response)</span>

@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button';
 import Icon from '../../components/ui/Icon';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/ui/Toast';
+import { api } from '../../services/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -55,6 +56,11 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email.trim(), password, { website: honeypot });
+      try {
+        await api.mergeCart();
+      } catch {
+        // Ignore if no guest cart to merge
+      }
       showToast('Welcome back to Supplivix!');
       navigate(redirectPath, { replace: true });
     } catch (err) {

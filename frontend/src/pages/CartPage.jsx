@@ -151,10 +151,10 @@ export default function CartPage() {
 
                       <div>
                         <Link
-                          to={`/products/${item.product_slug || ''}`}
+                          to={`/products/${item.product_slug || item.product?.slug || ''}`}
                           className="text-xs sm:text-sm font-bold text-brand-ink hover:text-brand-green transition-colors leading-snug"
                         >
-                          {item.product_name}
+                          {item.product_name || item.product?.name || 'Product'}
                         </Link>
                         <div className="text-xs text-ink-muted mt-1">
                           Rs. {Number(item.unit_price).toLocaleString()} each

@@ -88,13 +88,13 @@ export default function Header({ cartCount: propCartCount }) {
             <Link
               to="/cart"
               className="inline-flex items-center gap-2 bg-brand-ink text-white hover:bg-brand-green px-3.5 py-2 rounded-sm text-xs font-semibold uppercase tracking-wider transition-colors shadow-solid-sm"
-              aria-label={`Shopping Cart with ${cartCount} items`}
             >
               <Icon name="cart" />
               <span>Cart</span>
               <span className="bg-brand-green text-white px-1.5 py-0.2 rounded-full text-[11px] font-bold">
                 {cartCount}
               </span>
+              <span className="sr-only">items</span>
             </Link>
 
             {/* Mobile Hamburger Button */}
