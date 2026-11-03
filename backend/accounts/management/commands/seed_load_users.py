@@ -1,12 +1,12 @@
 """
 Django management command to generate users for load testing (Phase 10).
-Strictly zero emojis. Creates 100 benchmark customer accounts.
+Strictly zero emojis. Creates 100 benchmark customer accounts with addresses.
 """
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from accounts.models import User
+from accounts.models import Address, User
 
 
 class Command(BaseCommand):
@@ -19,17 +19,32 @@ class Command(BaseCommand):
             default=100,
             help='Number of load test accounts to create (default: 100)',
         )
+        parser.add_argument(
+            '--prefix',
+            type=str,
+            default='standard',
+            choices=['standard', 'legacy'],
+            help='Email format: standard (load+N@example.com) or legacy (loaduser_NNN@supplivix.load)',
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
         count = options['count']
+        prefix = options['prefix']
         created_count = 0
 
-        self.stdout.write(f"Generating {count} load test user accounts...")
+        self.stdout.write(f"Generating {count} load test user accounts with addresses...")
+
+        cities = ['Lahore', 'Karachi', 'Islamabad', 'Faisalabad', 'Rawalpindi']
+        provinces = ['Punjab', 'Sindh', 'Islamabad', 'Punjab', 'Punjab']
 
         for i in range(1, count + 1):
-            email = f"loaduser_{i:03d}@supplivix.load"
-            phone = f"+92300000{i:04d}"
+            if prefix == 'legacy':
+                email = f"loaduser_{i:03d}@supplivix.load"
+            else:
+                email = f"load+{i}@example.com"
+
+            phone = f"0300{i:07d}"
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults={
@@ -43,7 +58,25 @@ class Command(BaseCommand):
                 user.save()
                 created_count += 1
 
+            city = cities[(i - 1) % len(cities)]
+            province = provinces[(i - 1) % len(provinces)]
+
+            Address.objects.get_or_create(
+                user=user,
+                defaults={
+                    'full_name': user.full_name,
+                    'phone': user.phone,
+                    'line1': f"House {i}, Street {((i % 10) + 1)}, Sector Block {chr(65 + (i % 6))}",
+                    'line2': '',
+                    'city': city,
+                    'province': province,
+                    'postal_code': f"{54000 + (i % 500)}",
+                    'is_default': True,
+                }
+            )
+
+        total_users = User.objects.filter(email__startswith='load+').count() + User.objects.filter(email__endswith='@supplivix.load').count()
         self.stdout.write(self.style.SUCCESS(
-            f"Successfully seeded {created_count} new load test users "
-            f"(Total: {User.objects.filter(email__endswith='@supplivix.load').count()} load users available)."
+            f"Successfully seeded {created_count} new load test users with saved addresses "
+            f"(Total: {total_users} load users available)."
         ))

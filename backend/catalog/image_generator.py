@@ -330,6 +330,11 @@ def export_raster_fallback(svg_filename_base: str, output_dir: str, title: str, 
     Guarantees browser-compatible fallback files are exported at build time.
     """
     os.makedirs(output_dir, exist_ok=True)
+    webp_path = os.path.join(output_dir, f"{svg_filename_base}.webp")
+    avif_path = os.path.join(output_dir, f"{svg_filename_base}.avif")
+    if os.path.exists(webp_path) and os.path.exists(avif_path):
+        return
+
     width, height = 400, 400
     img = Image.new('RGB', (width, height), color='#f9fafb')
     draw = ImageDraw.Draw(img)

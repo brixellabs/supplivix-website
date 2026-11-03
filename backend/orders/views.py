@@ -93,13 +93,6 @@ class PlaceOrderView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        cart = get_or_create_cart(request)
-        if not cart.items.exists():
-            return Response(
-                {'code': 'empty_cart', 'message': 'Cannot checkout with an empty cart.', 'fields': {}},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         serializer = PlaceOrderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -119,6 +112,13 @@ class PlaceOrderView(APIView):
                         },
                         status=status.HTTP_200_OK
                     )
+
+        cart = get_or_create_cart(request)
+        if not cart.items.exists():
+            return Response(
+                {'code': 'empty_cart', 'message': 'Cannot checkout with an empty cart.', 'fields': {}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         user = request.user if request.user.is_authenticated else None
         order = place_cod_order(cart=cart, checkout_data=data, user=user)

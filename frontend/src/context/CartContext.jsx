@@ -73,7 +73,7 @@ export function CartProvider({ children }) {
     setLoading(true);
     try {
       const updated = await api.applyCoupon(code);
-      setCart(updated);
+      setCart(updated.cart || updated);
       return { success: true, message: 'Coupon applied successfully' };
     } catch (err) {
       return { success: false, message: err.message || 'Invalid coupon code' };

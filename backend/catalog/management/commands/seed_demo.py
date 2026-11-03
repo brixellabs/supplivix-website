@@ -901,13 +901,15 @@ class Command(BaseCommand):
             for file_base, svg_content, alt_text, sort_order in variants:
                 # Write to media/products/
                 media_path = os.path.join(media_products_dir, f"{file_base}.svg")
-                with open(media_path, 'w', encoding='utf-8') as f:
-                    f.write(svg_content)
+                if not os.path.exists(media_path):
+                    with open(media_path, 'w', encoding='utf-8') as f:
+                        f.write(svg_content)
 
                 # Write to frontend/src/assets/demo/
                 frontend_svg_path = os.path.join(frontend_demo_dir, f"{file_base}.svg")
-                with open(frontend_svg_path, 'w', encoding='utf-8') as f:
-                    f.write(svg_content)
+                if not os.path.exists(frontend_svg_path):
+                    with open(frontend_svg_path, 'w', encoding='utf-8') as f:
+                        f.write(svg_content)
 
                 # Export WebP and AVIF fallbacks
                 export_raster_fallback(file_base, frontend_demo_dir, product.name, accent_hex)

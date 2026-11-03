@@ -107,7 +107,14 @@ export default function CartPage() {
             </span>
             <span className="text-ink-muted">{freeShippingProgress}%</span>
           </div>
-          <div className="w-full bg-surface-border rounded-full h-2 overflow-hidden">
+          <div
+            className="w-full bg-surface-border rounded-full h-2 overflow-hidden"
+            role="progressbar"
+            aria-valuenow={freeShippingProgress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Free shipping progress"
+          >
             <div
               className="bg-brand-green h-2 rounded-full transition-all duration-300"
               style={{ width: `${freeShippingProgress}%` }}

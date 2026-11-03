@@ -128,7 +128,8 @@ export default function CheckoutPage() {
       };
 
       const result = await api.placeOrder(payload);
-      setCompletedOrder(result);
+      const orderData = result.order || result;
+      setCompletedOrder(orderData);
       fetchCart(); // Clear cart
       showToast('Order placed successfully! Cash on Delivery confirmed.');
     } catch (err) {
@@ -165,7 +166,7 @@ export default function CheckoutPage() {
             <div className="bg-white border border-surface-border rounded-md p-6 text-left text-xs space-y-3 mb-6 shadow-sm">
               <div className="flex justify-between border-b border-surface-border pb-2">
                 <span className="text-ink-muted">Order Number:</span>
-                <span className="font-bold text-brand-ink">{completedOrder.order_number}</span>
+                <span className="font-bold text-brand-ink">{completedOrder.number || completedOrder.order_number}</span>
               </div>
               <div className="flex justify-between border-b border-surface-border pb-2">
                 <span className="text-ink-muted">Payment Method:</span>
@@ -174,17 +175,20 @@ export default function CheckoutPage() {
               <div className="flex justify-between border-b border-surface-border pb-2">
                 <span className="text-ink-muted">Total Payable to Rider:</span>
                 <span className="font-bold text-brand-ink text-sm">
-                  Rs. {Number(completedOrder.grand_total).toLocaleString()}
+                  Rs. {Number(completedOrder.grand_total || completedOrder.total || 0).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between border-b border-surface-border pb-2">
                 <span className="text-ink-muted">Recipient Name:</span>
-                <span className="font-semibold text-brand-ink">{completedOrder.recipient_name}</span>
+                <span className="font-semibold text-brand-ink">
+                  {completedOrder.recipient_name || completedOrder.full_name || completedOrder.shipping_address_snapshot?.full_name}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-muted">Delivery Address:</span>
                 <span className="font-medium text-brand-ink text-right">
-                  {completedOrder.street_address}, {completedOrder.city}
+                  {completedOrder.street_address || completedOrder.line1 || completedOrder.shipping_address_snapshot?.line1},{' '}
+                  {completedOrder.city || completedOrder.shipping_address_snapshot?.city}
                 </span>
               </div>
             </div>

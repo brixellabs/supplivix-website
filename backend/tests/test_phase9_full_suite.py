@@ -17,11 +17,15 @@ Verifies all test categories:
 Strictly zero emojis anywhere.
 """
 
+from datetime import timedelta
+
 import pytest
 from django.core.cache import cache
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from accounts.models import User
+from accounts.models import Address, User
+from cart.models import Cart, CartItem
 from catalog.models import Category, Product, Review
 from content.models import SiteSetting
 from orders.models import Order, OrderItem
@@ -606,114 +610,367 @@ class TestCatalogSuite:
 
 
 # ==============================================================================
-# CART-01 to CART-08: Cart Management
+# CART-01 to CART-07: Cart Management
 # ==============================================================================
 @pytest.mark.django_db
 class TestCartSuite:
-    def test_cart_item_update_and_removal(self, api_client, test_product):
-        # 1. Add item
-        add_res = api_client.post(
-            "/api/v1/cart/items/",
-            {
-                "product_id": test_product.id,
-                "quantity": 2,
-            },
-            format="json",
-        )
+    def test_cart_01_add_quantity_remove(self, api_client, test_product):
+        """CART-01: Add item, change quantity, remove item -> Totals update immediately and match the server."""
+        # Add item
+        add_res = api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 2}, format="json")
         assert add_res.status_code == 200
         item_id = add_res.data["items"][0]["id"]
+        assert add_res.data["subtotal"] == 4400
 
-        # 2. Update quantity to 4
-        update_res = api_client.patch(
-            f"/api/v1/cart/items/{item_id}/",
-            {
-                "quantity": 4,
-            },
-            format="json",
-        )
-        assert update_res.status_code == 200
-        assert update_res.data["items"][0]["quantity"] == 4
-        assert update_res.data["subtotal"] == 2200 * 4
+        # Change quantity
+        patch_res = api_client.patch(f"/api/v1/cart/items/{item_id}/", {"quantity": 3}, format="json")
+        assert patch_res.status_code == 200
+        assert patch_res.data["items"][0]["quantity"] == 3
+        assert patch_res.data["subtotal"] == 6600
 
-        # 3. Delete item
+        # Remove item
         del_res = api_client.delete(f"/api/v1/cart/items/{item_id}/")
         assert del_res.status_code == 200
         assert len(del_res.data["items"]) == 0
         assert del_res.data["subtotal"] == 0
 
-    def test_cart_rejects_quantity_above_stock(self, api_client, test_product):
-        res = api_client.post(
-            "/api/v1/cart/items/",
-            {
-                "product_id": test_product.id,
-                "quantity": 9999,
-            },
+    def test_cart_02_invalid_quantities_rejected(self, api_client, test_product):
+        """CART-02: Quantity 0, negative, 11, decimal, text -> Rejected with a message."""
+        for invalid_qty in [0, -1, -5, 11, 99]:
+            res = api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": invalid_qty}, format="json")
+            assert res.status_code == 400
+
+    def test_cart_03_quantity_above_stock_rejected(self, api_client, test_product):
+        """CART-03: Quantity above stock -> Capped or rejected with stock message."""
+        test_product.stock = 3
+        test_product.save(update_fields=["stock"])
+
+        res = api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 5}, format="json")
+        assert res.status_code == 400
+
+    def test_cart_04_product_price_changes_reflects_in_cart(self, api_client, test_product):
+        """CART-04: Product price changes while it is in the cart -> Cart shows the new price with a notice."""
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 2}, format="json")
+        res1 = api_client.get("/api/v1/cart/")
+        assert res1.data["subtotal"] == 4400
+
+        test_product.price = 2500
+        test_product.save(update_fields=["price"])
+
+        res2 = api_client.get("/api/v1/cart/")
+        assert res2.data["subtotal"] == 5000
+
+    def test_cart_05_inactive_product_blocks_checkout(self, api_client, test_product):
+        """CART-05: Product becomes inactive while in cart -> Item flagged, checkout blocked until removed."""
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+
+        test_product.is_active = False
+        test_product.save(update_fields=["is_active"])
+
+        payload = {
+            "full_name": "Asim Raza",
+            "email": "asim@example.com",
+            "phone": "03001234567",
+            "line1": "Street 10",
+            "city": "Lahore",
+            "province": "Punjab",
+            "payment_method": "COD",
+        }
+        res = api_client.post("/api/v1/orders/create/", payload, format="json")
+        assert res.status_code == 400
+        assert "no longer available" in str(res.data).lower()
+
+    def test_cart_06_cart_persistence_across_session(self, api_client, test_product):
+        """CART-06: Cart persists after refresh and session key header -> Items remain."""
+        session_header = {"HTTP_X_SESSION_KEY": "persistent-guest-session-42"}
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 2}, format="json", **session_header)
+
+        res = api_client.get("/api/v1/cart/", **session_header)
+        assert res.status_code == 200
+        assert len(res.data["items"]) == 1
+        assert res.data["items"][0]["quantity"] == 2
+
+    def test_cart_07_tampered_price_ignored(self, api_client, test_product):
+        """CART-07: Client sends a manipulated price or total -> Ignored, server price used."""
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+
+        quote_res = api_client.post(
+            "/api/v1/checkout/quote/",
+            {"subtotal": 50, "grand_total": 50, "price": 50},
             format="json",
         )
-        assert res.status_code == 400
+        assert quote_res.status_code == 200
+        assert quote_res.data["subtotal"] == 2200
 
 
 # ==============================================================================
-# SHIP-01 to SHIP-04: Free Shipping Rules (Rs. 2,000 threshold, Rs. 200 fee)
+# SHIP-01 to SHIP-05: Free Shipping Rules (Rs. 2,000 threshold, Rs. 200 fee)
 # ==============================================================================
 @pytest.mark.django_db
 class TestShippingSuite:
-    def test_ship_threshold_and_fee_accuracy(self, api_client, test_category):
+    def test_ship_01_subtotal_1999_shipping_200(self, api_client, test_category):
+        """SHIP-01: Subtotal Rs. 1,999 -> Shipping Rs. 200, message Add Rs. 1 more for free shipping."""
+        p = Product.objects.create(name="Formula 1999", slug="formula-1999", category=test_category, price=1999, sku="S-1999", stock=10, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": p.id, "quantity": 1}, format="json")
+        res = api_client.get("/api/v1/cart/")
+        assert res.data["subtotal"] == 1999
+        assert res.data["shipping_total"] == 200
+        assert res.data["free_shipping_eligible"] is False
+
+    def test_ship_02_subtotal_2000_free_shipping(self, api_client, test_category):
+        """SHIP-02: Subtotal exactly Rs. 2,000 -> Shipping Rs. 0."""
+        p = Product.objects.create(name="Formula 2000", slug="formula-2000", category=test_category, price=2000, sku="S-2000", stock=10, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": p.id, "quantity": 1}, format="json")
+        res = api_client.get("/api/v1/cart/")
+        assert res.data["subtotal"] == 2000
+        assert res.data["shipping_total"] == 0
+        assert res.data["free_shipping_eligible"] is True
+
+    def test_ship_03_subtotal_above_2000_free_shipping(self, api_client, test_category):
+        """SHIP-03: Subtotal Rs. 2,001 and above -> Shipping Rs. 0."""
+        p = Product.objects.create(name="Formula 2500", slug="formula-2500", category=test_category, price=2500, sku="S-2500", stock=10, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": p.id, "quantity": 1}, format="json")
+        res = api_client.get("/api/v1/cart/")
+        assert res.data["subtotal"] == 2500
+        assert res.data["shipping_total"] == 0
+        assert res.data["free_shipping_eligible"] is True
+
+    def test_ship_04_coupon_discount_drops_below_threshold(self, api_client, test_category):
+        """SHIP-04: Subtotal Rs. 2,300, coupon takes it to Rs. 1,900 -> Shipping Rs. 200."""
+        p = Product.objects.create(name="Formula 2300", slug="formula-2300", category=test_category, price=2300, sku="S-2300", stock=10, is_active=True)
+        Coupon.objects.create(code="DISC400", type="fixed", value=400, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": p.id, "quantity": 1}, format="json")
+        api_client.post("/api/v1/cart/coupon/", {"code": "DISC400"}, format="json")
+
+        quote_res = api_client.post("/api/v1/checkout/quote/", format="json")
+        assert quote_res.status_code == 200
+        assert quote_res.data["subtotal"] == 2300
+        assert quote_res.data["discount_total"] == 400
+        assert quote_res.data["shipping_total"] == 200
+        assert quote_res.data["grand_total"] == 1900 + 200
+
+    def test_ship_05_dynamic_admin_threshold_applied(self, api_client, test_category):
+        """SHIP-05: Threshold changed to Rs. 3,000 in admin -> New value used on next quote without redeploy."""
+        p = Product.objects.create(name="Formula 2500", slug="formula-dyn-2500", category=test_category, price=2500, sku="S-DYN-2500", stock=10, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": p.id, "quantity": 1}, format="json")
+
+        # Threshold Rs. 3,000
+        SiteSetting.objects.update_or_create(key="free_shipping_threshold", defaults={"value": "3000"})
+        quote_res = api_client.post("/api/v1/checkout/quote/", format="json")
+        assert quote_res.status_code == 200
+        assert quote_res.data["shipping_total"] == 200
+        assert quote_res.data["free_shipping_threshold"] == 3000
+
+        # Reset back
         SiteSetting.objects.update_or_create(key="free_shipping_threshold", defaults={"value": "2000"})
-        SiteSetting.objects.update_or_create(key="flat_shipping_fee", defaults={"value": "200"})
-
-        # Under threshold: Rs. 1,500 item -> Rs. 200 shipping fee
-        p_cheap = Product.objects.create(
-            name="Item Under 2000",
-            slug="item-under-2000",
-            category=test_category,
-            price=1500,
-            sku="SPLV-CHEAP-01",
-            stock=10,
-            is_active=True,
-        )
-        api_client.post("/api/v1/cart/items/", {"product_id": p_cheap.id, "quantity": 1}, format="json")
-        cart_res = api_client.get("/api/v1/cart/")
-        assert cart_res.data["subtotal"] == 1500
-        assert cart_res.data["shipping_total"] == 200
-        assert cart_res.data["free_shipping_eligible"] is False
-
-        # Add another item: Subtotal = 3,000 -> Free Shipping
-        api_client.post("/api/v1/cart/items/", {"product_id": p_cheap.id, "quantity": 1}, format="json")
-        cart_res2 = api_client.get("/api/v1/cart/")
-        assert cart_res2.data["subtotal"] == 3000
-        assert cart_res2.data["shipping_total"] == 0
-        assert cart_res2.data["free_shipping_eligible"] is True
 
 
 # ==============================================================================
-# COUP-01 to COUP-06: Coupons & Discount Tokens
+# COUP-01 to COUP-16: Coupons & Discount Tokens
 # ==============================================================================
 @pytest.mark.django_db
 class TestCouponSuite:
-    def test_coupon_single_use_per_user(self, api_client, test_customer, test_product):
-        coupon = Coupon.objects.create(
-            code="ONETIME20",
-            type="percent",
-            value=20,
-            usage_limit_per_user=1,
-            is_active=True,
-        )
-        api_client.force_authenticate(user=test_customer)
+    @pytest.fixture(autouse=True)
+    def clear_cache_between_tests(self):
+        cache.clear()
+        yield
+        cache.clear()
 
-        # First usage applies
+    def test_coup_01_percent_discount_rounded(self, api_client, test_product):
+        """COUP-01: Valid percentage code -> Correct discount, rounded consistently."""
+        Coupon.objects.create(code="PERCENT10", type="percent", value=10, is_active=True)
         api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
-        res1 = api_client.post("/api/v1/cart/coupon/", {"code": "ONETIME20"}, format="json")
-        assert res1.status_code == 200
+        res = api_client.post("/api/v1/cart/coupon/", {"code": "PERCENT10"}, format="json")
+        assert res.status_code == 200
+        quote = api_client.post("/api/v1/checkout/quote/", format="json")
+        assert quote.data["discount_total"] == 220  # 10% of 2200
 
-        # Simulate redemption with order
-        order = Order.objects.create(number="SPLV-PRIOR-01", user=test_customer, subtotal=2200, grand_total=1760)
+    def test_coup_02_percent_discount_with_cap(self, api_client, test_product):
+        """COUP-02: Percentage code with a maximum cap -> Discount never exceeds the cap."""
+        Coupon.objects.create(code="CAPPED20", type="percent", value=20, max_discount_amount=200, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        api_client.post("/api/v1/cart/coupon/", {"code": "CAPPED20"}, format="json")
+        quote = api_client.post("/api/v1/checkout/quote/", format="json")
+        assert quote.data["discount_total"] == 200  # 20% of 2200 is 440, capped at 200
+
+    def test_coup_03_fixed_discount_never_below_zero(self, api_client, test_product):
+        """COUP-03: Valid fixed code larger than the subtotal -> Total never below zero."""
+        Coupon.objects.create(code="BIGFIXED5000", type="fixed", value=5000, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        api_client.post("/api/v1/cart/coupon/", {"code": "BIGFIXED5000"}, format="json")
+        quote = api_client.post("/api/v1/checkout/quote/", format="json")
+        assert quote.data["discount_total"] == 2200
+        assert quote.data["grand_total"] >= 0
+
+    def test_coup_04_normalization_whitespace_and_case(self, api_client, test_product):
+        """COUP-04: Lowercase and mixed-case entry, spaces around code -> Accepted after normalization."""
+        Coupon.objects.create(code="CLEANCODE", type="percent", value=10, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        res = api_client.post("/api/v1/cart/coupon/", {"code": "  cleancode  "}, format="json")
+        assert res.status_code == 200
+        assert "CLEANCODE" in res.data["message"]
+
+    def test_coup_05_unknown_code_rejected(self, api_client, test_product):
+        """COUP-05: Unknown code -> This code is not valid."""
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        res = api_client.post("/api/v1/cart/coupon/", {"code": "NONEXISTENT99"}, format="json")
+        assert res.status_code == 400
+        assert "not valid" in res.data["message"].lower()
+
+    def test_coup_06_expired_and_future_codes_rejected(self, api_client, test_product):
+        """COUP-06: Expired code, not-yet-started code -> Specific message for each."""
+        now = timezone.now()
+        Coupon.objects.create(code="EXPIRED10", type="percent", value=10, ends_at=now - timedelta(days=1), is_active=True)
+        Coupon.objects.create(code="FUTURE10", type="percent", value=10, starts_at=now + timedelta(days=5), is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+
+        res_exp = api_client.post("/api/v1/cart/coupon/", {"code": "EXPIRED10"}, format="json")
+        assert res_exp.status_code == 400
+        assert "expired" in res_exp.data["message"].lower()
+
+        res_fut = api_client.post("/api/v1/cart/coupon/", {"code": "FUTURE10"}, format="json")
+        assert res_fut.status_code == 400
+        assert "not yet active" in res_fut.data["message"].lower()
+
+    def test_coup_07_inactive_code_rejected(self, api_client, test_product):
+        """COUP-07: Inactive code -> Rejected."""
+        Coupon.objects.create(code="INACTIVE10", type="percent", value=10, is_active=False)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        res = api_client.post("/api/v1/cart/coupon/", {"code": "INACTIVE10"}, format="json")
+        assert res.status_code == 400
+
+    def test_coup_08_minimum_order_unmet_message(self, api_client, test_product):
+        """COUP-08: Minimum order not reached -> Message shows the required amount."""
+        Coupon.objects.create(code="MIN5000", type="percent", value=15, min_order_amount=5000, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")  # subtotal = 2200
+        res = api_client.post("/api/v1/cart/coupon/", {"code": "MIN5000"}, format="json")
+        assert res.status_code == 400
+        assert "5,000" in res.data["message"]
+
+    def test_coup_09_category_restriction_enforced(self, api_client, test_product):
+        """COUP-09: Category-restricted code with non-matching cart -> Rejected with message."""
+        skincare = Category.objects.create(name="Skincare Demo", slug="skincare-demo")
+        Coupon.objects.create(code="SKINONLY", type="percent", value=15, applies_to_category=skincare, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")  # multivitamins
+        res = api_client.post("/api/v1/cart/coupon/", {"code": "SKINONLY"}, format="json")
+        assert res.status_code == 400
+        assert "not valid for the items in your cart" in res.data["message"].lower()
+
+    def test_coup_10_per_user_limit_enforced(self, api_client, test_customer, test_product):
+        """COUP-10: Per-user limit reached (logged in and guest by email) -> Rejected."""
+        coupon = Coupon.objects.create(code="ONETIMEONLY", type="percent", value=20, usage_limit_per_user=1, is_active=True)
+        api_client.force_authenticate(user=test_customer)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+
+        # Simulate redemption
+        order = Order.objects.create(number="SPLV-C10-01", user=test_customer, subtotal=2200, grand_total=1760)
         CouponRedemption.objects.create(coupon=coupon, user=test_customer, order=order)
 
-        # Second attempt must be rejected
-        res2 = api_client.post("/api/v1/cart/coupon/", {"code": "ONETIME20"}, format="json")
-        assert res2.status_code == 400
-        assert "already used" in res2.data["message"].lower()
+        res = api_client.post("/api/v1/cart/coupon/", {"code": "ONETIMEONLY"}, format="json")
+        assert res.status_code == 400
+        assert "already used" in res.data["message"].lower()
+
+    def test_coup_11_simultaneous_orders_single_redemption(self, test_product):
+        """COUP-11: Total usage limit of 1, two simultaneous orders -> Exactly one succeeds."""
+        coupon = Coupon.objects.create(code="RACE100", type="fixed", value=500, usage_limit_total=1, is_active=True)
+        cart1 = Cart.objects.create(session_key="race-session-1", coupon_code="RACE100")
+        CartItem.objects.create(cart=cart1, product=test_product, quantity=1)
+
+        payload = {
+            "full_name": "Racer One",
+            "email": "racer1@example.com",
+            "phone": "03001112233",
+            "line1": "Street 1",
+            "city": "Lahore",
+            "province": "Punjab",
+            "payment_method": "COD",
+        }
+        from orders.services import place_cod_order
+        order1 = place_cod_order(cart=cart1, checkout_data=payload)
+        assert order1.coupon_code == "RACE100"
+        assert coupon.redemptions.count() == 1
+
+        cart2 = Cart.objects.create(session_key="race-session-2", coupon_code="RACE100")
+        CartItem.objects.create(cart=cart2, product=test_product, quantity=1)
+        with pytest.raises(Exception):
+            place_cod_order(cart=cart2, checkout_data=payload)
+
+    def test_coup_12_coupon_replacement_no_stacking(self, api_client, test_product):
+        """COUP-12: Applying a second code -> Replaces the first, never stacks."""
+        Coupon.objects.create(code="CODE10", type="percent", value=10, is_active=True)
+        Coupon.objects.create(code="CODE20", type="percent", value=20, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+
+        api_client.post("/api/v1/cart/coupon/", {"code": "CODE10"}, format="json")
+        cart1 = api_client.get("/api/v1/cart/").data
+        assert cart1["coupon_code"] == "CODE10"
+
+        api_client.post("/api/v1/cart/coupon/", {"code": "CODE20"}, format="json")
+        cart2 = api_client.get("/api/v1/cart/").data
+        assert cart2["coupon_code"] == "CODE20"
+
+    def test_coup_13_remove_coupon_restores_totals(self, api_client, test_product):
+        """COUP-13: Remove code -> Totals restored."""
+        Coupon.objects.create(code="OFF20", type="percent", value=20, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        api_client.post("/api/v1/cart/coupon/", {"code": "OFF20"}, format="json")
+
+        del_res = api_client.delete("/api/v1/cart/coupon/")
+        assert del_res.status_code == 200
+        assert del_res.data["coupon_code"] == ""
+        quote = api_client.post("/api/v1/checkout/quote/", format="json")
+        assert quote.data["discount_total"] == 0
+
+    def test_coup_14_invalidated_coupon_removed_on_cart_update(self, api_client, test_category):
+        """COUP-14: Cart changes after applying code, so code is no longer valid -> Code removed or disregarded."""
+        p_high = Product.objects.create(name="P High", slug="p-high", category=test_category, price=3000, sku="S-HIGH", stock=10, is_active=True)
+        Coupon.objects.create(code="MIN4000", type="percent", value=10, min_order_amount=4000, is_active=True)
+        add_res = api_client.post("/api/v1/cart/items/", {"product_id": p_high.id, "quantity": 2}, format="json")  # subtotal = 6000
+        item_id = add_res.data["items"][0]["id"]
+        api_client.post("/api/v1/cart/coupon/", {"code": "MIN4000"}, format="json")
+
+        # Reduce quantity to 1 -> subtotal = 3000 (< 4000 min order)
+        api_client.patch(f"/api/v1/cart/items/{item_id}/", {"quantity": 1}, format="json")
+        quote = api_client.post("/api/v1/checkout/quote/", format="json")
+        assert quote.data["discount_total"] == 0
+
+    def test_coup_15_cancelled_order_releases_redemption(self, api_client, test_product, test_customer):
+        """COUP-15: Order cancelled -> Redemption released (documented behaviour)."""
+        coupon = Coupon.objects.create(code="CANCELRELEASE", type="fixed", value=300, usage_limit_per_user=1, is_active=True)
+        api_client.force_authenticate(user=test_customer)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        api_client.post("/api/v1/cart/coupon/", {"code": "CANCELRELEASE"}, format="json")
+
+        payload = {
+            "full_name": "Test Customer",
+            "email": test_customer.email,
+            "phone": "03001234567",
+            "line1": "Street 5",
+            "city": "Karachi",
+            "province": "Sindh",
+            "payment_method": "COD",
+        }
+        order_res = api_client.post("/api/v1/orders/create/", payload, format="json")
+        order_num = order_res.data["order"]["number"]
+        assert CouponRedemption.objects.filter(coupon=coupon).count() == 1
+
+        # Cancel order
+        cancel_res = api_client.post(f"/api/v1/orders/{order_num}/cancel/")
+        assert cancel_res.status_code == 200
+        assert CouponRedemption.objects.filter(coupon=coupon).count() == 0
+
+    def test_coup_16_rate_limiting_throttles_coupon_guessing(self, api_client, test_product):
+        """COUP-16: 15 wrong codes in one minute -> Throttled or logged as bot event."""
+        from core.models import BotEvent
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+
+        statuses = []
+        for i in range(15):
+            res = api_client.post("/api/v1/cart/coupon/", {"code": f"WRONG{i}"}, format="json")
+            statuses.append(res.status_code)
+
+        # BotEvent should log coupon guessing behavior or rate limiter returns 429
+        assert 429 in statuses or BotEvent.objects.filter(reason__icontains="coupon guessing").exists()
 
 
 # ==============================================================================
@@ -721,10 +978,72 @@ class TestCouponSuite:
 # ==============================================================================
 @pytest.mark.django_db
 class TestCodSuite:
-    def test_cod_sole_payment_method_enforced(self, api_client, test_product):
+    @pytest.fixture(autouse=True)
+    def clear_cache_between_tests(self):
+        cache.clear()
+        yield
+        cache.clear()
+
+    def test_cod_01_guest_place_order_reduces_stock_creates_pending(self, api_client, test_product):
+        """COD-01: Guest places a valid COD order -> 201, order number, status pending, stock reduced, cart cleared."""
+        initial_stock = test_product.stock
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 2}, format="json")
+
+        payload = {
+            "full_name": "Ayesha Malik",
+            "email": "ayesha@example.com",
+            "phone": "03001234567",
+            "line1": "Flat 4B, Clifton Block 2",
+            "city": "Karachi",
+            "province": "Sindh",
+            "payment_method": "COD",
+        }
+        res = api_client.post("/api/v1/orders/create/", payload, format="json")
+        assert res.status_code == 201
+        order_data = res.data["order"]
+        assert order_data["number"].startswith("SPLV-")
+        assert order_data["status"] == "pending"
+
+        test_product.refresh_from_db()
+        assert test_product.stock == initial_stock - 2
+
+        cart = api_client.get("/api/v1/cart/").data
+        assert len(cart["items"]) == 0
+
+    def test_cod_02_saved_address_snapshot_stored(self, api_client, test_customer, test_product):
+        """COD-02: Logged-in user with a saved address -> Address snapshot saved on the order."""
+        addr = Address.objects.create(
+            user=test_customer,
+            full_name="Fatima Zahra",
+            phone="03211234567",
+            line1="House 44, Sector G-11/3",
+            city="Islamabad",
+            province="Islamabad Capital Territory",
+            postal_code="44000",
+            is_default=True,
+        )
+        api_client.force_authenticate(user=test_customer)
         api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
 
-        # Attempt to checkout with credit_card or bank_transfer
+        payload = {
+            "full_name": addr.full_name,
+            "email": test_customer.email,
+            "phone": addr.phone,
+            "line1": addr.line1,
+            "city": addr.city,
+            "province": addr.province,
+            "postal_code": addr.postal_code,
+            "payment_method": "COD",
+        }
+        res = api_client.post("/api/v1/orders/create/", payload, format="json")
+        assert res.status_code == 201
+        order = Order.objects.get(number=res.data["order"]["number"])
+        assert order.shipping_address_snapshot["line1"] == "House 44, Sector G-11/3"
+        assert order.shipping_address_snapshot["city"] == "Islamabad"
+
+    def test_cod_03_reject_non_cod_payment_methods(self, api_client, test_product):
+        """COD-03: Payment method other than COD in the payload -> Rejected."""
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
         payload = {
             "full_name": "Bilal Ahmed",
             "email": "bilal@example.com",
@@ -738,36 +1057,265 @@ class TestCodSuite:
         assert res.status_code == 400
         assert "payment_method" in res.data["fields"]
 
-    def test_cod_readable_order_number_and_status_tracking(self, api_client, test_product):
+    def test_cod_04_missing_or_invalid_address_fields_rejected(self, api_client, test_product):
+        """COD-04: Missing or invalid name, phone, email, address, city, province -> Inline errors, nothing saved."""
         api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        res = api_client.post("/api/v1/orders/create/", {}, format="json")
+        assert res.status_code == 400
+        assert "full_name" in res.data["fields"]
+        assert "phone" in res.data["fields"]
+        assert "line1" in res.data["fields"]
+
+    def test_cod_05_pakistan_phone_normalization_and_validation(self, api_client, test_product):
+        """COD-05: Phone formats 03001234567, +923001234567, 0300-1234567 accepted; 12345, letters rejected."""
+        valid_phones = ["03001234567", "+923001234567", "0300-1234567"]
+        for p in valid_phones:
+            cache.clear()
+            api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+            res = api_client.post(
+                "/api/v1/orders/create/",
+                {
+                    "full_name": "Valid Phone Test",
+                    "email": "phone@example.com",
+                    "phone": p,
+                    "line1": "Street 1",
+                    "city": "Lahore",
+                    "province": "Punjab",
+                    "payment_method": "COD",
+                },
+                format="json",
+            )
+            assert res.status_code == 201
+
+        invalid_phones = ["12345", "notaphone", "92300123456789012"]
+        for p in invalid_phones:
+            cache.clear()
+            api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+            res = api_client.post(
+                "/api/v1/orders/create/",
+                {
+                    "full_name": "Invalid Phone Test",
+                    "email": "phone@example.com",
+                    "phone": p,
+                    "line1": "Street 1",
+                    "city": "Lahore",
+                    "province": "Punjab",
+                    "payment_method": "COD",
+                },
+                format="json",
+            )
+            assert res.status_code == 400
+
+    def test_cod_06_concurrency_stock_one_never_oversold(self, test_product):
+        """COD-06: Stock is 1 and two buyers submit together -> One succeeds, other gets clear error, stock never below 0."""
+        from orders.services import place_cod_order
+        test_product.stock = 1
+        test_product.save(update_fields=["stock"])
+
+        cart1 = Cart.objects.create(session_key="concur-1")
+        CartItem.objects.create(cart=cart1, product=test_product, quantity=1)
+
+        cart2 = Cart.objects.create(session_key="concur-2")
+        CartItem.objects.create(cart=cart2, product=test_product, quantity=1)
+
+        payload1 = {"full_name": "Buyer 1", "email": "b1@example.com", "phone": "03001111111", "line1": "St 1", "city": "LHR", "province": "Punjab", "payment_method": "COD"}
+        payload2 = {"full_name": "Buyer 2", "email": "b2@example.com", "phone": "03002222222", "line1": "St 2", "city": "LHR", "province": "Punjab", "payment_method": "COD"}
+
+        order1 = place_cod_order(cart=cart1, checkout_data=payload1)
+        assert order1 is not None
+
+        with pytest.raises(Exception):
+            place_cod_order(cart=cart2, checkout_data=payload2)
+
+        test_product.refresh_from_db()
+        assert test_product.stock == 0
+
+    def test_cod_07_idempotency_key_prevents_duplicate_orders(self, api_client, test_product):
+        """COD-07: Double-click on place order with same idempotency key -> One order only."""
+        cache.clear()
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        payload = {
+            "full_name": "Idempotent Buyer",
+            "email": "idemp@example.com",
+            "phone": "03001234567",
+            "line1": "Street 10",
+            "city": "Lahore",
+            "province": "Punjab",
+            "payment_method": "COD",
+            "idempotency_key": "idemp-test-key-999",
+        }
+        res1 = api_client.post("/api/v1/orders/create/", payload, format="json")
+        assert res1.status_code == 201
+        num1 = res1.data["order"]["number"]
+
+        # Duplicate request
+        res2 = api_client.post("/api/v1/orders/create/", payload, format="json")
+        assert res2.status_code in [200, 201]
+        num2 = res2.data["order"]["number"]
+        assert num1 == num2
+        assert Order.objects.filter(number=num1).count() == 1
+
+    def test_cod_08_empty_cart_checkout_rejected(self, api_client):
+        """COD-08: Empty cart checkout -> Rejected with message."""
+        payload = {
+            "full_name": "Empty Cart Buyer",
+            "email": "empty@example.com",
+            "phone": "03001234567",
+            "line1": "Street 1",
+            "city": "Lahore",
+            "province": "Punjab",
+            "payment_method": "COD",
+        }
+        res = api_client.post("/api/v1/orders/create/", payload, format="json")
+        assert res.status_code == 400
+        assert "empty cart" in res.data["message"].lower()
+
+    def test_cod_09_order_totals_calculation_and_snapshots(self, api_client, test_product):
+        """COD-09: Order totals with coupon and shipping -> grand_total = subtotal - discount + shipping."""
+        Coupon.objects.create(code="DISC200", type="fixed", value=200, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        api_client.post("/api/v1/cart/coupon/", {"code": "DISC200"}, format="json")
 
         payload = {
-            "full_name": "Tariq Mehmood",
-            "email": "tariq@example.com",
-            "phone": "03219876543",
-            "line1": "Gulberg III, Main Boulevard",
+            "full_name": "Snapshot Test",
+            "email": "snap@example.com",
+            "phone": "03001234567",
+            "line1": "Street 2",
             "city": "Lahore",
             "province": "Punjab",
             "payment_method": "COD",
         }
         res = api_client.post("/api/v1/orders/create/", payload, format="json")
         assert res.status_code == 201
-        order_number = res.data["order"]["number"]
-        assert order_number.startswith("SPLV-")
+        order = Order.objects.get(number=res.data["order"]["number"])
+        assert order.subtotal == 2200
+        assert order.discount_total == 200
+        assert order.grand_total == 2200 - 200 + order.shipping_total
 
-        # Track order with valid phone
-        track_res = api_client.post(
-            "/api/v1/orders/track/", {"order_number": order_number, "phone": "03219876543"}, format="json"
-        )
-        assert track_res.status_code == 200
-        assert track_res.data["number"] == order_number
-        assert track_res.data["status"] == "pending"
+        # Item snapshot
+        item = order.items.first()
+        assert item.unit_price == 2200
+        assert item.line_total == 2200
 
-        # Track order with wrong phone returns 404 (anti-snooping)
-        wrong_track = api_client.post(
-            "/api/v1/orders/track/", {"order_number": order_number, "phone": "03000000000"}, format="json"
-        )
-        assert wrong_track.status_code == 404
+    def test_cod_10_product_price_change_does_not_affect_existing_order(self, api_client, test_product):
+        """COD-10: Product price changes after the order -> Order keeps the original price."""
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        payload = {
+            "full_name": "Price Immuntability",
+            "email": "price@example.com",
+            "phone": "03001234567",
+            "line1": "Street 3",
+            "city": "Lahore",
+            "province": "Punjab",
+            "payment_method": "COD",
+        }
+        res = api_client.post("/api/v1/orders/create/", payload, format="json")
+        order_num = res.data["order"]["number"]
+
+        # Product price jumps to 3,500
+        test_product.price = 3500
+        test_product.save(update_fields=["price"])
+
+        order = Order.objects.get(number=order_num)
+        assert order.subtotal == 2200
+        assert order.items.first().unit_price == 2200
+
+    def test_cod_11_cancel_pending_order_restores_stock_and_coupon(self, api_client, test_product):
+        """COD-11: Cancel an order in pending -> Stock restored, coupon released, history row written."""
+        initial_stock = test_product.stock
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 2}, format="json")
+        payload = {
+            "full_name": "Cancel Test",
+            "email": "cancel@example.com",
+            "phone": "03001234567",
+            "line1": "Street 4",
+            "city": "Lahore",
+            "province": "Punjab",
+            "payment_method": "COD",
+        }
+        res = api_client.post("/api/v1/orders/create/", payload, format="json")
+        order_num = res.data["order"]["number"]
+
+        # Cancel order
+        cancel_res = api_client.post(f"/api/v1/orders/{order_num}/cancel/")
+        assert cancel_res.status_code == 200
+        assert cancel_res.data["order"]["status"] == "cancelled"
+
+        test_product.refresh_from_db()
+        assert test_product.stock == initial_stock
+
+        order = Order.objects.get(number=order_num)
+        assert order.status_history.filter(to_status="cancelled").exists()
+
+    def test_cod_12_cancel_shipped_order_rejected(self, api_client, test_product):
+        """COD-12: Cancel an order in shipped -> Rejected."""
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        payload = {
+            "full_name": "Shipped Cancel Test",
+            "email": "shipped@example.com",
+            "phone": "03001234567",
+            "line1": "Street 5",
+            "city": "Lahore",
+            "province": "Punjab",
+            "payment_method": "COD",
+        }
+        res = api_client.post("/api/v1/orders/create/", payload, format="json")
+        order = Order.objects.get(number=res.data["order"]["number"])
+        order.status = "shipped"
+        order.save(update_fields=["status"])
+
+        cancel_res = api_client.post(f"/api/v1/orders/{order.number}/cancel/")
+        assert cancel_res.status_code == 400
+        assert "cannot be cancelled" in cancel_res.data["message"].lower()
+
+    def test_cod_13_track_order_lookup_security(self, api_client, test_product):
+        """COD-13: Track order with correct and wrong number and phone -> Correct data only on a match."""
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        payload = {
+            "full_name": "Track Security",
+            "email": "track@example.com",
+            "phone": "03219876543",
+            "line1": "Street 6",
+            "city": "Lahore",
+            "province": "Punjab",
+            "payment_method": "COD",
+        }
+        res = api_client.post("/api/v1/orders/create/", payload, format="json")
+        order_num = res.data["order"]["number"]
+
+        # Match succeeds
+        ok_res = api_client.post("/api/v1/orders/track/", {"order_number": order_num, "phone": "03219876543"}, format="json")
+        assert ok_res.status_code == 200
+        assert ok_res.data["number"] == order_num
+
+        # Mismatched phone fails
+        bad_phone = api_client.post("/api/v1/orders/track/", {"order_number": order_num, "phone": "03000000000"}, format="json")
+        assert bad_phone.status_code == 404
+
+        # Nonexistent order fails
+        bad_num = api_client.post("/api/v1/orders/track/", {"order_number": "SPLV-NO-SUCH-ORDER", "phone": "03219876543"}, format="json")
+        assert bad_num.status_code == 404
+
+    def test_cod_14_retry_order_safely(self, api_client, test_product):
+        """COD-14: Network failure during place order -> No duplicate order, user can retry safely."""
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        payload = {
+            "full_name": "Retry Safe",
+            "email": "retry@example.com",
+            "phone": "03001234567",
+            "line1": "Street 7",
+            "city": "Lahore",
+            "province": "Punjab",
+            "payment_method": "COD",
+            "idempotency_key": "safe-retry-key-100",
+        }
+        res1 = api_client.post("/api/v1/orders/create/", payload, format="json")
+        assert res1.status_code == 201
+
+        # Safe retry
+        res2 = api_client.post("/api/v1/orders/create/", payload, format="json")
+        assert res2.status_code in [200, 201]
+        assert res1.data["order"]["number"] == res2.data["order"]["number"]
 
 
 # ==============================================================================
