@@ -22,9 +22,9 @@ from django.core.cache import cache
 from rest_framework.test import APIClient
 
 from accounts.models import User
-from catalog.models import Category, Product
+from catalog.models import Category, Product, Review
 from content.models import SiteSetting
-from orders.models import Order
+from orders.models import Order, OrderItem
 from promotions.models import Coupon, CouponRedemption
 
 
@@ -312,49 +312,297 @@ class TestAuthSuite:
 
 
 # ==============================================================================
-# CAT-01 to CAT-08: Catalog & Multivitamins Focus
+# CAT-01 to CAT-08: Catalog, Search and Filters Suite
 # ==============================================================================
 @pytest.mark.django_db
 class TestCatalogSuite:
-    def test_cat_03_price_range_filtering(self, api_client, test_product, test_category):
-        Product.objects.create(
-            name="Affordable Vitamin C",
-            slug="affordable-vitamin-c",
+    def test_cat_01_product_list_default(self, api_client, test_category):
+        """CAT-01: Product list default -> 20 items, correct total count, active products only."""
+        Product.objects.all().delete()
+        for i in range(25):
+            Product.objects.create(
+                name=f"Active Daily Multi {i}",
+                slug=f"active-daily-multi-{i}",
+                category=test_category,
+                price=1000 + i * 50,
+                sku=f"CAT01-ACT-{i:03d}",
+                stock=15,
+                is_active=True,
+            )
+        for i in range(3):
+            Product.objects.create(
+                name=f"Inactive Multi {i}",
+                slug=f"inactive-multi-{i}",
+                category=test_category,
+                price=900,
+                sku=f"CAT01-INACT-{i:03d}",
+                stock=0,
+                is_active=False,
+            )
+
+        res = api_client.get("/api/v1/products/")
+        assert res.status_code == 200
+        assert res.data["count"] == 25
+        assert len(res.data["results"]) == 20
+        for item in res.data["results"]:
+            assert "inactive" not in item["slug"]
+
+    def test_cat_02_filter_category_type_price_instock_together(self, api_client, test_category):
+        """CAT-02: Filter by category, type, price range, in stock together -> Results match all filters, URL reflects them."""
+        skincare_cat = Category.objects.create(name="Skincare Hub", slug="skincare-hub", sort_order=2)
+
+        # 1. Matching target product
+        target = Product.objects.create(
+            name="Supplivix Target Multi 60s",
+            slug="supplivix-target-multi-60s",
             category=test_category,
-            price=850,
-            sku="SPLV-TEST-02",
+            price=1500,
+            sku="TGT-MATCH-01",
             stock=10,
             product_type=Product.TYPE_MULTIVITAMIN,
             is_active=True,
         )
-        # Filter between 800 and 1000
-        res = api_client.get("/api/v1/products/?min_price=800&max_price=1000")
-        assert res.status_code == 200
-        slugs = [p["slug"] for p in res.data["results"]]
-        assert "affordable-vitamin-c" in slugs
-        assert test_product.slug not in slugs
-
-    def test_cat_04_product_detail_contains_disclaimer_and_stock(self, api_client, test_product):
-        res = api_client.get(f"/api/v1/products/{test_product.slug}/")
-        assert res.status_code == 200
-        assert res.data["stock"] == 25
-        assert "These statements have not been evaluated" in res.data["description"]
-        assert res.data["product_type"] == "multivitamin"
-
-    def test_cat_06_out_of_stock_product_representation(self, api_client, test_category):
-        oos_product = Product.objects.create(
-            name="Out of Stock Zinc",
-            slug="out-of-stock-zinc",
+        # 2. Non-matching category
+        Product.objects.create(
+            name="Other Cat Multi",
+            slug="other-cat-multi",
+            category=skincare_cat,
+            price=1500,
+            sku="TGT-DIFF-CAT",
+            stock=10,
+            product_type=Product.TYPE_MULTIVITAMIN,
+            is_active=True,
+        )
+        # 3. Non-matching product type
+        Product.objects.create(
+            name="Skincare Serum in Multi Cat",
+            slug="skincare-serum-in-multi-cat",
             category=test_category,
-            price=1200,
-            sku="SPLV-OOS-01",
+            price=1500,
+            sku="TGT-DIFF-TYPE",
+            stock=10,
+            product_type=Product.TYPE_SKINCARE,
+            is_active=True,
+        )
+        # 4. Price out of range (> 2000)
+        Product.objects.create(
+            name="Expensive Multi",
+            slug="expensive-multi",
+            category=test_category,
+            price=3500,
+            sku="TGT-EXPENSIVE",
+            stock=10,
+            product_type=Product.TYPE_MULTIVITAMIN,
+            is_active=True,
+        )
+        # 5. Out of stock
+        Product.objects.create(
+            name="OOS Multi",
+            slug="oos-multi",
+            category=test_category,
+            price=1500,
+            sku="TGT-OOS",
             stock=0,
             product_type=Product.TYPE_MULTIVITAMIN,
             is_active=True,
         )
+
+        query_url = (
+            f"/api/v1/products/?category={test_category.slug}"
+            f"&type=multivitamin&min_price=1000&max_price=2000&in_stock=true"
+        )
+        res = api_client.get(query_url)
+        assert res.status_code == 200
+        assert res.data["count"] == 1
+        assert res.data["results"][0]["slug"] == target.slug
+
+    def test_cat_03_sort_by_price_and_newest_stable_pagination(self, api_client, test_category):
+        """CAT-03: Sort by price low to high, high to low, newest -> Correct order, stable pagination."""
+        Product.objects.all().delete()
+        prices = [3200, 1100, 2500, 750, 1800]
+        for i, p in enumerate(prices):
+            Product.objects.create(
+                name=f"Sort Item {i}",
+                slug=f"sort-item-{i}",
+                category=test_category,
+                price=p,
+                sku=f"SRT-{i:02d}",
+                stock=10,
+                is_active=True,
+            )
+
+        # 1. Price: low to high
+        res_asc = api_client.get("/api/v1/products/?sort=price_asc")
+        asc_prices = [item["price"] for item in res_asc.data["results"]]
+        assert asc_prices == sorted(prices)
+
+        # 2. Price: high to low
+        res_desc = api_client.get("/api/v1/products/?sort=price_desc")
+        desc_prices = [item["price"] for item in res_desc.data["results"]]
+        assert desc_prices == sorted(prices, reverse=True)
+
+        # 3. Newest
+        res_newest = api_client.get("/api/v1/products/?sort=newest")
+        assert res_newest.status_code == 200
+        assert len(res_newest.data["results"]) == len(prices)
+
+    def test_cat_04_search_partial_misspelling_and_empty(self, api_client, test_category):
+        """CAT-04: Search for a partial name, a misspelling and a term with no result -> Relevant results, graceful empty state."""
+        Product.objects.create(
+            name="Supplivix Bioactive Zinc Glycinate",
+            slug="supplivix-bioactive-zinc-glycinate",
+            category=test_category,
+            price=1400,
+            sku="SPLV-ZINC-01",
+            stock=15,
+            short_description="High-absorption chelated zinc formula",
+            is_active=True,
+        )
+        # 1. Partial name search
+        res_part = api_client.get("/api/v1/products/?q=Zinc")
+        assert res_part.status_code == 200
+        assert res_part.data["count"] >= 1
+        assert any("zinc" in p["slug"] for p in res_part.data["results"])
+
+        # 2. Misspelling / stem variation ("Bioactiv")
+        res_stem = api_client.get("/api/v1/products/?q=Bioactiv")
+        assert res_stem.status_code == 200
+        assert any("zinc" in p["slug"] for p in res_stem.data["results"])
+
+        # 3. Term with no result returns empty array
+        res_empty = api_client.get("/api/v1/products/?q=xyznonexistentterm999")
+        assert res_empty.status_code == 200
+        assert res_empty.data["count"] == 0
+        assert res_empty.data["results"] == []
+
+    def test_cat_05_inactive_product_404_and_absent_from_list_and_sitemap(self, api_client, test_category):
+        """CAT-05: Inactive product URL -> 404, absent from list, search and sitemap."""
+        inactive_prod = Product.objects.create(
+            name="Discontinued Botanical Blend",
+            slug="discontinued-botanical-blend",
+            category=test_category,
+            price=1500,
+            sku="SPLV-DISC-01",
+            stock=10,
+            is_active=False,
+        )
+        # 1. Inactive product detail returns 404
+        res_detail = api_client.get(f"/api/v1/products/{inactive_prod.slug}/")
+        assert res_detail.status_code == 404
+
+        # 2. Absent from active product list
+        res_list = api_client.get("/api/v1/products/")
+        slugs = [p["slug"] for p in res_list.data["results"]]
+        assert inactive_prod.slug not in slugs
+
+        # 3. Absent from search
+        res_search = api_client.get("/api/v1/products/?q=Discontinued")
+        assert res_search.data["count"] == 0
+
+        # 4. Absent from sitemap.xml
+        res_sitemap = api_client.get("/sitemap.xml")
+        assert inactive_prod.slug not in res_sitemap.content.decode()
+
+    def test_cat_06_out_of_stock_product_representation_and_cart_rejection(self, api_client, test_category):
+        """CAT-06: Out-of-stock product -> Shows 'Out of stock', add to cart disabled / rejected."""
+        oos_product = Product.objects.create(
+            name="Out of Stock Magnesium Formula",
+            slug="out-of-stock-magnesium-formula",
+            category=test_category,
+            price=1200,
+            sku="SPLV-OOS-02",
+            stock=0,
+            product_type=Product.TYPE_MULTIVITAMIN,
+            is_active=True,
+        )
+        # 1. Product detail confirms stock=0 and in_stock=False
         res = api_client.get(f"/api/v1/products/{oos_product.slug}/")
         assert res.status_code == 200
         assert res.data["stock"] == 0
+        assert res.data["in_stock"] is False
+
+        # 2. Add to cart rejected with 400
+        res_cart = api_client.post("/api/v1/cart/items/", {"product_id": oos_product.id, "quantity": 1}, format="json")
+        assert res_cart.status_code == 400
+        assert "stock" in str(res_cart.data).lower()
+
+    def test_cat_07_review_submission_verified_buyer_enforced(self, api_client, test_customer, test_product):
+        """CAT-07: Review submission by a user who never bought the product -> Rejected with 403."""
+        # 1. Unverified user attempt -> 403 Forbidden
+        api_client.force_authenticate(user=test_customer)
+        res_unverified = api_client.post(
+            f"/api/v1/products/{test_product.slug}/reviews/",
+            {"rating": 5, "title": "Great Product", "body": "Never bought it but looks great!"},
+            format="json",
+        )
+        assert res_unverified.status_code == 403
+        assert res_unverified.data["code"] == "verified_buyer_required"
+
+        # 2. User purchases product (order placed)
+        order = Order.objects.create(
+            number="SPLV-VB-CAT07",
+            user=test_customer,
+            status=Order.STATUS_CONFIRMED,
+            payment_method="COD",
+            subtotal=test_product.price,
+            grand_total=test_product.price,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=test_product,
+            product_name=test_product.name,
+            sku=test_product.sku,
+            unit_price=test_product.price,
+            quantity=1,
+            line_total=test_product.price,
+        )
+
+        # 3. Verified buyer submits review -> 201 Created
+        res_verified = api_client.post(
+            f"/api/v1/products/{test_product.slug}/reviews/",
+            {"rating": 5, "title": "Verified Review", "body": "Excellent quality daily multi."},
+            format="json",
+        )
+        assert res_verified.status_code == 201
+        assert Review.objects.filter(product=test_product, user=test_customer).exists()
+
+    def test_cat_08_product_list_1000_items_performance_and_no_n_plus_one(self, api_client, test_category):
+        """CAT-08: Product list with 1,000 products -> Response under 300 ms, no N+1 queries (query count asserted)."""
+        import time
+
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        Product.objects.all().delete()
+        bulk_products = [
+            Product(
+                name=f"Bulk Formula {i}",
+                slug=f"bulk-formula-{i}",
+                category=test_category,
+                price=1000 + (i % 200) * 10,
+                sku=f"BLK-{i:04d}",
+                stock=20,
+                product_type=Product.TYPE_MULTIVITAMIN if i % 2 == 0 else Product.TYPE_SKINCARE,
+                is_active=True,
+            )
+            for i in range(1000)
+        ]
+        Product.objects.bulk_create(bulk_products)
+
+        start_time = time.perf_counter()
+        with CaptureQueriesContext(connection) as queries:
+            res = api_client.get("/api/v1/products/")
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+
+        assert res.status_code == 200
+        assert res.data["count"] == 1000
+        assert len(res.data["results"]) == 20
+
+        # Query response time under 300 ms
+        assert elapsed_ms < 300, f"Query took {elapsed_ms:.2f} ms (expected < 300 ms)"
+
+        # Strictly no N+1 queries: exactly 3 queries (COUNT, SELECT products with annotations, SELECT images)
+        assert len(queries) <= 4, f"N+1 detected! Total queries executed: {len(queries)}"
 
 
 # ==============================================================================

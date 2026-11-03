@@ -18,7 +18,15 @@ export default function ProductCard({ product }) {
       ? Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)
       : 0;
 
-  const isOutOfStock = product.inventory_count <= 0;
+  const stockCount =
+    product.stock !== undefined
+      ? product.stock
+      : product.inventory_count !== undefined
+      ? product.inventory_count
+      : product.in_stock !== undefined
+      ? (product.in_stock ? 10 : 0)
+      : 0;
+  const isOutOfStock = stockCount <= 0;
 
   const handleAddToCart = async (e) => {
     e.preventDefault();

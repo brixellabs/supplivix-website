@@ -181,6 +181,7 @@ export default function ShopPage() {
   const searchQuery = searchParams.get('q') || '';
   const currentOrdering = searchParams.get('ordering') || '-created_at';
   const inStockOnly = searchParams.get('in_stock') === 'true';
+  const currentType = searchParams.get('type') || '';
   const minPrice = searchParams.get('min_price') || '';
   const maxPrice = searchParams.get('max_price') || '';
 
@@ -207,6 +208,7 @@ export default function ShopPage() {
       if (searchQuery) params.search = searchQuery;
       if (currentOrdering) params.ordering = currentOrdering;
       if (inStockOnly) params.in_stock = 'true';
+      if (currentType) params.type = currentType;
       if (minPrice) params.min_price = minPrice;
       if (maxPrice) params.max_price = maxPrice;
 
@@ -221,6 +223,9 @@ export default function ShopPage() {
       let filtered = [...FALLBACK_CATALOG];
       if (currentCategory) {
         filtered = filtered.filter((p) => p.category_slug === currentCategory);
+      }
+      if (currentType) {
+        filtered = filtered.filter((p) => p.product_type === currentType);
       }
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -248,7 +253,7 @@ export default function ShopPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentCategory, searchQuery, currentOrdering, inStockOnly, minPrice, maxPrice]);
+  }, [currentCategory, currentType, searchQuery, currentOrdering, inStockOnly, minPrice, maxPrice]);
 
   useEffect(() => {
     fetchProducts();
@@ -257,6 +262,7 @@ export default function ShopPage() {
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (currentCategory) count++;
+    if (currentType) count++;
     if (searchQuery) count++;
     if (inStockOnly) count++;
     if (minPrice || maxPrice) count++;
@@ -303,16 +309,46 @@ export default function ShopPage() {
               <button
                 key={cat.slug}
                 type="button"
-                onClick={() => {
-                  updateParam('category', cat.slug);
-                  setMobileFilterOpen(false);
-                }}
+                data-testid={`category-filter-${cat.slug}`}
+                onClick={() => updateParam('category', cat.slug)}
                 className={`w-full text-left px-3 py-2 rounded-sm text-xs transition-colors flex items-center justify-between ${isActive
                   ? 'bg-brand-ink text-white font-bold'
                   : 'text-ink-muted hover:bg-surface-subtle hover:text-brand-ink'
                   }`}
               >
                 <span>{cat.label}</span>
+                {isActive && <Icon name="check" className="text-xs" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Product Type Filter */}
+      <div className="pt-4 border-t border-surface-border">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-brand-ink mb-3">
+          Product Type
+        </h3>
+        <div className="space-y-1">
+          {[
+            { type: '', label: 'All Types' },
+            { type: 'multivitamin', label: 'Multivitamins' },
+            { type: 'skincare', label: 'Skin Care' },
+          ].map((item) => {
+            const isActive = currentType === item.type;
+            return (
+              <button
+                key={item.type}
+                type="button"
+                data-testid={`type-filter-${item.type || 'all'}`}
+                onClick={() => updateParam('type', item.type)}
+                className={`w-full text-left px-3 py-2 rounded-sm text-xs transition-colors flex items-center justify-between ${
+                  isActive
+                    ? 'bg-brand-ink text-white font-bold'
+                    : 'text-ink-muted hover:bg-surface-subtle hover:text-brand-ink'
+                }`}
+              >
+                <span>{item.label}</span>
                 {isActive && <Icon name="check" className="text-xs" />}
               </button>
             );
@@ -352,6 +388,7 @@ export default function ShopPage() {
         <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-brand-ink">
           <input
             type="checkbox"
+            data-testid="in-stock-checkbox"
             checked={inStockOnly}
             onChange={(e) => updateParam('in_stock', e.target.checked ? 'true' : '')}
             className="rounded-sm border-surface-border text-brand-green focus:ring-brand-green h-4 w-4"
@@ -405,6 +442,7 @@ export default function ShopPage() {
             {/* Mobile Filter Trigger Button */}
             <button
               type="button"
+              data-testid="mobile-filter-drawer-btn"
               onClick={() => setMobileFilterOpen(true)}
               className="lg:hidden inline-flex items-center gap-2 bg-surface-subtle border border-surface-border text-brand-ink px-3 py-2 rounded-sm text-xs font-bold"
             >
@@ -523,6 +561,7 @@ export default function ShopPage() {
               <Button
                 variant="primary"
                 size="md"
+                data-testid="apply-filters-btn"
                 onClick={() => setMobileFilterOpen(false)}
                 className="w-full"
               >

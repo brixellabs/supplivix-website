@@ -74,12 +74,25 @@ class ProductListSerializer(serializers.ModelSerializer):
         ]
 
     def get_rating_average(self, obj):
+        if hasattr(obj, 'annotated_rating_average'):
+            if obj.annotated_rating_average is not None:
+                return round(float(obj.annotated_rating_average), 1)
+            return 5.0
+        if hasattr(obj, '_prefetched_objects_cache') and 'reviews' in obj._prefetched_objects_cache:
+            approved = [r for r in obj.reviews.all() if r.is_approved]
+            if not approved:
+                return 5.0
+            return round(sum(r.rating for r in approved) / len(approved), 1)
         approved = obj.reviews.filter(is_approved=True)
         if not approved.exists():
             return 5.0
         return round(sum(r.rating for r in approved) / approved.count(), 1)
 
     def get_reviews_count(self, obj):
+        if hasattr(obj, 'annotated_reviews_count'):
+            return obj.annotated_reviews_count or 0
+        if hasattr(obj, '_prefetched_objects_cache') and 'reviews' in obj._prefetched_objects_cache:
+            return len([r for r in obj.reviews.all() if r.is_approved])
         return obj.reviews.filter(is_approved=True).count()
 
 
@@ -109,10 +122,23 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return ReviewSerializer(approved, many=True).data
 
     def get_rating_average(self, obj):
+        if hasattr(obj, 'annotated_rating_average'):
+            if obj.annotated_rating_average is not None:
+                return round(float(obj.annotated_rating_average), 1)
+            return 5.0
+        if hasattr(obj, '_prefetched_objects_cache') and 'reviews' in obj._prefetched_objects_cache:
+            approved = [r for r in obj.reviews.all() if r.is_approved]
+            if not approved:
+                return 5.0
+            return round(sum(r.rating for r in approved) / len(approved), 1)
         approved = obj.reviews.filter(is_approved=True)
         if not approved.exists():
             return 5.0
         return round(sum(r.rating for r in approved) / approved.count(), 1)
 
     def get_reviews_count(self, obj):
+        if hasattr(obj, 'annotated_reviews_count'):
+            return obj.annotated_reviews_count or 0
+        if hasattr(obj, '_prefetched_objects_cache') and 'reviews' in obj._prefetched_objects_cache:
+            return len([r for r in obj.reviews.all() if r.is_approved])
         return obj.reviews.filter(is_approved=True).count()

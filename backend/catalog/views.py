@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Avg, Count, Q
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -36,7 +36,11 @@ class ProductListView(generics.ListAPIView):
         queryset = (
             Product.objects.filter(is_active=True)
             .select_related('category')
-            .prefetch_related('images', 'reviews')
+            .prefetch_related('images')
+            .annotate(
+                annotated_reviews_count=Count('reviews', filter=Q(reviews__is_approved=True)),
+                annotated_rating_average=Avg('reviews__rating', filter=Q(reviews__is_approved=True)),
+            )
         )
 
         category_param = self.request.query_params.get('category')
@@ -45,7 +49,7 @@ class ProductListView(generics.ListAPIView):
                 Q(category__slug=category_param) | Q(category__parent__slug=category_param)
             )
 
-        product_type = self.request.query_params.get('type')
+        product_type = self.request.query_params.get('type') or self.request.query_params.get('product_type')
         if product_type in [Product.TYPE_MULTIVITAMIN, Product.TYPE_SKINCARE]:
             queryset = queryset.filter(product_type=product_type)
 
@@ -65,23 +69,33 @@ class ProductListView(generics.ListAPIView):
         if is_featured in ('true', '1'):
             queryset = queryset.filter(is_featured=True)
 
-        query = self.request.query_params.get('q')
+        query = self.request.query_params.get('q') or self.request.query_params.get('search')
         if query:
             q_clean = query.strip()
-            queryset = queryset.filter(
+            search_filter = (
                 Q(name__icontains=q_clean) |
                 Q(short_description__icontains=q_clean) |
                 Q(description__icontains=q_clean) |
-                Q(sku__icontains=q_clean)
+                Q(sku__icontains=q_clean) |
+                Q(brand__icontains=q_clean)
             )
+            words = [w for w in q_clean.split() if len(w) >= 3]
+            for word in words:
+                search_filter |= Q(name__icontains=word) | Q(short_description__icontains=word)
+                if len(word) >= 5:
+                    stem = word[:len(word) - 1]
+                    search_filter |= Q(name__icontains=stem)
+            queryset = queryset.filter(search_filter)
 
-        sort = self.request.query_params.get('sort', 'popular')
-        if sort == 'price_asc':
+        sort = self.request.query_params.get('sort') or self.request.query_params.get('ordering', 'popular')
+        if sort in ('price_asc', 'price'):
             queryset = queryset.order_by('price', 'id')
-        elif sort == 'price_desc':
+        elif sort in ('price_desc', '-price'):
             queryset = queryset.order_by('-price', 'id')
-        elif sort == 'newest':
+        elif sort in ('newest', '-created_at'):
             queryset = queryset.order_by('-created_at', 'id')
+        elif sort in ('rating', '-rating'):
+            queryset = queryset.order_by('-annotated_rating_average', '-stock', 'id')
         else:  # popular / default
             queryset = queryset.order_by('-is_featured', '-stock', 'id')
 

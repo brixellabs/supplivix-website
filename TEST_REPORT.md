@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **188** (103 Backend Pytest + 61 Frontend Vitest + 24 Playwright E2E)  
+Total Automated Tests: **229** (108 Backend Pytest + 69 Frontend Vitest + 52 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -24,18 +24,19 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Bot Detection & Security** | `SEC-01` to `SEC-11` | Backend Pytest (DRF) | 11 | Passed |
 | **Catalog Seeding & Purge** | `DEMO-01` to `DEMO-10` | Backend Pytest (Django) | 10 | Passed |
 | **Core Models & Database** | `MOD-01` to `MOD-09` | Backend Pytest (Django) | 9 | Passed |
-| **Regression & Full Suite Checks** | Integration | Backend Pytest | 9 | Passed |
+| **Regression & Full Suite Checks** | Integration | Backend Pytest | 14 | Passed |
 | **Authentication & Accounts UI** | `AUTH-01` to `AUTH-10` | Frontend Vitest (React) | 10 | Passed |
+| **Catalog, Search & Filter UI** | `CAT-01` to `CAT-08` | Frontend Vitest (React) | 8 | Passed |
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend Vitest (React) | 12 | Passed |
 | **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend Vitest (React) | 15 | Passed |
 | **Staff Dashboard UI** | `DASH-01` to `DASH-07` | Frontend Vitest (React) | 7 | Passed |
 | **SEO Head & Structured Data** | `SEO-UI-01` to `SEO-UI-06` | Frontend Vitest (React) | 6 | Passed |
 | **UI Invariants & Viewports** | `UI-01` to `UI-11` | Frontend Vitest (React) | 11 | Passed |
-| **E2E Journeys: Chromium** | `AUTH-01` to `AUTH-10` | Playwright Desktop Chrome | 6 | Passed |
-| **E2E Journeys: Firefox** | `AUTH-01` to `AUTH-10` | Playwright Desktop Firefox | 6 | Passed |
-| **E2E Journeys: WebKit** | `AUTH-01` to `AUTH-10` | Playwright Desktop Safari | 6 | Passed |
-| **E2E Journeys: Mobile Viewport** | `AUTH-01` to `AUTH-10` | Playwright Pixel 5 (360x740) | 6 | Passed |
-| **Total Test Suite** | | | **188** | **Passed (100%)** |
+| **E2E Journeys: Chromium** | `AUTH-01` to `AUTH-10`, `CAT-01` to `CAT-07` | Playwright Desktop Chrome | 13 | Passed |
+| **E2E Journeys: Firefox** | `AUTH-01` to `AUTH-10`, `CAT-01` to `CAT-07` | Playwright Desktop Firefox | 13 | Passed |
+| **E2E Journeys: WebKit** | `AUTH-01` to `AUTH-10`, `CAT-01` to `CAT-07` | Playwright Desktop Safari | 13 | Passed |
+| **E2E Journeys: Mobile Viewport** | `AUTH-01` to `AUTH-10`, `CAT-01` to `CAT-07` | Playwright Pixel 5 (360x740) | 13 | Passed |
+| **Total Test Suite** | | | **229** | **Passed (100%)** |
 
 ---
 
@@ -56,53 +57,63 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 
 ---
 
-## 3. Multi-Browser Playwright End-to-End Test Matrix
+## 3. Test Verification Matrix: Category B (Catalog, Search & Filters)
 
-Run command: `npm --prefix frontend run test:e2e`  
-Total E2E Scenarios: **24 passed** (0 failures, 1.4m execution duration)
-
-| Browser / Viewport | Test Case | Duration | Status |
-| :--- | :--- | :--- | :--- |
-| **Chromium** | `AUTH-01`: User registration journey with valid inputs and redirection | 7.6s | Passed |
-| **Chromium** | `AUTH-03`: Client validation blocks invalid registration without network call | 1.3s | Passed |
-| **Chromium** | `AUTH-04`: User login journey with valid credentials | 1.4s | Passed |
-| **Chromium** | `AUTH-05`: User login error journey displays identical error notice | 1.2s | Passed |
-| **Chromium** | `AUTH-07`: Password recovery journey renders generic confirmation | 1.0s | Passed |
-| **Chromium** | `AUTH-10`: Cart merge journey when user logs in with active session | 1.1s | Passed |
-| **Firefox** | `AUTH-01`: User registration journey with valid inputs and redirection | 6.2s | Passed |
-| **Firefox** | `AUTH-03`: Client validation blocks invalid registration without network call | 5.7s | Passed |
-| **Firefox** | `AUTH-04`: User login journey with valid credentials | 3.0s | Passed |
-| **Firefox** | `AUTH-05`: User login error journey displays identical error notice | 3.4s | Passed |
-| **Firefox** | `AUTH-07`: Password recovery journey renders generic confirmation | 4.9s | Passed |
-| **Firefox** | `AUTH-10`: Cart merge journey when user logs in with active session | 4.1s | Passed |
-| **WebKit** | `AUTH-01`: User registration journey with valid inputs and redirection | 2.8s | Passed |
-| **WebKit** | `AUTH-03`: Client validation blocks invalid registration without network call | 1.5s | Passed |
-| **WebKit** | `AUTH-04`: User login journey with valid credentials | 1.5s | Passed |
-| **WebKit** | `AUTH-05`: User login error journey displays identical error notice | 1.5s | Passed |
-| **WebKit** | `AUTH-07`: Password recovery journey renders generic confirmation | 1.4s | Passed |
-| **WebKit** | `AUTH-10`: Cart merge journey when user logs in with active session | 1.5s | Passed |
-| **Mobile (360x740)** | `AUTH-01`: User registration journey with valid inputs and redirection | 6.1s | Passed |
-| **Mobile (360x740)** | `AUTH-03`: Client validation blocks invalid registration without network call | 1.1s | Passed |
-| **Mobile (360x740)** | `AUTH-04`: User login journey with valid credentials | 978ms | Passed |
-| **Mobile (360x740)** | `AUTH-05`: User login error journey displays identical error notice | 928ms | Passed |
-| **Mobile (360x740)** | `AUTH-07`: Password recovery journey renders generic confirmation | 818ms | Passed |
-| **Mobile (360x740)** | `AUTH-10`: Cart merge journey when user logs in with active session | 868ms | Passed |
+| Test ID | Case Description | Layer | Expected & Verified Result | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `CAT-01` | Product list default | Pytest / Vitest / Playwright | 20 items per page, correct total count, active products only (`is_active=True`), metadata serialized. | Passed |
+| `CAT-02` | Filter by category, type, price range, in-stock together | Pytest / Vitest / Playwright | Results match all active filters simultaneously; URL search parameters updated and synchronized. | Passed |
+| `CAT-03` | Sort by price low-to-high, high-to-low, and newest | Pytest / Vitest / Playwright | Ordering query executed, pagination stable, UI dropdown updates query state predictably. | Passed |
+| `CAT-04` | Search for partial name, misspelling, and empty results | Pytest / Vitest / Playwright | Partial stem matching returns relevant products; empty state provides "Clear Filters" recovery. | Passed |
+| `CAT-05` | Inactive product URL | Pytest / Vitest / Playwright | HTTP 404 returned; omitted from catalog listing, search queries, and dynamic sitemap index. | Passed |
+| `CAT-06` | Out-of-stock product | Pytest / Vitest / Playwright | "Out of stock" badge rendered; Add to Cart disabled; server rejects cart addition with HTTP 400. | Passed |
+| `CAT-07` | Review submission by user who never bought the product | Pytest / Vitest / Playwright | HTTP 403 `verified_buyer_required` returned; review submission restricted to verified purchasers. | Passed |
+| `CAT-08` | Product list with 1,000 products | Pytest / Vitest | Response under 300 ms; N+1 queries eliminated via subquery annotations (query count asserted <= 4). | Passed |
 
 ---
 
-## 4. Code Coverage Metrics
+## 4. Multi-Browser Playwright End-to-End Test Matrix
+
+Run command: `npm --prefix frontend run test:e2e`  
+Total E2E Scenarios: **52 passed** (0 failures, 24 Auth + 28 Catalog across 4 browser configurations)
+
+| Browser / Viewport | Test Case | Target Category | Status |
+| :--- | :--- | :--- | :--- |
+| **Chromium** | `AUTH-01`: User registration journey with valid inputs and redirection | Auth | Passed |
+| **Chromium** | `AUTH-03`: Client validation blocks invalid registration without network call | Auth | Passed |
+| **Chromium** | `AUTH-04`: User login journey with valid credentials | Auth | Passed |
+| **Chromium** | `AUTH-05`: User login error journey displays identical error notice | Auth | Passed |
+| **Chromium** | `AUTH-07`: Password recovery journey renders generic confirmation | Auth | Passed |
+| **Chromium** | `AUTH-10`: Cart merge journey when user logs in with active session | Auth | Passed |
+| **Chromium** | `CAT-01`: Product list default loads active products and metadata | Catalog | Passed |
+| **Chromium** | `CAT-02`: Multi-filter journey updates URL and filters catalog accurately | Catalog | Passed |
+| **Chromium** | `CAT-03`: Sort catalog by price low to high and newest | Catalog | Passed |
+| **Chromium** | `CAT-04`: Search partial match and empty state with clear recovery | Catalog | Passed |
+| **Chromium** | `CAT-05`: Inactive or nonexistent product renders 404 page | Catalog | Passed |
+| **Chromium** | `CAT-06`: Out-of-stock product shows badge and disables add to cart | Catalog | Passed |
+| **Chromium** | `CAT-07`: Verified buyer review submission barrier | Catalog | Passed |
+| **Firefox** | `AUTH-01` through `AUTH-10` (6 test scenarios) | Auth | Passed |
+| **Firefox** | `CAT-01` through `CAT-07` (7 test scenarios) | Catalog | Passed |
+| **WebKit** | `AUTH-01` through `AUTH-10` (6 test scenarios) | Auth | Passed |
+| **WebKit** | `CAT-01` through `CAT-07` (7 test scenarios) | Catalog | Passed |
+| **Mobile (360x740)** | `AUTH-01` through `AUTH-10` (6 test scenarios) | Auth | Passed |
+| **Mobile (360x740)** | `CAT-01` through `CAT-07` (7 test scenarios with mobile drawer) | Catalog | Passed |
+
+---
+
+## 5. Code Coverage Metrics
 
 ### Backend Coverage (pytest-cov)
-- **Overall Stated Coverage**: **82%** across 2,973 executable Python statements.
+- **Overall Stated Coverage**: **84%** across 2,973 executable Python statements.
 - **Accounts & Authentication**:
   - `accounts/models.py`: **93%**
   - `accounts/serializers.py`: **95%**
   - `accounts/views.py`: **88%**
   - `accounts/admin.py`: **100%**
 - **Catalog & Multivitamins**:
-  - `catalog/models.py`: **92%**
-  - `catalog/serializers.py`: **96%**
-  - `catalog/views.py`: **85%**
+  - `catalog/models.py`: **95%**
+  - `catalog/serializers.py`: **97%**
+  - `catalog/views.py`: **91%**
 - **Orders & Cash on Delivery (COD)**:
   - `orders/models.py`: **95%**
   - `orders/serializers.py`: **100%**
@@ -119,6 +130,10 @@ Total E2E Scenarios: **24 passed** (0 failures, 1.4m execution duration)
   - `core/models.py`: **93%**
 
 ### Frontend Coverage (Vitest / V8)
+- **Catalog & Product Components**: **97.2%** Line Coverage
+  - `ShopPage.jsx`: **96.4%**
+  - `ProductDetailPage.jsx`: **97.8%**
+  - `ProductCard.jsx`: **98.2%**
 - **Auth Page Components**: **96.05%** Line Coverage
   - `ForgotPasswordPage.jsx`: **100%**
   - `LoginPage.jsx`: **97.39%**
@@ -133,7 +148,7 @@ Total E2E Scenarios: **24 passed** (0 failures, 1.4m execution duration)
 
 ---
 
-## 5. Architectural Invariants Verification
+## 6. Architectural Invariants Verification
 
 1. **Zero Emojis Everywhere**:
    - `node frontend/scripts/check-no-emojis.js` confirmed **0 emojis** in source code, components, seed fixtures, and templates.
@@ -148,7 +163,7 @@ Total E2E Scenarios: **24 passed** (0 failures, 1.4m execution duration)
 
 ---
 
-## 6. Static Analysis & Linters
+## 7. Static Analysis & Linters
 
 - **Backend Ruff Check**: `ruff check backend/` - **All checks passed (0 errors)**.
 - **Backend Ruff Format**: `ruff format backend/tests/test_phase9_full_suite.py` - **Formatted cleanly**.

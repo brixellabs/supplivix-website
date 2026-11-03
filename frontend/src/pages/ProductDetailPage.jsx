@@ -11,6 +11,7 @@ import { useCart } from '../context/CartContext';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../services/api';
 import SEOHead from '../components/seo/SEOHead';
+import NotFoundPage from './NotFoundPage';
 
 const SAMPLE_PRODUCT = {
   id: 1,
@@ -39,6 +40,7 @@ export default function ProductDetailPage() {
   const { showToast } = useToast();
 
   const [product, setProduct] = useState(SAMPLE_PRODUCT);
+  const [notFound, setNotFound] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('overview');
   const [reviews, setReviews] = useState([]);
@@ -52,14 +54,18 @@ export default function ProductDetailPage() {
   const [reviewError, setReviewError] = useState('');
 
   useEffect(() => {
+    setNotFound(false);
     // Attempt to load product from API
     api.getProduct(slug)
       .then((data) => {
         if (data) setProduct(data);
       })
-      .catch(() => {
-        // Fallback to sample with matching slug
-        setProduct((prev) => ({ ...prev, slug }));
+      .catch((err) => {
+        if (err && (err.status === 404 || err.code === 'not_found' || String(err).includes('404'))) {
+          setNotFound(true);
+        } else {
+          setProduct((prev) => ({ ...prev, slug }));
+        }
       });
 
     // Load reviews
@@ -159,6 +165,17 @@ export default function ProductDetailPage() {
         },
       ];
 
+  const availableStock =
+    product.stock !== undefined
+      ? product.stock
+      : product.inventory_count !== undefined
+      ? product.inventory_count
+      : product.in_stock !== undefined
+      ? (product.in_stock ? 10 : 0)
+      : 0;
+
+  const isOutOfStock = availableStock <= 0;
+
   // Schema.org structured data for SEO & AEO (Phase 6)
   const productSchema = {
     '@type': 'Product',
@@ -172,7 +189,7 @@ export default function ProductDetailPage() {
       price: product.price,
       priceValidUntil: '2027-12-31',
       availability:
-        (product.inventory_count > 0 || product.stock > 0)
+        !isOutOfStock
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
       url: `https://supplivix.com/products/${product.slug}/`,
@@ -237,6 +254,10 @@ export default function ProductDetailPage() {
 
   const fullSchema = [productSchema, breadcrumbsSchema, faqSchema];
 
+  if (notFound) {
+    return <NotFoundPage />;
+  }
+
   return (
     <div className="bg-white min-h-screen pb-16">
       <SEOHead
@@ -281,7 +302,7 @@ export default function ProductDetailPage() {
                 {discountPercent > 0 && (
                   <Badge variant="sale">Save {discountPercent}%</Badge>
                 )}
-                {product.inventory_count > 0 ? (
+                {!isOutOfStock ? (
                   <Badge variant="pill">In Stock</Badge>
                 ) : (
                   <span className="bg-gray-200 text-gray-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-xs">
@@ -372,7 +393,7 @@ export default function ProductDetailPage() {
                     size="lg"
                     onClick={handleAddToCart}
                     loading={adding}
-                    disabled={product.inventory_count <= 0}
+                    disabled={isOutOfStock}
                     className="w-full"
                   >
                     <Icon name="cart" className="mr-2" />
@@ -382,7 +403,7 @@ export default function ProductDetailPage() {
                     variant="secondary"
                     size="lg"
                     onClick={handleBuyNow}
-                    disabled={product.inventory_count <= 0 || adding}
+                    disabled={isOutOfStock || adding}
                     className="w-full"
                   >
                     Buy Now (COD)
