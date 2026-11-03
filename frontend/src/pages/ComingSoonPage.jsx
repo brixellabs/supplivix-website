@@ -89,6 +89,8 @@ export default function ComingSoonPage() {
         <img
           src={logoImg}
           alt="Supplivix Logo"
+          width="160"
+          height="48"
           className="h-10 sm:h-12 w-auto object-contain"
         />
         <Badge variant="pill">Beauty & Wellness</Badge>

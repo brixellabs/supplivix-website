@@ -39,7 +39,13 @@ export default function Header({ cartCount: propCartCount }) {
         <div className="max-w-site mx-auto px-4 sm:px-6 h-[68px] flex items-center justify-between gap-4">
           {/* Logo */}
           <Link to="/" className="flex-shrink-0" aria-label="Supplivix Home">
-            <img src={logoImg} alt="Supplivix" className="h-10 sm:h-11 w-auto object-contain cursor-pointer" />
+            <img
+              src={logoImg}
+              alt="Supplivix"
+              width="160"
+              height="44"
+              className="h-10 sm:h-11 w-auto object-contain cursor-pointer"
+            />
           </Link>
 
           {/* Desktop Navigation */}

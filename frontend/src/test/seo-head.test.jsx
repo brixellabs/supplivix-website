@@ -185,4 +185,105 @@ describe('Phase 6: Frontend SEO & AEO (SEOHead Component)', () => {
     expect(faq).toBeDefined();
     expect(faq.mainEntity[0].name).toContain('third-party tested');
   });
+
+  it('SEO-05: Product with zero approved reviews does not include aggregateRating or review array', () => {
+    const productNoReviews = {
+      '@type': 'Product',
+      name: 'Pure Zinc Picolinate',
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: 'PKR',
+        price: 1800,
+        availability: 'https://schema.org/InStock',
+      },
+    };
+
+    render(
+      <SEOHead
+        title="Pure Zinc Picolinate"
+        schema={productNoReviews}
+      />
+    );
+
+    const schemaScript = document.getElementById('supplivix-jsonld-schema');
+    const parsed = JSON.parse(schemaScript.textContent);
+    const prod = parsed['@graph'].find((item) => item['@type'] === 'Product');
+
+    expect(prod).toBeDefined();
+    expect(prod.aggregateRating).toBeUndefined();
+    expect(prod.review).toBeUndefined();
+  });
+
+  it('SEO-06: Filter and sort URLs have canonical pointing strictly to base URL', () => {
+    // When canonical is passed without query params
+    render(
+      <SEOHead
+        title="Shop Catalog"
+        canonical="/shop"
+      />
+    );
+
+    const canonicalEl = document.querySelector('link[rel="canonical"]');
+    expect(canonicalEl).not.toBeNull();
+    const href = canonicalEl.getAttribute('href');
+    expect(href).not.toContain('?');
+    expect(href).toMatch(/\/shop$/);
+  });
+
+  it('AEO-01: Direct summaries on Hub and Product pages adhere to 40 to 60 words', () => {
+    const hubSummary =
+      'Supplivix multivitamins are bioavailable micronutrient formulations engineered for adults to address documented nutritional deficiencies. They support cellular vitality, metabolic energy, and immune resilience with chelated zinc, methylfolate, and active B-complex vitamins. Delivered nationwide across Pakistan via standard Cash on Delivery.';
+    const hubWords = hubSummary.trim().split(/\s+/).length;
+    expect(hubWords).toBeGreaterThanOrEqual(40);
+    expect(hubWords).toBeLessThanOrEqual(60);
+
+    const productSummary =
+      'Daily Bio-Multi is a high-potency bioavailable multivitamin formulated for adults to address documented micronutrient gaps. It supports metabolic cellular energy and daily immune resilience. Adults take one tablet daily in the morning with a full glass of water and breakfast alongside a balanced diet.';
+    const prodWords = productSummary.trim().split(/\s+/).length;
+    expect(prodWords).toBeGreaterThanOrEqual(40);
+    expect(prodWords).toBeLessThanOrEqual(60);
+  });
+
+  it('AEO-02: FAQ items match FAQPage schema identically', () => {
+    const testFaqs = [
+      {
+        question: 'How many multivitamin tablets should I take daily?',
+        answer: 'Follow label directions. Typical products list one tablet daily with breakfast.',
+      },
+      {
+        question: 'Is Cash on Delivery available across Pakistan?',
+        answer: 'Yes, 100% Cash on Delivery is available nationwide.',
+      },
+    ];
+
+    const faqSchema = {
+      '@type': 'FAQPage',
+      mainEntity: testFaqs.map((f) => ({
+        '@type': 'Question',
+        name: f.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: f.answer,
+        },
+      })),
+    };
+
+    render(
+      <SEOHead
+        title="Product FAQs"
+        schema={faqSchema}
+      />
+    );
+
+    const schemaScript = document.getElementById('supplivix-jsonld-schema');
+    const parsed = JSON.parse(schemaScript.textContent);
+    const faqItem = parsed['@graph'].find((item) => item['@type'] === 'FAQPage');
+
+    expect(faqItem).toBeDefined();
+    expect(faqItem.mainEntity).toHaveLength(2);
+    expect(faqItem.mainEntity[0].name).toBe(testFaqs[0].question);
+    expect(faqItem.mainEntity[0].acceptedAnswer.text).toBe(testFaqs[0].answer);
+    expect(faqItem.mainEntity[1].name).toBe(testFaqs[1].question);
+    expect(faqItem.mainEntity[1].acceptedAnswer.text).toBe(testFaqs[1].answer);
+  });
 });

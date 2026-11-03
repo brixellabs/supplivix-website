@@ -20,7 +20,13 @@ export default function PolicyLayout({ title, description, canonical, lastUpdate
       <header className="border-b border-surface-border bg-white sticky top-0 z-30">
         <div className="max-w-site mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Link to="/" aria-label="Supplivix Home">
-            <img src={logoImg} alt="Supplivix" className="h-9 sm:h-10 w-auto object-contain" />
+            <img
+              src={logoImg}
+              alt="Supplivix"
+              width="160"
+              height="40"
+              className="h-9 sm:h-10 w-auto object-contain"
+            />
           </Link>
           <nav className="flex items-center gap-4 text-xs font-semibold">
             <Link to="/privacy-policy" className="hover:text-brand-green">Privacy</Link>

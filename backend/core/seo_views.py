@@ -307,106 +307,128 @@ def spa_shell_view(request, path=""):
     if product_match and clean_path not in ['products', 'multivitamins']:
         slug = product_match.group(1)
         product = Product.objects.filter(slug=slug, is_active=True).select_related('category').prefetch_related('images', 'faqs', 'reviews').first()
-        if product:
-            title = (product.seo_title or f"{product.name} | Supplivix Pakistan")[:58]
-            description = (product.seo_description or product.short_description or product.description)[:155]
-            canonical = f"{base_url}/products/{product.slug}/"
-            og_type = 'product'
+        if not product:
+            response = HttpResponse(
+                "<!DOCTYPE html><html><head><title>404 Not Found | Supplivix</title><meta name='robots' content='noindex, nofollow' /></head><body><h1>404 Product Not Found</h1></body></html>",
+                status=404,
+                content_type='text/html; charset=utf-8'
+            )
+            response['X-Robots-Tag'] = 'noindex, nofollow'
+            return response
 
-            first_img = product.images.first()
-            if first_img:
-                og_image = request.build_absolute_uri(first_img.image.url)
+        title = (product.seo_title or f"{product.name} | Supplivix")[:58]
+        description = (product.seo_description or product.short_description or product.description)[:155]
+        canonical = f"{base_url}/products/{product.slug}/"
+        og_type = 'product'
 
-            # Product Offer Schema
-            product_schema = {
-                '@type': 'Product',
-                'name': product.name,
-                'sku': product.sku,
-                'description': product.description,
-                'image': og_image,
-                'brand': {'@type': 'Brand', 'name': 'Supplivix'},
-                'offers': {
-                    '@type': 'Offer',
-                    'priceCurrency': 'PKR',
-                    'price': product.price,
-                    'priceValidUntil': '2027-12-31',
-                    'availability': 'https://schema.org/InStock' if product.stock > 0 else 'https://schema.org/OutOfStock',
-                    'url': canonical,
-                    'seller': {'@type': 'Organization', 'name': 'Supplivix'},
-                },
+        first_img = product.images.first()
+        if first_img:
+            og_image = request.build_absolute_uri(first_img.image.url)
+
+        # Product Offer Schema
+        product_schema = {
+            '@type': 'Product',
+            'name': product.name,
+            'sku': product.sku,
+            'description': product.description,
+            'image': og_image,
+            'brand': {'@type': 'Brand', 'name': 'Supplivix'},
+            'offers': {
+                '@type': 'Offer',
+                'priceCurrency': 'PKR',
+                'price': product.price,
+                'priceValidUntil': '2027-12-31',
+                'availability': 'https://schema.org/InStock' if product.stock > 0 else 'https://schema.org/OutOfStock',
+                'url': canonical,
+                'seller': {'@type': 'Organization', 'name': 'Supplivix'},
+            },
+        }
+
+        # Only real approved reviews feed aggregateRating
+        approved_reviews = list(product.reviews.filter(is_approved=True))
+        if approved_reviews:
+            avg_rating = round(sum(r.rating for r in approved_reviews) / len(approved_reviews), 1)
+            product_schema['aggregateRating'] = {
+                '@type': 'AggregateRating',
+                'ratingValue': avg_rating,
+                'reviewCount': len(approved_reviews),
+                'bestRating': 5,
+                'worstRating': 1,
             }
-
-            # Only real approved reviews feed aggregateRating
-            approved_reviews = list(product.reviews.filter(is_approved=True))
-            if approved_reviews:
-                avg_rating = round(sum(r.rating for r in approved_reviews) / len(approved_reviews), 1)
-                product_schema['aggregateRating'] = {
-                    '@type': 'AggregateRating',
-                    'ratingValue': avg_rating,
-                    'reviewCount': len(approved_reviews),
-                    'bestRating': 5,
-                    'worstRating': 1,
+            product_schema['review'] = [
+                {
+                    '@type': 'Review',
+                    'author': {'@type': 'Person', 'name': r.user.full_name if r.user and r.user.full_name else 'Verified Buyer'},
+                    'datePublished': r.created_at.strftime('%Y-%m-%d'),
+                    'reviewRating': {'@type': 'Rating', 'ratingValue': r.rating, 'bestRating': 5},
+                    'name': r.title,
+                    'reviewBody': r.body,
                 }
-                product_schema['review'] = [
-                    {
-                        '@type': 'Review',
-                        'author': {'@type': 'Person', 'name': r.user.full_name if r.user and r.user.full_name else 'Verified Buyer'},
-                        'datePublished': r.created_at.strftime('%Y-%m-%d'),
-                        'reviewRating': {'@type': 'Rating', 'ratingValue': r.rating, 'bestRating': 5},
-                        'name': r.title,
-                        'reviewBody': r.body,
-                    }
-                    for r in approved_reviews[:5]
-                ]
+                for r in approved_reviews[:5]
+            ]
 
-            schema_graph.append(product_schema)
+        schema_graph.append(product_schema)
 
-            # BreadcrumbList Schema
-            cat_name = product.category.name if product.category else 'Multivitamins'
-            cat_slug = product.category.slug if product.category else 'multivitamins'
+        # BreadcrumbList Schema
+        cat_name = product.category.name if product.category else 'Multivitamins'
+        cat_slug = product.category.slug if product.category else 'multivitamins'
+        schema_graph.append({
+            '@type': 'BreadcrumbList',
+            'itemListElement': [
+                {'@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': f"{base_url}/"},
+                {'@type': 'ListItem', 'position': 2, 'name': cat_name, 'item': f"{base_url}/shop?category={cat_slug}"},
+                {'@type': 'ListItem', 'position': 3, 'name': product.name, 'item': canonical},
+            ],
+        })
+
+        # FAQs (feeds AEO and FAQPage schema)
+        faq_entities = []
+        faq_html_items = []
+        for f in product.faqs.all():
+            faq_entities.append({
+                '@type': 'Question',
+                'name': f.question,
+                'acceptedAnswer': {'@type': 'Answer', 'text': f.answer},
+            })
+            faq_html_items.append(f"<div><h4>{html.escape(f.question)}</h4><p>{html.escape(f.answer)}</p></div>")
+
+        if faq_entities:
             schema_graph.append({
-                '@type': 'BreadcrumbList',
-                'itemListElement': [
-                    {'@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': f"{base_url}/"},
-                    {'@type': 'ListItem', 'position': 2, 'name': cat_name, 'item': f"{base_url}/shop?category={cat_slug}"},
-                    {'@type': 'ListItem', 'position': 3, 'name': product.name, 'item': canonical},
-                ],
+                '@type': 'FAQPage',
+                'mainEntity': faq_entities,
             })
 
-            # FAQs (feeds AEO and FAQPage schema)
-            faq_entities = []
-            faq_html_items = []
-            for f in product.faqs.all():
-                faq_entities.append({
-                    '@type': 'Question',
-                    'name': f.question,
-                    'acceptedAnswer': {'@type': 'Answer', 'text': f.answer},
-                })
-                faq_html_items.append(f"<div><h4>{html.escape(f.question)}</h4><p>{html.escape(f.answer)}</p></div>")
+        faq_block_html = f"<section><h3>Frequently Asked Questions</h3>{''.join(faq_html_items)}</section>" if faq_html_items else ""
 
-            if faq_entities:
-                schema_graph.append({
-                    '@type': 'FAQPage',
-                    'mainEntity': faq_entities,
-                })
+        # AEO 40-60 word formulation brief
+        if product.product_type == 'multivitamin':
+            direct_summary = (
+                f"{product.name} is a high-potency bioavailable multivitamin formulated for adults to address documented "
+                f"micronutrient gaps. It supports metabolic cellular energy and daily immune resilience. Adults take one "
+                f"tablet daily in the morning with a full glass of water and breakfast alongside a balanced diet."
+            )
+        else:
+            direct_summary = (
+                f"{product.name} is a science-backed topical skincare formulation engineered for all skin types to fortify "
+                f"the epidermal barrier and restore natural skin hydration. Apply a few drops gently to clean skin daily in "
+                f"the morning or evening before heavier moisturizers."
+            )
 
-            faq_block_html = f"<section><h3>Frequently Asked Questions</h3>{''.join(faq_html_items)}</section>" if faq_html_items else ""
-
-            noscript_content = f"""<noscript>
-              <article style="padding:24px;max-width:800px;margin:0 auto;font-family:sans-serif;">
-                <h1>{html.escape(product.name)}</h1>
-                <p><strong>Price:</strong> Rs. {product.price} (Cash on Delivery nationwide in Pakistan)</p>
-                <p><strong>SKU:</strong> {html.escape(product.sku)} | <strong>Category:</strong> {html.escape(cat_name)}</p>
-                <p><strong>Direct Summary:</strong> {html.escape(product.short_description or product.description[:300])}</p>
-                <div><h3>Formula Details</h3><p>{html.escape(product.description)}</p></div>
-                {faq_block_html}
-                <p><small>Regulatory Health Notice: These statements have not been evaluated by a regulator. This product is not intended to diagnose, treat, cure or prevent any disease.</small></p>
-              </article>
-            </noscript>"""
+        noscript_content = f"""<noscript>
+          <article style="padding:24px;max-width:800px;margin:0 auto;font-family:sans-serif;">
+            <h1>{html.escape(product.name)}</h1>
+            <p><strong>Price:</strong> Rs. {product.price} (Cash on Delivery nationwide in Pakistan)</p>
+            <p><strong>SKU:</strong> {html.escape(product.sku)} | <strong>Category:</strong> {html.escape(cat_name)}</p>
+            <p><strong>Direct Summary:</strong> {html.escape(direct_summary)}</p>
+            <div><h3>Formula Details</h3><p>{html.escape(product.description)}</p></div>
+            {faq_block_html}
+            <p><small>Regulatory Health Notice: These statements have not been evaluated by a regulator. This product is not intended to diagnose, treat, cure or prevent any disease.</small></p>
+          </article>
+        </noscript>"""
 
     # 2. Multivitamins Hub Page: /multivitamins
     elif clean_path == 'multivitamins':
-        title = 'Multivitamins Hub | Bioavailable Formulas Pakistan'
+        title = 'Multivitamins Hub | Supplivix Pakistan'
         description = (
             "Explore Pakistan's premier bioavailable multivitamin formulations. "
             "100% Cash on Delivery, zero credit card required, nationwide delivery."
@@ -440,21 +462,27 @@ def spa_shell_view(request, path=""):
             for p in top_multis
         )
 
+        direct_summary = (
+            "Supplivix multivitamins are bioavailable micronutrient formulations engineered for adults to address "
+            "documented nutritional deficiencies. They support cellular vitality, metabolic energy, and immune resilience "
+            "with chelated zinc, methylfolate, and active B-complex vitamins. Delivered nationwide across Pakistan via standard Cash on Delivery."
+        )
+
         noscript_content = f"""<noscript>
           <div style="padding:24px;max-width:800px;margin:0 auto;font-family:sans-serif;">
             <h1>Bioavailable Multivitamins for Daily Vitality</h1>
-            <p><strong>Direct Summary:</strong> Supplivix multivitamins are bioavailable micronutrient formulations engineered for adults to address documented nutritional deficiencies. Delivered nationwide across Pakistan via 100% Cash on Delivery.</p>
+            <p><strong>Direct Summary:</strong> {direct_summary}</p>
             <h3>Featured Multivitamins</h3>
             <ul>{multi_list_html}</ul>
-            <p><small>Dietary Supplement Notice: These statements have not been evaluated by a regulator.</small></p>
+            <p><small>Dietary Supplement Notice: These statements have not been evaluated by a regulator. This product is not intended to diagnose, treat, cure or prevent any disease.</small></p>
           </div>
         </noscript>"""
 
     # 3. Shop Page: /shop
     elif clean_path == 'shop':
-        title = 'Shop Bioavailable Multivitamins &amp; Care | Supplivix'
+        title = 'Shop Bioavailable Formulas | Supplivix'
         description = (
-            "Explore all science-backed multivitamins and skincare formulas. "
+            "Browse Supplivix full catalog of bioavailable multivitamins and science-backed skincare. "
             "Nationwide Cash on Delivery with free delivery over Rs. 2,000."
         )
         canonical = f"{base_url}/shop/"
@@ -464,6 +492,18 @@ def spa_shell_view(request, path=""):
             'description': description,
             'url': canonical,
         })
+        all_prods = list(Product.objects.filter(is_active=True).order_by('-is_featured', 'id')[:24])
+        prod_items_html = "".join(
+            f"<li><a href='/products/{p.slug}/'>{html.escape(p.name)}</a> - Rs. {p.price}</li>"
+            for p in all_prods
+        )
+        noscript_content = f"""<noscript>
+          <div style="padding:24px;max-width:800px;margin:0 auto;font-family:sans-serif;">
+            <h1>Supplivix Catalog - All Formulations</h1>
+            <p>Browse genuine multivitamins and skincare products delivered nationwide via Cash on Delivery.</p>
+            <ul>{prod_items_html}</ul>
+          </div>
+        </noscript>"""
 
     # 4. Contact Page: /contact
     elif clean_path == 'contact':
@@ -478,22 +518,54 @@ def spa_shell_view(request, path=""):
             'name': 'Contact Supplivix Care',
             'url': canonical,
         })
+        noscript_content = """<noscript>
+          <div style="padding:24px;max-width:800px;margin:0 auto;font-family:sans-serif;">
+            <h1>Contact Supplivix Care</h1>
+            <p>Customer support team in Karachi, Pakistan. Reach us for order assistance, shipping queries, or bulk inquiries.</p>
+            <p>Phone: 0300-0000000 | Email: care@supplivix.com | Hours: Mon-Sat 9am-6pm</p>
+          </div>
+        </noscript>"""
 
     # 5. Policies
     elif clean_path in ['privacy-policy', 'terms', 'shipping-policy', 'returns-policy']:
-        titles = {
-            'privacy-policy': 'Privacy Policy | Supplivix Pakistan',
-            'terms': 'Terms of Service | Supplivix Pakistan',
-            'shipping-policy': 'Shipping &amp; COD Delivery Policy | Supplivix',
-            'returns-policy': '7-Day Return Policy &amp; Guarantee | Supplivix',
+        policy_meta = {
+            'privacy-policy': {
+                'title': 'Privacy Policy | Supplivix Pakistan',
+                'desc': 'Read the Supplivix privacy policy covering customer data protection, order confidentiality, and nationwide Cash on Delivery communications in Pakistan.',
+                'h1': 'Supplivix Privacy Policy',
+            },
+            'terms': {
+                'title': 'Terms of Service | Supplivix Pakistan',
+                'desc': 'Review Supplivix terms of service including Cash on Delivery ordering, shipping timelines across Pakistan, and genuine formulation standards.',
+                'h1': 'Terms of Service',
+            },
+            'shipping-policy': {
+                'title': 'Shipping & Delivery Policy | Supplivix',
+                'desc': 'Supplivix shipping policy: Free delivery on orders over Rs. 2,000, Rs. 200 fee below. Nationwide Cash on Delivery across Pakistan in 2 to 4 business days.',
+                'h1': 'Shipping & Delivery Policy',
+            },
+            'returns-policy': {
+                'title': '7-Day Return Policy & Guarantee | Supplivix',
+                'desc': 'Supplivix 7-day hassle-free return policy for Cash on Delivery orders across Pakistan. Simple verification and direct support for damaged or sealed items.',
+                'h1': '7-Day Return Policy & Guarantee',
+            },
         }
-        title = titles.get(clean_path, 'Policy | Supplivix')
+        meta = policy_meta.get(clean_path, {})
+        title = meta.get('title', 'Policy | Supplivix')
+        description = meta.get('desc', description)
         canonical = f"{base_url}/{clean_path}/"
+        noscript_content = f"""<noscript>
+          <div style="padding:24px;max-width:800px;margin:0 auto;font-family:sans-serif;">
+            <h1>{meta.get('h1', 'Policy')}</h1>
+            <p>{description}</p>
+          </div>
+        </noscript>"""
 
     # 6. Admin / Private / Coming Soon routes
     elif clean_path in ['admin-panel', 'cart', 'checkout', 'account', 'coming-soon'] or site_mode == 'coming_soon':
         robots = 'noindex, nofollow'
         title = 'Coming Soon | Supplivix' if (clean_path == 'coming-soon' or site_mode == 'coming_soon') else 'Supplivix Portal'
+        canonical = f"{base_url}/{clean_path}/"
 
     # Build head injection
     head_injections = [
@@ -516,8 +588,14 @@ def spa_shell_view(request, path=""):
 
     injected_head = "\n    ".join(head_injections)
 
-    # Replace existing <title>...</title> if present
-    rendered_html = re.sub(r'<title>.*?</title>', '', template_html, flags=re.DOTALL)
+    # Strip any pre-existing head SEO tags, scripts, and noscript from template_html to avoid duplicate tags
+    rendered_html = re.sub(r'<title>.*?</title>', '', template_html, flags=re.DOTALL | re.IGNORECASE)
+    rendered_html = re.sub(r'<meta\s+name=["\'](?:description|robots|twitter:[^"\']+)["\'][^>]*>', '', rendered_html, flags=re.IGNORECASE)
+    rendered_html = re.sub(r'<meta\s+property=["\'](?:og:[^"\']+|twitter:[^"\']+)["\'][^>]*>', '', rendered_html, flags=re.IGNORECASE)
+    rendered_html = re.sub(r'<link\s+rel=["\']canonical["\'][^>]*>', '', rendered_html, flags=re.IGNORECASE)
+    rendered_html = re.sub(r'<script\s+type=["\']application/ld\+json["\']>.*?</script>', '', rendered_html, flags=re.DOTALL | re.IGNORECASE)
+    rendered_html = re.sub(r'<noscript>.*?</noscript>', '', rendered_html, flags=re.DOTALL | re.IGNORECASE)
+
     # Inject before </head>
     rendered_html = rendered_html.replace('</head>', f'    {injected_head}\n  </head>')
     # Inject noscript right after <body>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import SEOHead from '../../components/seo/SEOHead';
 import Breadcrumbs from '../../components/layout/Breadcrumbs';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -133,6 +134,7 @@ export default function AccountDashboardPage() {
 
   return (
     <div className="bg-white min-h-screen">
+      <SEOHead title="My Account | Supplivix" noindex={true} />
       <Breadcrumbs items={[{ label: 'My Account', href: '/account' }]} />
 
       <div className="max-w-site mx-auto px-4 sm:px-6 py-8">

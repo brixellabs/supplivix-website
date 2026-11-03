@@ -12,7 +12,14 @@ export default function Footer() {
           {/* Column 1: Brand & Contact Info */}
           <div>
             <Link to="/" aria-label="Supplivix Home" className="inline-block mb-4">
-              <img src={logoImg} alt="Supplivix" className="h-10 w-auto object-contain" />
+              <img
+                src={logoImg}
+                alt="Supplivix"
+                width="160"
+                height="40"
+                loading="lazy"
+                className="h-10 w-auto object-contain"
+              />
             </Link>
             <p className="text-xs text-ink-muted leading-relaxed mb-4">
               Premium multivitamins and science-backed skincare. Formulated for everyday vitality and healthy, radiant skin.

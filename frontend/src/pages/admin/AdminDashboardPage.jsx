@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SEOHead from '../../components/seo/SEOHead';
 import Icon from '../../components/ui/Icon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -795,6 +796,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="bg-white min-h-screen text-brand-ink">
+      <SEOHead title="Staff Admin Panel" noindex={true} />
       {/* Top Admin Header */}
       <header className="bg-brand-ink text-white border-b border-surface-border sticky top-0 z-30">
         <div className="max-w-site mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">

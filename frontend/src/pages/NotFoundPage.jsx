@@ -1,13 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import SEOHead from '../components/seo/SEOHead';
 import Button from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 
 export default function NotFoundPage() {
   return (
     <div className="bg-white min-h-[70vh] flex items-center justify-center py-16 px-4">
-      {/* Search engine instruction: do not index 404 responses */}
-      <meta name="robots" content="noindex" />
+      <SEOHead title="404 Page Not Found" noindex={true} />
 
       <div className="max-w-md w-full text-center bg-surface-subtle border border-surface-border rounded-lg p-8 sm:p-10 shadow-card">
         <div className="w-16 h-16 bg-surface-accent border border-surface-border text-brand-green rounded-full flex items-center justify-center mx-auto mb-4">

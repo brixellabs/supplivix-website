@@ -17,6 +17,9 @@ Verifies all test categories:
 Strictly zero emojis anywhere.
 """
 
+import html
+import json
+import re
 from datetime import timedelta
 
 import pytest
@@ -26,7 +29,7 @@ from rest_framework.test import APIClient
 
 from accounts.models import Address, User
 from cart.models import Cart, CartItem
-from catalog.models import Category, Product, Review
+from catalog.models import Category, Product, ProductFAQ, Review
 from content.models import ContactMessage, SiteSetting, WaitlistEntry
 from core.models import BotEvent
 from core.security import generate_time_token, verify_time_token
@@ -2122,3 +2125,448 @@ class TestAdminSuite:
         assert AdminAuditLog.objects.filter(action="block_customer", target_id=str(user.id)).exists()
 
         assert AdminAuditLog.objects.count() >= initial_log_count + 4
+
+
+@pytest.mark.django_db
+class TestSeoAndAeoSuite:
+    """SEO and AEO Test Matrix: SEO-01 to SEO-09 and AEO-01 to AEO-04."""
+
+    def test_seo_01_curl_each_page_type_without_javascript(self, api_client, test_product):
+        """SEO-01: curl each page type without JavaScript -> Title, description, h1, canonical and JSON-LD present."""
+        pages = [
+            "/",
+            "/multivitamins/",
+            "/shop/",
+            f"/products/{test_product.slug}/",
+            "/contact/",
+            "/privacy-policy/",
+            "/terms/",
+            "/shipping-policy/",
+            "/returns-policy/",
+        ]
+        for path in pages:
+            res = api_client.get(path)
+            assert res.status_code == 200, f"Page {path} failed with status {res.status_code}"
+            assert "text/html" in res["Content-Type"]
+            content = res.content.decode("utf-8")
+
+            # Assert Title tag is present
+            title_match = re.search(r"<title>(.*?)</title>", content, re.DOTALL)
+            assert title_match is not None, f"Missing <title> on {path}"
+            assert len(title_match.group(1).strip()) > 0
+
+            # Assert Meta description is present
+            assert 'meta name="description"' in content or 'meta content=' in content
+            desc_match = re.search(r'<meta name="description" content="(.*?)"', content)
+            assert desc_match is not None, f"Missing meta description on {path}"
+            assert len(desc_match.group(1).strip()) > 0
+
+            # Assert <h1> is present in server HTML (noscript)
+            assert "<h1>" in content and "</h1>" in content, f"Missing <h1> on {path}"
+
+            # Assert Canonical link is present
+            assert 'rel="canonical"' in content, f"Missing canonical on {path}"
+
+            # Assert JSON-LD is present
+            assert 'type="application/ld+json"' in content, f"Missing JSON-LD on {path}"
+
+    def test_seo_02_titles_and_descriptions_unique_and_length_bounded(self, api_client, test_product):
+        """SEO-02: Titles and descriptions -> Unique across the site, within length limits (title <= 60, desc <= 160)."""
+        pages = [
+            "/",
+            "/multivitamins/",
+            "/shop/",
+            f"/products/{test_product.slug}/",
+            "/contact/",
+            "/privacy-policy/",
+            "/terms/",
+            "/shipping-policy/",
+            "/returns-policy/",
+        ]
+        titles = set()
+        descriptions = set()
+
+        for path in pages:
+            res = api_client.get(path)
+            assert res.status_code == 200
+            content = res.content.decode("utf-8")
+
+            title_match = re.search(r"<title>(.*?)</title>", content)
+            assert title_match is not None
+            raw_title = html.unescape(title_match.group(1).strip())
+            assert len(raw_title) <= 60, f"Title on {path} exceeds 60 chars ({len(raw_title)}): {raw_title}"
+            assert raw_title not in titles, f"Duplicate title found on {path}: {raw_title}"
+            titles.add(raw_title)
+
+            desc_match = re.search(r'<meta name="description" content="(.*?)"', content)
+            assert desc_match is not None
+            raw_desc = html.unescape(desc_match.group(1).strip())
+            assert len(raw_desc) <= 160, f"Description on {path} exceeds 160 chars ({len(raw_desc)}): {raw_desc}"
+            assert raw_desc not in descriptions, f"Duplicate description found on {path}: {raw_desc}"
+            descriptions.add(raw_desc)
+
+    def test_seo_03_sitemap_xml_and_robots_txt_validity_and_exclusions(self, api_client, test_product, test_category):
+        """SEO-03: sitemap.xml and robots.txt -> Valid, no private or inactive URLs, sitemap linked in robots."""
+        # Create an inactive product and an inactive category
+        inactive_cat = Category.objects.create(name="Archived Category", slug="archived-category", is_active=False)
+        inactive_prod = Product.objects.create(
+            name="Archived Formula",
+            slug="archived-formula",
+            category=test_category,
+            price=1500,
+            sku="SPLV-INACT-01",
+            is_active=False,
+        )
+
+        # 1. Sitemap test
+        res_sm = api_client.get("/sitemap.xml")
+        assert res_sm.status_code == 200
+        assert "application/xml" in res_sm["Content-Type"]
+        sm_content = res_sm.content.decode("utf-8")
+
+        # XML structure validity
+        assert "<urlset" in sm_content and "</urlset>" in sm_content
+        assert f"/products/{test_product.slug}/" in sm_content
+        assert "/multivitamins" in sm_content
+
+        # No inactive products or categories
+        assert inactive_prod.slug not in sm_content
+        assert inactive_cat.slug not in sm_content
+
+        # No private routes in sitemap
+        assert "/admin" not in sm_content
+        assert "/admin-panel" not in sm_content
+        assert "/checkout" not in sm_content
+        assert "/account" not in sm_content
+        assert "/cart" not in sm_content
+        assert "/emergency-vault-admin" not in sm_content
+
+        # 2. Robots.txt test
+        res_rb = api_client.get("/robots.txt")
+        assert res_rb.status_code == 200
+        assert "text/plain" in res_rb["Content-Type"]
+        rb_content = res_rb.content.decode("utf-8")
+
+        # Sitemap linked
+        assert "Sitemap:" in rb_content
+        assert "/sitemap.xml" in rb_content
+
+        # Disallowed private paths
+        assert "Disallow: /admin-panel/" in rb_content
+        assert "Disallow: /checkout" in rb_content
+        assert "Disallow: /account" in rb_content
+        assert "Disallow: /emergency-vault-admin/" in rb_content
+
+        # Reputable AI Bots
+        assert "User-agent: GPTBot" in rb_content
+        assert "User-agent: ClaudeBot" in rb_content
+        assert "User-agent: PerplexityBot" in rb_content
+        assert "User-agent: Google-Extended" in rb_content
+
+    def test_seo_04_json_ld_schema_validation_for_all_entity_types(self, api_client, test_product):
+        """SEO-04: JSON-LD validation for Product, BreadcrumbList, FAQPage, Organization, CollectionPage -> Zero errors."""
+        ProductFAQ.objects.create(
+            product=test_product,
+            question="What is the recommended dosage for Supplivix Daily Core?",
+            answer="Take one tablet daily with water after your morning meal.",
+            sort_order=1,
+        )
+
+        # 1. Product PDP JSON-LD
+        res_prod = api_client.get(f"/products/{test_product.slug}/")
+        assert res_prod.status_code == 200
+        prod_json_match = re.search(r'<script type="application/ld\+json">(.*?)</script>', res_prod.content.decode("utf-8"), re.DOTALL)
+        assert prod_json_match is not None
+        prod_graph = json.loads(prod_json_match.group(1))
+        assert prod_graph.get("@context") == "https://schema.org"
+        items = prod_graph.get("@graph", [])
+
+        # Validate Organization
+        org = next((x for x in items if x.get("@type") == "Organization"), None)
+        assert org is not None
+        assert org["name"] == "Supplivix"
+        assert "contactPoint" in org
+
+        # Validate Product
+        prod_schema = next((x for x in items if x.get("@type") == "Product"), None)
+        assert prod_schema is not None
+        assert prod_schema["name"] == test_product.name
+        assert prod_schema["offers"]["price"] == test_product.price
+        assert prod_schema["offers"]["priceCurrency"] == "PKR"
+
+        # Validate BreadcrumbList
+        bc_schema = next((x for x in items if x.get("@type") == "BreadcrumbList"), None)
+        assert bc_schema is not None
+        assert len(bc_schema["itemListElement"]) >= 3
+
+        # Validate FAQPage
+        faq_schema = next((x for x in items if x.get("@type") == "FAQPage"), None)
+        assert faq_schema is not None
+        assert len(faq_schema["mainEntity"]) >= 1
+        assert faq_schema["mainEntity"][0]["@type"] == "Question"
+
+        # 2. Multivitamins Hub CollectionPage JSON-LD
+        res_hub = api_client.get("/multivitamins/")
+        assert res_hub.status_code == 200
+        hub_json_match = re.search(r'<script type="application/ld\+json">(.*?)</script>', res_hub.content.decode("utf-8"), re.DOTALL)
+        assert hub_json_match is not None
+        hub_graph = json.loads(hub_json_match.group(1))
+        hub_items = hub_graph.get("@graph", [])
+        coll_schema = next((x for x in hub_items if x.get("@type") == "CollectionPage"), None)
+        assert coll_schema is not None
+        assert coll_schema["name"] == "Multivitamins Hub"
+        assert coll_schema["mainEntity"]["@type"] == "ItemList"
+
+    def test_seo_05_product_with_no_reviews_has_no_aggregate_rating_in_schema(self, api_client, test_product):
+        """SEO-05: Product with no reviews -> No aggregateRating in schema; with reviews -> aggregateRating included."""
+        # 1. Product without reviews
+        assert test_product.reviews.count() == 0
+        res1 = api_client.get(f"/products/{test_product.slug}/")
+        prod_json_match1 = re.search(r'<script type="application/ld\+json">(.*?)</script>', res1.content.decode("utf-8"), re.DOTALL)
+        prod_graph1 = json.loads(prod_json_match1.group(1))
+        prod_schema1 = next(x for x in prod_graph1["@graph"] if x.get("@type") == "Product")
+        assert "aggregateRating" not in prod_schema1
+        assert "review" not in prod_schema1
+
+        # 2. Add approved review
+        reviewer = User.objects.create_user(email="reviewer@example.com", password="Password123!", full_name="Hamza Tariq")
+        Review.objects.create(
+            product=test_product,
+            user=reviewer,
+            rating=5,
+            title="Exceptional quality",
+            body="Noticed energy boost within one week.",
+            is_approved=True,
+        )
+
+        res2 = api_client.get(f"/products/{test_product.slug}/")
+        prod_json_match2 = re.search(r'<script type="application/ld\+json">(.*?)</script>', res2.content.decode("utf-8"), re.DOTALL)
+        prod_graph2 = json.loads(prod_json_match2.group(1))
+        prod_schema2 = next(x for x in prod_graph2["@graph"] if x.get("@type") == "Product")
+        assert "aggregateRating" in prod_schema2
+        assert prod_schema2["aggregateRating"]["ratingValue"] == 5.0
+        assert prod_schema2["aggregateRating"]["reviewCount"] == 1
+        assert len(prod_schema2["review"]) == 1
+
+    def test_seo_06_filter_and_sort_urls_canonical_points_to_base_listing(self, api_client):
+        """SEO-06: Filter and sort URLs -> Canonical points strictly to the base listing."""
+        urls_to_test = [
+            "/shop?category=multivitamins",
+            "/shop?category=skincare&sort=price_asc",
+            "/shop?price_min=1000&price_max=3000&sort=price_desc",
+            "/shop?search=zinc&sort=newest",
+        ]
+        for url in urls_to_test:
+            res = api_client.get(url)
+            assert res.status_code == 200
+            content = res.content.decode("utf-8")
+            can_match = re.search(r'<link rel="canonical" href="(.*?)"', content)
+            assert can_match is not None, f"Canonical tag missing on {url}"
+            canonical_url = can_match.group(1)
+            # Must strictly point to base listing /shop/ without any query params
+            assert "?" not in canonical_url
+            assert canonical_url.endswith("/shop/")
+
+    def test_seo_07_private_and_404_pages_carry_noindex(self, api_client, test_product):
+        """SEO-07: Cart, checkout, account, admin, 404 pages -> noindex, nofollow in header and meta tag."""
+        private_routes = [
+            "/cart/",
+            "/checkout/",
+            "/account/",
+            "/admin-panel/",
+        ]
+        for route in private_routes:
+            res = api_client.get(route)
+            assert res.status_code == 200
+            assert "noindex, nofollow" in res.headers.get("X-Robots-Tag", "")
+            content = res.content.decode("utf-8")
+            assert 'meta name="robots" content="noindex, nofollow"' in content
+
+        # Inactive product returns 404 with noindex
+        test_product.is_active = False
+        test_product.save(update_fields=["is_active"])
+
+        res_404_inactive = api_client.get(f"/products/{test_product.slug}/")
+        assert res_404_inactive.status_code == 404
+        assert "noindex, nofollow" in res_404_inactive.headers.get("X-Robots-Tag", "")
+        assert 'noindex, nofollow' in res_404_inactive.content.decode("utf-8")
+
+        # Non-existent product slug returns 404 with noindex
+        res_404_missing = api_client.get("/products/non-existent-product-slug-xyz/")
+        assert res_404_missing.status_code == 404
+        assert "noindex, nofollow" in res_404_missing.headers.get("X-Robots-Tag", "")
+        assert 'noindex, nofollow' in res_404_missing.content.decode("utf-8")
+
+    def test_seo_08_broken_link_crawl_has_zero_404_internal_links(self, api_client, test_product):
+        """SEO-08: Broken link crawl of the whole site -> Zero 404 internal links."""
+        res_sitemap = api_client.get("/sitemap.xml")
+        assert res_sitemap.status_code == 200
+        sm_content = res_sitemap.content.decode("utf-8")
+
+        # Extract all <loc> URLs
+        locs = re.findall(r"<loc>https?://[^/]+(/[^<]*)</loc>", sm_content)
+        assert len(locs) >= 8
+
+        # Also add standard public routes
+        standard_routes = [
+            "/",
+            "/shop/",
+            "/multivitamins/",
+            f"/products/{test_product.slug}/",
+            "/about/",
+            "/contact/",
+            "/privacy-policy/",
+            "/terms/",
+            "/shipping-policy/",
+            "/returns-policy/",
+        ]
+
+        all_urls = set(locs + standard_routes)
+        for path in all_urls:
+            # Query strings (e.g. /shop?category=slug) can be requested directly
+            res = api_client.get(path)
+            assert res.status_code != 404, f"Broken link detected: {path} returned 404"
+            assert res.status_code in [200, 301, 302], f"Unexpected status {res.status_code} on {path}"
+
+    def test_seo_09_every_image_has_alt_text_dimensions_and_lazy_loading(self):
+        """SEO-09: Every image -> Has alt text, dimensions and lazy loading except the first screen."""
+        from pathlib import Path
+        frontend_src = Path("frontend/src")
+        jsx_files = list(frontend_src.rglob("*.jsx"))
+        assert len(jsx_files) > 0
+
+        img_tag_pattern = re.compile(r"<img\b([^>]*)/?>", re.DOTALL)
+
+        img_count = 0
+        for jsx_file in jsx_files:
+            content = jsx_file.read_text(encoding="utf-8")
+            for match in img_tag_pattern.finditer(content):
+                attrs = match.group(1)
+                img_count += 1
+                # Must have alt attribute
+                assert "alt=" in attrs, f"Missing alt attribute in {jsx_file.name}: {match.group(0)}"
+                # Must have dimensions (width and height) or explicit sizing
+                has_dimensions = ("width=" in attrs and "height=" in attrs) or ("className=" in attrs and ("w-" in attrs or "h-"))
+                assert has_dimensions, f"Missing dimension in {jsx_file.name}: {match.group(0)}"
+
+                # Below the fold (Footer, Cart, Catalog cards) must have loading="lazy"
+                if "Footer.jsx" in jsx_file.name or "ProductCard.jsx" in jsx_file.name:
+                    assert 'loading="lazy"' in attrs, f"Below fold image in {jsx_file.name} missing loading='lazy'"
+
+                # First screen images (Header logo) must not have loading="lazy"
+                if "Header.jsx" in jsx_file.name:
+                    assert 'loading="lazy"' not in attrs, "First screen header logo should not have loading='lazy'"
+
+        assert img_count >= 5
+
+    def test_aeo_01_hub_and_product_pages_direct_summary_word_count(self, api_client, test_product):
+        """AEO-01: Hub and product pages -> Start with a 40 to 60 word direct summary."""
+        # 1. Product PDP SSR noscript direct summary
+        res_prod = api_client.get(f"/products/{test_product.slug}/")
+        assert res_prod.status_code == 200
+        content_prod = res_prod.content.decode("utf-8")
+
+        summary_match_prod = re.search(r"<strong>Direct Summary:</strong>\s*(.*?)</p>", content_prod, re.DOTALL)
+        assert summary_match_prod is not None, "Product page missing Direct Summary"
+        prod_summary_text = summary_match_prod.group(1).strip()
+        prod_word_count = len(prod_summary_text.split())
+        assert 40 <= prod_word_count <= 60, f"Product summary word count {prod_word_count} outside 40-60 words: {prod_summary_text}"
+
+        # 2. Multivitamins Hub Page SSR noscript direct summary
+        res_hub = api_client.get("/multivitamins/")
+        assert res_hub.status_code == 200
+        content_hub = res_hub.content.decode("utf-8")
+
+        summary_match_hub = re.search(r"<strong>Direct Summary:</strong>\s*(.*?)</p>", content_hub, re.DOTALL)
+        assert summary_match_hub is not None, "Hub page missing Direct Summary"
+        hub_summary_text = summary_match_hub.group(1).strip()
+        hub_word_count = len(hub_summary_text.split())
+        assert 40 <= hub_word_count <= 60, f"Hub summary word count {hub_word_count} outside 40-60 words: {hub_summary_text}"
+
+    def test_aeo_02_faq_content_visible_matches_faq_page_schema(self, api_client, test_product):
+        """AEO-02: FAQ content -> Visible on the page (noscript / DOM) and identical to FAQPage schema."""
+        faq1 = ProductFAQ.objects.create(
+            product=test_product,
+            question="Is Supplivix Daily Core halal certified?",
+            answer="Yes, all ingredients and gelatin-free capsules comply with 100% Halal guidelines.",
+            sort_order=1,
+        )
+        faq2 = ProductFAQ.objects.create(
+            product=test_product,
+            question="Can I pay via Cash on Delivery?",
+            answer="Yes, Cash on Delivery is available across all major cities and towns in Pakistan.",
+            sort_order=2,
+        )
+
+        res = api_client.get(f"/products/{test_product.slug}/")
+        assert res.status_code == 200
+        content = res.content.decode("utf-8")
+
+        # 1. Parse FAQPage schema
+        json_match = re.search(r'<script type="application/ld\+json">(.*?)</script>', content, re.DOTALL)
+        assert json_match is not None
+        graph = json.loads(json_match.group(1))
+        faq_schema = next(x for x in graph["@graph"] if x.get("@type") == "FAQPage")
+        schema_faqs = faq_schema["mainEntity"]
+
+        assert len(schema_faqs) == 2
+        assert schema_faqs[0]["name"] == faq1.question
+        assert schema_faqs[0]["acceptedAnswer"]["text"] == faq1.answer
+        assert schema_faqs[1]["name"] == faq2.question
+        assert schema_faqs[1]["acceptedAnswer"]["text"] == faq2.answer
+
+        # 2. Verify visible noscript HTML contains the exact same questions and answers
+        assert faq1.question in content
+        assert faq1.answer in content
+        assert faq2.question in content
+        assert faq2.answer in content
+
+    def test_aeo_03_llms_txt_is_reachable_and_lists_key_pages(self, api_client, test_product):
+        """AEO-03: /llms.txt -> Reachable and lists key pages, COD, and policies."""
+        res = api_client.get("/llms.txt")
+        assert res.status_code == 200
+        assert "text/plain" in res["Content-Type"]
+        body = res.content.decode("utf-8")
+
+        assert "# Supplivix Pakistan - Multivitamins & Skincare" in body
+        assert "Payment & Delivery Model" in body
+        assert "100% Cash on Delivery (COD) across Pakistan" in body
+        assert "Free shipping on orders above Rs. 2,000" in body
+        assert "Flat Rs. 200 fee" in body
+        assert test_product.name in body
+        assert f"/products/{test_product.slug}/" in body
+        assert "/shipping-policy" in body
+        assert "/returns-policy" in body
+        assert "/privacy-policy" in body
+        assert "/terms" in body
+
+    def test_aeo_04_automated_catalog_check_for_prohibited_disease_or_cure_claims(self, test_product):
+        """AEO-04: Search the content for disease or cure claims -> None found (automated word list check)."""
+        disclaimer = "These statements have not been evaluated by a regulator. This product is not intended to diagnose, treat, cure or prevent any disease."
+        prohibited_words = ["cure", "cures", "curing", "disease", "diseases"]
+
+        # Check all Products
+        for prod in Product.objects.all():
+            for field in [prod.name, prod.short_description or "", prod.description or "", prod.seo_title or "", prod.seo_description or ""]:
+                # Strip approved disclaimer before checking
+                sanitized_text = field.replace(disclaimer, "")
+                for word in prohibited_words:
+                    word_match = re.search(rf"\b{word}\b", sanitized_text, re.IGNORECASE)
+                    assert word_match is None, f"Prohibited medical claim '{word}' found in product {prod.sku} field: {sanitized_text}"
+
+        # Check all Categories
+        for cat in Category.objects.all():
+            for field in [cat.name, cat.description or ""]:
+                sanitized_text = field.replace(disclaimer, "")
+                for word in prohibited_words:
+                    word_match = re.search(rf"\b{word}\b", sanitized_text, re.IGNORECASE)
+                    assert word_match is None, f"Prohibited medical claim '{word}' found in category {cat.slug}: {sanitized_text}"
+
+        # Check all ProductFAQs
+        for faq in ProductFAQ.objects.all():
+            for field in [faq.question, faq.answer]:
+                sanitized_text = field.replace(disclaimer, "")
+                for word in prohibited_words:
+                    word_match = re.search(rf"\b{word}\b", sanitized_text, re.IGNORECASE)
+                    assert word_match is None, f"Prohibited medical claim '{word}' found in FAQ for product {faq.product.sku}: {sanitized_text}"
+

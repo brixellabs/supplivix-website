@@ -51,11 +51,13 @@ export default function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<HomePage />} />
               <Route path="shop" element={<ShopPage />} />
+              <Route path="offers" element={<ShopPage />} />
               <Route path="multivitamins" element={<MultivitaminsHubPage />} />
               <Route path="products/:slug" element={<ProductDetailPage />} />
               <Route path="cart" element={<CartPage />} />
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="track" element={<TrackOrderPage />} />
+              <Route path="track-order" element={<TrackOrderPage />} />
               <Route path="about" element={<AboutPage />} />
               <Route path="contact" element={<ContactPage />} />
 

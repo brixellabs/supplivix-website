@@ -289,6 +289,8 @@ export default function ProductDetailPage() {
                 <img
                   src={product.images[0].image}
                   alt={product.name}
+                  width="600"
+                  height="380"
                   className="w-full max-h-[380px] object-contain"
                 />
               ) : (

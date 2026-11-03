@@ -135,6 +135,9 @@ export default function CartPage() {
                           <img
                             src={item.product_thumbnail}
                             alt={item.product_name}
+                            width="64"
+                            height="64"
+                            loading="lazy"
                             className="w-full h-full object-contain"
                           />
                         ) : (

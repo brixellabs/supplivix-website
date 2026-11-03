@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **350** (167 Backend Pytest + 115 Frontend Vitest + 68 Playwright E2E)  
+Total Automated Tests: **367** (180 Backend Pytest + 119 Frontend Vitest + 68 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -22,11 +22,11 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Forms (Every Form Matrix)** | `FORM-01` to `FORM-12` | Backend Pytest (DRF) | 8 | Passed |
 | **Site Mode, Policies & Content** | `MODE-01` to `MODE-06`, `POL-01` to `POL-03` | Backend Pytest (DRF/Django) | 7 | Passed |
 | **Staff Admin Panel** | `ADM-01` to `ADM-10` | Backend Pytest (DRF) | 10 | Passed |
-| **SEO & AEO Crawler Endpoints & SSR** | `SEO-01` to `SEO-07` | Backend Pytest (DRF) | 7 | Passed |
+| **SEO & AEO Crawler Endpoints & SSR** | `SEO-01` to `SEO-09`, `AEO-01` to `AEO-04` | Backend Pytest (DRF) | 13 | Passed |
 | **Bot Detection & Security** | `SEC-01` to `SEC-11` | Backend Pytest (DRF) | 11 | Passed |
 | **Catalog Seeding & Purge** | `DEMO-01` to `DEMO-10` | Backend Pytest (Django) | 10 | Passed |
 | **Core Models & Health** | `MOD-01` to `MOD-09` | Backend Pytest (Django) | 9 | Passed |
-| **Integration & Edge Cases** | Integration / API | Backend Pytest | 45 | Passed |
+| **Integration & Edge Cases** | Integration / API | Backend Pytest | 52 | Passed |
 | **Authentication & Accounts UI** | `AUTH-01` to `AUTH-10` | Frontend Vitest (React) | 10 | Passed |
 | **Catalog, Search & Filter UI** | `CAT-01` to `CAT-08` | Frontend Vitest (React) | 8 | Passed |
 | **Cart, Shipping, Coupon & COD UI** | `CART`, `SHIP`, `COUP-01` to `COUP-16`, `COD` | Frontend Vitest (React) | 18 | Passed |
@@ -35,13 +35,13 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend Vitest (React) | 12 | Passed |
 | **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend Vitest (React) | 15 | Passed |
 | **Staff Dashboard UI** | `ADM-01` to `ADM-10` | Frontend Vitest (React) | 14 | Passed |
-| **SEO Head & Structured Data** | `SEO-UI-01` to `SEO-UI-06` | Frontend Vitest (React) | 6 | Passed |
+| **SEO Head & Structured Data** | `SEO-01` to `SEO-09`, `AEO-01` to `AEO-04` | Frontend Vitest (React) | 10 | Passed |
 | **UI Invariants & Viewports** | `UI-01` to `UI-11` | Frontend Vitest (React) | 11 | Passed |
 | **E2E Journeys: Chromium** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Chrome | 17 | Passed |
 | **E2E Journeys: Firefox** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Firefox | 17 | Passed |
 | **E2E Journeys: WebKit** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Safari | 17 | Passed |
 | **E2E Journeys: Mobile Viewport** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Pixel 5 (360x740) | 17 | Passed |
-| **Total Test Suite** | | | **350** | **Passed (100%)** |
+| **Total Test Suite** | | | **367** | **Passed (100%)** |
 
 ---
 
@@ -202,7 +202,27 @@ Run this matrix across login, register, forgot password, reset password, profile
 
 ---
 
-## 11. Multi-Browser Playwright End-to-End Test Matrix
+## 11. Test Verification Matrix: Category J (SEO and AEO)
+
+| Test ID | Case Description | Layer | Expected & Verified Result | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `SEO-01` | curl each page type without JavaScript | Pytest (SSR Shell) | Status 200, `<title>`, `<meta name="description">`, `<h1>` (in `<noscript>`), `<link rel="canonical">`, and `<script type="application/ld+json">` present across all page types (`/`, `/multivitamins/`, `/shop/`, `/products/<slug>/`, `/contact/`, policies). | Passed |
+| `SEO-02` | Titles and descriptions | Pytest / Vitest | Every page has a unique title and description. Titles strictly <= 60 characters, descriptions strictly <= 160 characters. | Passed |
+| `SEO-03` | `sitemap.xml` and `robots.txt` | Pytest | Valid XML structure (`<urlset>`), includes active products and categories, excludes inactive items and private routes (`/admin/`, `/checkout/`, `/account/`, `/cart`). `robots.txt` disallows private routes, declares explicit allowances for GPTBot, ClaudeBot, PerplexityBot, Google-Extended, and references `sitemap.xml`. | Passed |
+| `SEO-04` | JSON-LD validation for Product, BreadcrumbList, FAQPage, Organization, CollectionPage | Pytest / Vitest | Valid Schema.org `@context: https://schema.org` and `@graph` entries for Organization, WebSite, Product, BreadcrumbList, FAQPage, and CollectionPage with zero schema validation errors. | Passed |
+| `SEO-05` | Product with no reviews | Pytest / Vitest | Product with 0 approved reviews strictly omits `aggregateRating` and `review` array from JSON-LD schema; product with approved reviews includes accurate `ratingValue` and `reviewCount`. | Passed |
+| `SEO-06` | Filter and sort URLs | Pytest / Vitest | Query URLs (e.g. `/shop?category=multivitamins&sort=price_asc`) have `<link rel="canonical">` pointing strictly to the clean base listing URL (`https://supplivix.com/shop/`). | Passed |
+| `SEO-07` | Cart, checkout, account, admin, 404 pages | Pytest / Vitest | Private and admin pages carry `X-Robots-Tag: noindex, nofollow` header and `<meta name="robots" content="noindex, nofollow">` tag. Non-existent and inactive products return HTTP 404 with `noindex, nofollow`. | Passed |
+| `SEO-08` | Broken link crawl of the whole site | Pytest | Comprehensive crawler extracts all internal links from `sitemap.xml` and public routes; zero 404 internal links found across the site. | Passed |
+| `SEO-09` | Every image | Pytest / Vitest | Automated codebase AST/regex scanner verifies all `<img>` tags have descriptive `alt` text, explicit dimension attributes (`width` and `height` or sizing classes), and `loading="lazy"` on below-the-fold assets while excluding above-the-fold first-screen images. | Passed |
+| `AEO-01` | Hub and product pages | Pytest / Vitest | Direct formulation summaries on both Multivitamins Hub and Product Detail pages start with an explicit, high-signal brief between 40 and 60 words. | Passed |
+| `AEO-02` | FAQ content | Pytest / Vitest | Product FAQ items rendered in visible DOM and SSR noscript match `FAQPage` Schema.org `mainEntity` questions and answers identically. | Passed |
+| `AEO-03` | `/llms.txt` | Pytest | Reachable with HTTP 200 `text/plain`, lists key hub pages, product catalog formulations, whole PKR prices, 100% COD payment model, free shipping threshold (Rs. 2,000), and official policy links. | Passed |
+| `AEO-04` | Search content for disease or cure claims | Pytest | Automated word list scanner inspects all products, categories, descriptions, and FAQs; zero prohibited medical claims ("cure", "disease", "treat") found outside the mandatory regulatory health disclaimer. | Passed |
+
+---
+
+## 12. Multi-Browser Playwright End-to-End Test Matrix
 
 Run command: `npm --prefix frontend run test:e2e`  
 Total E2E Scenarios: **68 passed** (0 failures across Chromium, Firefox, WebKit, Mobile viewport 360x740)
@@ -224,7 +244,7 @@ Total E2E Scenarios: **68 passed** (0 failures across Chromium, Firefox, WebKit,
 
 ---
 
-## 12. Code Coverage & Invariants Verification
+## 13. Code Coverage & Invariants Verification
 
 - **Zero Emojis Everywhere**: Verified by `node frontend/scripts/check-no-emojis.js` (0 matches).
 - **Zero Glassmorphism**: Verified by automated regex check (0 backdrop-blur / 0 translucent form overlays).
