@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **297** (144 Backend Pytest + 85 Frontend Vitest + 68 Playwright E2E)  
+Total Automated Tests: **299** (144 Backend Pytest + 87 Frontend Vitest + 68 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -27,7 +27,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Integration & Edge Cases** | Integration / API | Backend Pytest | 30 | Passed |
 | **Authentication & Accounts UI** | `AUTH-01` to `AUTH-10` | Frontend Vitest (React) | 10 | Passed |
 | **Catalog, Search & Filter UI** | `CAT-01` to `CAT-08` | Frontend Vitest (React) | 8 | Passed |
-| **Cart, Shipping, Coupon & COD UI** | `CART`, `SHIP-01` to `SHIP-06`, `COUP`, `COD` | Frontend Vitest (React) | 16 | Passed |
+| **Cart, Shipping, Coupon & COD UI** | `CART`, `SHIP`, `COUP-01` to `COUP-16`, `COD` | Frontend Vitest (React) | 18 | Passed |
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend Vitest (React) | 12 | Passed |
 | **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend Vitest (React) | 15 | Passed |
 | **Staff Dashboard UI** | `DASH-01` to `DASH-07` | Frontend Vitest (React) | 7 | Passed |
@@ -37,7 +37,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **E2E Journeys: Firefox** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Firefox | 17 | Passed |
 | **E2E Journeys: WebKit** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Safari | 17 | Passed |
 | **E2E Journeys: Mobile Viewport** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Pixel 5 (360x740) | 17 | Passed |
-| **Total Test Suite** | | | **297** | **Passed (100%)** |
+| **Total Test Suite** | | | **299** | **Passed (100%)** |
 
 ---
 
@@ -104,22 +104,22 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 
 | Test ID | Case Description | Layer | Expected & Verified Result | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| `COUP-01` | Percent coupon (10% off Rs. 2,400) | Pytest / Vitest / Playwright | Exact Rs. 240 discount applied as integer whole PKR. | Passed |
-| `COUP-02` | Percent coupon with maximum cap | Pytest / Vitest | Discount bounded by `max_discount_amount`. | Passed |
-| `COUP-03` | Fixed coupon larger than subtotal | Pytest / Vitest | Discount bounded by subtotal; grand total never negative. | Passed |
-| `COUP-04` | Normalization (lowercase, whitespace) | Pytest / Vitest / Playwright | ` welcome10 ` normalized to `WELCOME10` and validated cleanly. | Passed |
-| `COUP-05` | Nonexistent coupon code | Pytest / Vitest | HTTP 400 `Invalid coupon code.` returned. | Passed |
-| `COUP-06` | Expired coupon and future coupon | Pytest / Vitest | HTTP 400 `This coupon has expired.` or `This coupon is not active yet.` returned. | Passed |
-| `COUP-07` | Inactive coupon (`is_active=False`) | Pytest / Vitest | HTTP 400 `This coupon is no longer active.` returned. | Passed |
-| `COUP-08` | Minimum order amount unmet | Pytest / Vitest | HTTP 400 `Minimum order amount of Rs. X required.` returned. | Passed |
-| `COUP-09` | Category-restricted coupon | Pytest / Vitest | Discount applied only to eligible line items in category. | Passed |
-| `COUP-10` | Per-user usage limit reached | Pytest / Vitest | HTTP 400 `You have reached the usage limit for this coupon.` returned. | Passed |
-| `COUP-11` | Concurrent redemption safety | Pytest / Vitest | `select_for_update()` prevents usage beyond total limit under concurrency. | Passed |
-| `COUP-12` | Coupon replacement | Pytest / Vitest | New coupon cleanly replaces previous coupon without stacking. | Passed |
-| `COUP-13` | Coupon deletion | Pytest / Vitest | Deleting coupon immediately recalculates subtotal and shipping. | Passed |
-| `COUP-14` | Invalidation on cart change | Pytest / Vitest | Cart update below minimum requirement automatically detaches coupon. | Passed |
-| `COUP-15` | Cancelled order releases redemption | Pytest / Vitest | Customer redemption slot freed upon order cancellation. | Passed |
-| `COUP-16` | Rate limiting against code guessing | Pytest / Vitest | 11th coupon check attempt within 1 minute throttled with HTTP 429. | Passed |
+| `COUP-01` | Valid percentage code | Pytest / Vitest / Playwright | Correct discount applied, rounded consistently in whole PKR integers. | Passed |
+| `COUP-02` | Percentage code with a maximum cap | Pytest / Vitest | Discount never exceeds `max_discount_amount`. | Passed |
+| `COUP-03` | Valid fixed code larger than the subtotal | Pytest / Vitest | Discount bounded by subtotal; grand total never below zero. | Passed |
+| `COUP-04` | Lowercase and mixed-case entry, spaces around code | Pytest / Vitest / Playwright | Accepted and stripped to uppercase alphanumeric token after normalization. | Passed |
+| `COUP-05` | Unknown code | Pytest / Vitest | HTTP 400 with "This code is not valid". | Passed |
+| `COUP-06` | Expired code, not-yet-started code | Pytest / Vitest | Specific message for each ("This code has expired.", "This code is not yet active."). | Passed |
+| `COUP-07` | Inactive code | Pytest / Vitest | Rejected with HTTP 400 "This code is inactive." | Passed |
+| `COUP-08` | Minimum order not reached | Pytest / Vitest | Message shows the required amount ("Minimum order of Rs. X required"). | Passed |
+| `COUP-09` | Category-restricted code with non-matching cart | Pytest / Vitest | Rejected with message "This code is not valid for the items in your cart". | Passed |
+| `COUP-10` | Per-user limit reached (logged in and guest by email) | Pytest / Vitest | Rejected for both authenticated customer account and guest email address. | Passed |
+| `COUP-11` | Total usage limit of 1, two simultaneous orders | Pytest / Vitest | Exactly one order succeeds under atomic `select_for_update()` lock, second is blocked. | Passed |
+| `COUP-12` | Applying a second code | Pytest / Vitest | Replaces the first code cleanly, never stacks discounts. | Passed |
+| `COUP-13` | Remove code | Pytest / Vitest | Totals and shipping restored, HTTP DELETE handled cleanly. | Passed |
+| `COUP-14` | Cart changes after applying code, so code is no longer valid | Pytest / Vitest | Code removed with notice banner displayed in UI and cart payload. | Passed |
+| `COUP-15` | Order cancelled | Pytest / Vitest | `CouponRedemption` released upon order cancellation, allowing future redemption. | Passed |
+| `COUP-16` | 15 wrong codes in one minute | Pytest / Vitest | Throttled with HTTP 429 via `ScopedRateThrottle`. | Passed |
 
 ---
 

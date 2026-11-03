@@ -1,11 +1,11 @@
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from cart.views import get_or_create_cart
 from core.security import evaluate_risk
-from promotions.models import CouponRedemption
 
 from .models import Order
 from .serializers import (
@@ -197,32 +197,18 @@ class CancelOrderView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-        if order.status not in [Order.STATUS_PENDING, Order.STATUS_CONFIRMED]:
+        user = request.user if request.user.is_authenticated else None
+        try:
+            order.cancel(user=user, note='Order cancelled by customer.')
+        except ValidationError as e:
             return Response(
                 {
                     'code': 'cannot_cancel',
-                    'message': f"Orders with status '{order.get_status_display()}' cannot be cancelled.",
+                    'message': str(e),
                     'fields': {}
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        # Restore stock
-        for item in order.items.select_related('product'):
-            if item.product:
-                item.product.stock += item.quantity
-                item.product.save(update_fields=['stock'])
-
-        # Release coupon redemption
-        CouponRedemption.objects.filter(order=order).delete()
-
-        # Update order status
-        user = request.user if request.user.is_authenticated else None
-        order.transition_to(
-            Order.STATUS_CANCELLED,
-            user=user,
-            note='Order cancelled by customer.'
-        )
 
         return Response(
             {

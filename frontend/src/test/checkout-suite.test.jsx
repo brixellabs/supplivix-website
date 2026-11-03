@@ -407,6 +407,69 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
     });
   });
 
+  it('COUP-13: CartPage renders applied coupon token and allows removing it', async () => {
+    const appliedCouponCart = {
+      items: [
+        {
+          id: 1,
+          product_id: 101,
+          product_name: 'Core Multi',
+          unit_price: 2200,
+          quantity: 1,
+          line_total: 2200,
+        },
+      ],
+      total_items: 1,
+      subtotal: 2200,
+      coupon_code: 'SAVE10',
+      discount_total: 220,
+      grand_total: 1980,
+    };
+    renderWithProviders(<CartPage />, '/cart', appliedCouponCart);
+
+    await waitFor(() => {
+      expect(screen.getByText(/SAVE10/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/-Rs\. 220/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByRole('button', { name: /^Remove$/i })).toBeInTheDocument();
+    });
+
+    const removeBtn = screen.getByRole('button', { name: /^Remove$/i });
+    fireEvent.click(removeBtn);
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/cart\/coupon\//),
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+  });
+
+  it('COUP-14: CartPage displays notice banner when coupon was invalidated and removed', async () => {
+    const invalidatedCouponCart = {
+      items: [
+        {
+          id: 1,
+          product_id: 101,
+          product_name: 'Core Multi',
+          unit_price: 2200,
+          quantity: 1,
+          line_total: 2200,
+        },
+      ],
+      total_items: 1,
+      subtotal: 2200,
+      coupon_code: '',
+      discount_total: 0,
+      grand_total: 2200,
+      notices: ['Notice: Coupon MIN4000 was removed as cart requirements are no longer met.'],
+    };
+    renderWithProviders(<CartPage />, '/cart', invalidatedCouponCart);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Notice: Coupon MIN4000 was removed as cart requirements are no longer met\./i)).toBeInTheDocument();
+    });
+  });
+
   it('COD-01 & COD-04: CheckoutPage validates required fields with inline feedback', async () => {
     renderWithProviders(<CheckoutPage />, '/checkout');
 

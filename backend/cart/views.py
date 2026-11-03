@@ -176,9 +176,18 @@ class ApplyCouponView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Check per-user limit if user is authenticated
+        # Check per-user limit if user is authenticated or guest email provided
+        guest_email = request.data.get('email', '').strip().lower()
         if request.user.is_authenticated:
             used_count = CouponRedemption.objects.filter(coupon=coupon, user=request.user).count()
+            if used_count >= coupon.usage_limit_per_user:
+                msg = "You have already used this code"
+                return Response(
+                    {'code': 'usage_limit_reached', 'message': msg, 'fields': {'code': [msg]}},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        elif guest_email:
+            used_count = CouponRedemption.objects.filter(coupon=coupon, email=guest_email).count()
             if used_count >= coupon.usage_limit_per_user:
                 msg = "You have already used this code"
                 return Response(

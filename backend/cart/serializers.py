@@ -125,12 +125,31 @@ class CartDetailSerializer(serializers.ModelSerializer):
                 coupon = Coupon.objects.filter(code=obj.coupon_code, is_active=True).first()
                 if coupon:
                     is_valid, _ = coupon.is_valid_now()
-                    if is_valid and subtotal >= coupon.min_order_amount:
+                    category_ok = True
+                    if coupon.applies_to_category_id:
+                        category_ok = any(item.product.category_id == coupon.applies_to_category_id for item in obj.items.all())
+
+                    if is_valid and subtotal >= coupon.min_order_amount and category_ok:
                         discount = coupon.calculate_discount(subtotal)
                     else:
-                        # Auto-remove invalid coupon
+                        # Auto-remove invalid coupon with notice
+                        removed_code = obj.coupon_code
                         obj.coupon_code = ''
                         obj.save(update_fields=['coupon_code'])
+                        notice = f"Notice: Coupon {removed_code} was removed as cart requirements are no longer met."
+                        obj._coupon_notice = notice
+                        if obj.id:
+                            from django.core.cache import cache
+                            cache.set(f"cart_notice_{obj.id}", notice, timeout=120)
+                else:
+                    removed_code = obj.coupon_code
+                    obj.coupon_code = ''
+                    obj.save(update_fields=['coupon_code'])
+                    notice = f"Notice: Coupon {removed_code} was removed."
+                    obj._coupon_notice = notice
+                    if obj.id:
+                        from django.core.cache import cache
+                        cache.set(f"cart_notice_{obj.id}", notice, timeout=120)
 
             subtotal_after_discount = max(0, subtotal - discount)
             threshold = SiteSetting.get_int('free_shipping_threshold', 2000)
@@ -195,7 +214,15 @@ class CartDetailSerializer(serializers.ModelSerializer):
         return self._get_calculation(obj)['eligible']
 
     def get_notices(self, obj):
+        self._get_calculation(obj)
         notices = []
+        if getattr(obj, '_coupon_notice', None):
+            notices.append(obj._coupon_notice)
+        elif obj.id:
+            from django.core.cache import cache
+            cached_notice = cache.get(f"cart_notice_{obj.id}")
+            if cached_notice and cached_notice not in notices:
+                notices.append(cached_notice)
         for item in obj.items.select_related('product').all():
             if not item.product.is_active:
                 notices.append(f"{item.product.name} is no longer available. Please remove it to proceed to checkout.")

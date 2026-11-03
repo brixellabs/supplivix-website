@@ -137,6 +137,13 @@ def place_cod_order(cart, checkout_data, user=None):
             is_valid, err = locked_coupon.is_valid_now()
             if not is_valid:
                 raise ValidationError({'coupon': err})
+            # Check user/guest redemption limit under lock
+            if user and user.is_authenticated:
+                if CouponRedemption.objects.filter(coupon=locked_coupon, user=user).count() >= locked_coupon.usage_limit_per_user:
+                    raise ValidationError({'coupon': 'You have already reached the usage limit for this coupon.'})
+            elif guest_email:
+                if CouponRedemption.objects.filter(coupon=locked_coupon, email=guest_email).count() >= locked_coupon.usage_limit_per_user:
+                    raise ValidationError({'coupon': 'This email has already reached the usage limit for this coupon.'})
 
     # 3. Calculate authoritative quote
     quote = calculate_checkout_quote(

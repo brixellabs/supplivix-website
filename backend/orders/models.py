@@ -112,6 +112,25 @@ class Order(models.Model):
             note=note
         )
 
+    def cancel(self, user=None, note='Order cancelled.'):
+        """Cancel order, restore product stock, release coupon redemption, and record history."""
+        if self.status not in [self.STATUS_PENDING, self.STATUS_CONFIRMED]:
+            raise ValidationError(
+                f"Orders with status '{self.get_status_display()}' cannot be cancelled."
+            )
+
+        # Restore product stock
+        for item in self.items.select_related('product').all():
+            if item.product:
+                item.product.stock += item.quantity
+                item.product.save(update_fields=['stock'])
+
+        # Release coupon redemptions
+        from promotions.models import CouponRedemption
+        CouponRedemption.objects.filter(order=self).delete()
+
+        self.transition_to(self.STATUS_CANCELLED, user=user, note=note)
+
 
 class OrderItem(models.Model):
     """Line item in an order with snapshot of product details."""

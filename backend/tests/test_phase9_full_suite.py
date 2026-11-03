@@ -900,10 +900,10 @@ class TestCouponSuite:
     def test_coup_10_per_user_limit_enforced(self, api_client, test_customer, test_product):
         """COUP-10: Per-user limit reached (logged in and guest by email) -> Rejected."""
         coupon = Coupon.objects.create(code="ONETIMEONLY", type="percent", value=20, usage_limit_per_user=1, is_active=True)
+        # 1. Authenticated user limit reached
         api_client.force_authenticate(user=test_customer)
         api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
 
-        # Simulate redemption
         order = Order.objects.create(number="SPLV-C10-01", user=test_customer, subtotal=2200, grand_total=1760)
         CouponRedemption.objects.create(coupon=coupon, user=test_customer, order=order)
 
@@ -911,13 +911,22 @@ class TestCouponSuite:
         assert res.status_code == 400
         assert "already used" in res.data["message"].lower()
 
+        # 2. Guest user limit reached by email
+        api_client.force_authenticate(user=None)
+        guest_order = Order.objects.create(number="SPLV-C10-02", guest_email="guest@example.com", subtotal=2200, grand_total=1760)
+        CouponRedemption.objects.create(coupon=coupon, email="guest@example.com", order=guest_order)
+
+        res_guest = api_client.post("/api/v1/cart/coupon/", {"code": "ONETIMEONLY", "email": "guest@example.com"}, format="json")
+        assert res_guest.status_code == 400
+        assert "already used" in res_guest.data["message"].lower()
+
     def test_coup_11_simultaneous_orders_single_redemption(self, test_product):
         """COUP-11: Total usage limit of 1, two simultaneous orders -> Exactly one succeeds."""
         coupon = Coupon.objects.create(code="RACE100", type="fixed", value=500, usage_limit_total=1, is_active=True)
         cart1 = Cart.objects.create(session_key="race-session-1", coupon_code="RACE100")
         CartItem.objects.create(cart=cart1, product=test_product, quantity=1)
 
-        payload = {
+        payload1 = {
             "full_name": "Racer One",
             "email": "racer1@example.com",
             "phone": "03001112233",
@@ -926,15 +935,32 @@ class TestCouponSuite:
             "province": "Punjab",
             "payment_method": "COD",
         }
+        cart2 = Cart.objects.create(session_key="race-session-2", coupon_code="RACE100")
+        CartItem.objects.create(cart=cart2, product=test_product, quantity=1)
+
+        payload2 = {
+            "full_name": "Racer Two",
+            "email": "racer2@example.com",
+            "phone": "03004445566",
+            "line1": "Street 2",
+            "city": "Karachi",
+            "province": "Sindh",
+            "payment_method": "COD",
+        }
+
         from orders.services import place_cod_order
-        order1 = place_cod_order(cart=cart1, checkout_data=payload)
+
+        # Order 1 consumes the single redemption slot under atomic transaction
+        order1 = place_cod_order(cart=cart1, checkout_data=payload1)
         assert order1.coupon_code == "RACE100"
         assert coupon.redemptions.count() == 1
 
-        cart2 = Cart.objects.create(session_key="race-session-2", coupon_code="RACE100")
-        CartItem.objects.create(cart=cart2, product=test_product, quantity=1)
-        with pytest.raises(Exception):
-            place_cod_order(cart=cart2, checkout_data=payload)
+        # Order 2 is strictly blocked under lock because usage_limit_total (1) has been reached
+        with pytest.raises(Exception) as exc_info:
+            place_cod_order(cart=cart2, checkout_data=payload2)
+
+        assert "limit" in str(exc_info.value).lower()
+        assert coupon.redemptions.count() == 1
 
     def test_coup_12_coupon_replacement_no_stacking(self, api_client, test_product):
         """COUP-12: Applying a second code -> Replaces the first, never stacks."""
@@ -963,7 +989,7 @@ class TestCouponSuite:
         assert quote.data["discount_total"] == 0
 
     def test_coup_14_invalidated_coupon_removed_on_cart_update(self, api_client, test_category):
-        """COUP-14: Cart changes after applying code, so code is no longer valid -> Code removed or disregarded."""
+        """COUP-14: Cart changes after applying code, so code is no longer valid -> Code removed with a notice."""
         p_high = Product.objects.create(name="P High", slug="p-high", category=test_category, price=3000, sku="S-HIGH", stock=10, is_active=True)
         Coupon.objects.create(code="MIN4000", type="percent", value=10, min_order_amount=4000, is_active=True)
         add_res = api_client.post("/api/v1/cart/items/", {"product_id": p_high.id, "quantity": 2}, format="json")  # subtotal = 6000
@@ -972,6 +998,9 @@ class TestCouponSuite:
 
         # Reduce quantity to 1 -> subtotal = 3000 (< 4000 min order)
         api_client.patch(f"/api/v1/cart/items/{item_id}/", {"quantity": 1}, format="json")
+        cart_res = api_client.get("/api/v1/cart/")
+        assert cart_res.data["coupon_code"] == ""
+        assert any("removed" in n.lower() for n in cart_res.data["notices"])
         quote = api_client.post("/api/v1/checkout/quote/", format="json")
         assert quote.data["discount_total"] == 0
 
@@ -1001,8 +1030,7 @@ class TestCouponSuite:
         assert CouponRedemption.objects.filter(coupon=coupon).count() == 0
 
     def test_coup_16_rate_limiting_throttles_coupon_guessing(self, api_client, test_product):
-        """COUP-16: 15 wrong codes in one minute -> Throttled or logged as bot event."""
-        from core.models import BotEvent
+        """COUP-16: 15 wrong codes in one minute -> Throttled with 429."""
         api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
 
         statuses = []
@@ -1010,8 +1038,7 @@ class TestCouponSuite:
             res = api_client.post("/api/v1/cart/coupon/", {"code": f"WRONG{i}"}, format="json")
             statuses.append(res.status_code)
 
-        # BotEvent should log coupon guessing behavior or rate limiter returns 429
-        assert 429 in statuses or BotEvent.objects.filter(reason__icontains="coupon guessing").exists()
+        assert 429 in statuses
 
 
 # ==============================================================================
