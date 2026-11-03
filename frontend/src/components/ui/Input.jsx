@@ -44,7 +44,7 @@ const Input = forwardRef(function Input(
       />
       {error && (
         <p id={errorId} className="text-xs font-medium text-status-error" role="alert">
-          {error}
+          {Array.isArray(error) ? error[0] : error}
         </p>
       )}
       {!error && helperText && (

@@ -99,7 +99,15 @@ export default function CheckoutPage() {
     }
 
     setErrors(errs);
-    return Object.keys(errs).length === 0;
+    const keys = Object.keys(errs);
+    if (keys.length > 0) {
+      const firstEl = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);
+      if (firstEl && typeof firstEl.focus === 'function') {
+        firstEl.focus();
+      }
+      return false;
+    }
+    return true;
   };
 
   const handleSubmitOrder = async (e) => {

@@ -42,7 +42,15 @@ export default function ContactPage() {
       errs.message = 'Please provide a message (minimum 10 characters).';
     }
     setErrors(errs);
-    return Object.keys(errs).length === 0;
+    const keys = Object.keys(errs);
+    if (keys.length > 0) {
+      const firstEl = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);
+      if (firstEl && typeof firstEl.focus === 'function') {
+        firstEl.focus();
+      }
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e) => {
@@ -240,10 +248,11 @@ export default function ContactPage() {
                   />
 
                   <div>
-                    <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    <label htmlFor="contact-subject" className="block text-xs font-semibold text-brand-ink mb-1">
                       Subject <span className="text-red-500">*</span>
                     </label>
                     <select
+                      id="contact-subject"
                       name="subject"
                       value={formData.subject}
                       onChange={handleChange}
@@ -264,10 +273,11 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                  <label htmlFor="contact-message" className="block text-xs font-semibold text-brand-ink mb-1">
                     Your Message <span className="text-red-500">*</span>
                   </label>
                   <textarea
+                    id="contact-message"
                     name="message"
                     rows={4}
                     value={formData.message}

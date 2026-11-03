@@ -17,16 +17,38 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [honeypot, setHoneypot] = useState('');
 
   const redirectPath = location.state?.from?.pathname || '/account';
+
+  const validate = () => {
+    const errs = {};
+    if (!email.trim()) {
+      errs.email = 'Please provide your email address.';
+    } else if (!email.includes('@')) {
+      errs.email = 'Please provide a valid email address.';
+    }
+    if (!password) {
+      errs.password = 'Please enter your password.';
+    }
+    setErrors(errs);
+    const keys = Object.keys(errs);
+    if (keys.length > 0) {
+      const firstEl = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);
+      if (firstEl && typeof firstEl.focus === 'function') {
+        firstEl.focus();
+      }
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!email.trim() || !password) {
-      setError('Please provide both email and password.');
+    if (!validate()) {
       return;
     }
 
@@ -36,7 +58,16 @@ export default function LoginPage() {
       showToast('Welcome back to Supplivix!');
       navigate(redirectPath, { replace: true });
     } catch (err) {
-      setError(err.message || 'Invalid email or password.');
+      if (err.fields && Object.keys(err.fields).length > 0) {
+        setErrors(err.fields);
+        const keys = Object.keys(err.fields);
+        const firstEl = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);
+        if (firstEl && typeof firstEl.focus === 'function') {
+          firstEl.focus();
+        }
+      } else {
+        setError(err.message || 'Invalid email or password.');
+      }
     } finally {
       setLoading(false);
     }
@@ -80,15 +111,20 @@ export default function LoginPage() {
               name="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+              }}
               placeholder="name@example.com"
               required
+              error={errors.email}
             />
 
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label htmlFor="password" className="text-xs font-semibold text-brand-ink">
                   Password
+                  <span className="text-status-error ml-1" aria-hidden="true">*</span>
                 </label>
                 <Link
                   to="/forgot-password"
@@ -103,8 +139,15 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-green pr-9"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+                  }}
+                  aria-invalid={errors.password ? 'true' : 'false'}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
+                  className={`w-full bg-white border rounded-sm p-2 text-xs text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-green pr-9 ${
+                    errors.password ? 'border-status-error focus:ring-status-error' : 'border-surface-border'
+                  }`}
                   placeholder="Enter your password"
                   required
                 />
@@ -117,6 +160,11 @@ export default function LoginPage() {
                   <Icon name={showPassword ? 'eye-slash' : 'eye'} className="text-xs" />
                 </button>
               </div>
+              {errors.password && (
+                <p id="password-error" className="text-xs font-medium text-status-error mt-1" role="alert">
+                  {Array.isArray(errors.password) ? errors.password[0] : errors.password}
+                </p>
+              )}
             </div>
 
             <Button

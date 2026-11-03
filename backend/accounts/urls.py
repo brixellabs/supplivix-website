@@ -21,6 +21,8 @@ urlpatterns = [
     path('auth/change-password/', ChangePasswordView.as_view(), name='auth-change-password'),
     path('auth/password-reset/request/', PasswordResetRequestView.as_view(), name='auth-password-reset-request'),
     path('auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='auth-password-reset-confirm'),
+    path('auth/addresses/', AddressListCreateView.as_view(), name='auth-address-list-create'),
+    path('auth/addresses/<int:pk>/', AddressDetailView.as_view(), name='auth-address-detail'),
 
     # Direct aliases matching Phase 2 specification
     path('register/', RegisterView.as_view(), name='direct-register'),

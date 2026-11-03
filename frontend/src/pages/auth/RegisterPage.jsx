@@ -48,7 +48,15 @@ export default function RegisterPage() {
       errs.confirmPassword = 'Passwords do not match.';
     }
     setErrors(errs);
-    return Object.keys(errs).length === 0;
+    const keys = Object.keys(errs);
+    if (keys.length > 0) {
+      const firstEl = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);
+      if (firstEl && typeof firstEl.focus === 'function') {
+        firstEl.focus();
+      }
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e) => {
@@ -70,6 +78,13 @@ export default function RegisterPage() {
     } catch (err) {
       if (err.fields) {
         setErrors(err.fields);
+        const keys = Object.keys(err.fields);
+        if (keys.length > 0) {
+          const firstEl = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);
+          if (firstEl && typeof firstEl.focus === 'function') {
+            firstEl.focus();
+          }
+        }
       } else {
         setErrors({ general: err.message || 'Unable to register.' });
       }

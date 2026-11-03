@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **299** (144 Backend Pytest + 87 Frontend Vitest + 68 Playwright E2E)  
+Total Automated Tests: **319** (152 Backend Pytest + 99 Frontend Vitest + 68 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -19,6 +19,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Shipping Rules (Free >= Rs. 2,000)** | `SHIP-01` to `SHIP-05` | Backend Pytest (DRF) | 5 | Passed |
 | **Coupons & Discount Tokens** | `COUP-01` to `COUP-16` | Backend Pytest (DRF) | 16 | Passed |
 | **Cash on Delivery (COD)** | `COD-01` to `COD-14` | Backend Pytest (DRF) | 14 | Passed |
+| **Forms (Every Form Matrix)** | `FORM-01` to `FORM-12` | Backend Pytest (DRF) | 8 | Passed |
 | **Staff Admin Panel** | `ADM-01` to `ADM-15` | Backend Pytest (DRF) | 15 | Passed |
 | **SEO & AEO Crawler Endpoints & SSR** | `SEO-01` to `SEO-07` | Backend Pytest (DRF) | 7 | Passed |
 | **Bot Detection & Security** | `SEC-01` to `SEC-11` | Backend Pytest (DRF) | 11 | Passed |
@@ -28,6 +29,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Authentication & Accounts UI** | `AUTH-01` to `AUTH-10` | Frontend Vitest (React) | 10 | Passed |
 | **Catalog, Search & Filter UI** | `CAT-01` to `CAT-08` | Frontend Vitest (React) | 8 | Passed |
 | **Cart, Shipping, Coupon & COD UI** | `CART`, `SHIP`, `COUP-01` to `COUP-16`, `COD` | Frontend Vitest (React) | 18 | Passed |
+| **Forms Accessibility & Matrix UI** | `FORM-01` to `FORM-12` | Frontend Vitest (React) | 12 | Passed |
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend Vitest (React) | 12 | Passed |
 | **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend Vitest (React) | 15 | Passed |
 | **Staff Dashboard UI** | `DASH-01` to `DASH-07` | Frontend Vitest (React) | 7 | Passed |
@@ -37,7 +39,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **E2E Journeys: Firefox** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Firefox | 17 | Passed |
 | **E2E Journeys: WebKit** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Safari | 17 | Passed |
 | **E2E Journeys: Mobile Viewport** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Pixel 5 (360x740) | 17 | Passed |
-| **Total Test Suite** | | | **299** | **Passed (100%)** |
+| **Total Test Suite** | | | **319** | **Passed (100%)** |
 
 ---
 
@@ -144,7 +146,28 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 
 ---
 
-## 8. Multi-Browser Playwright End-to-End Test Matrix
+## 8. Test Verification Matrix: Category G (Forms Matrix & Accessibility)
+
+Run this matrix across login, register, forgot password, reset password, profile, address, checkout, coupon, contact, waitlist, review, and admin forms.
+
+| Test ID | Case Description | Layer | Expected & Verified Result | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `FORM-01` | Submit empty required fields | Pytest / Vitest | Every required field shows its error; client DOM focus automatically shifts to first invalid input. | Passed |
+| `FORM-02` | Leading/trailing whitespace, spaces only | Pytest / Vitest | Text trimmed cleanly; whitespace-only strings rejected by validation schemas across client and server. | Passed |
+| `FORM-03` | Max length plus one character | Pytest / Vitest | Input exceeding field maximum length is rejected with clear character constraint error message. | Passed |
+| `FORM-04` | HTML / script input (`<script>alert(1)</script>`) | Pytest / Vitest | Stored safely escaped / plain text in database; never executed in DOM. | Passed |
+| `FORM-05` | SQL-like input (`' OR 1=1 --`) | Pytest / Vitest | Parameterized ORM queries treat malicious SQL strings strictly as literal text without syntax alteration. | Passed |
+| `FORM-06` | Unicode input, Urdu text, long names | Pytest / Vitest | Multi-byte UTF-8 and Urdu strings (`محمد علی خان`, `کراچی`) accepted, stored accurately, and displayed without corruption. | Passed |
+| `FORM-07` | Server returns structured field errors | Pytest / Vitest | DRF 400 dictionary mapped directly to form input components with visible inline error text. | Passed |
+| `FORM-08` | Submit button during pending request | Vitest | Submit button disabled with loading state spinner (`disabled={loading}`, "Processing..."). | Passed |
+| `FORM-09` | Accessibility: labels, aria-invalid, aria-describedby | Vitest | Form controls have linked `<label htmlFor="...">`, `aria-invalid="true"`, `aria-describedby`, and `<p role="alert">` accessible to screen readers. | Passed |
+| `FORM-10` | Keyboard navigation: Tab, Shift+Tab, Enter | Vitest | Full keyboard navigable form traversal with visible emerald focus ring (`focus:ring-2 focus:ring-brand-green`). | Passed |
+| `FORM-11` | Honeypot field filled (`name="website"`) | Pytest / Vitest | Silent success response returned to bot; `BotEvent(reason='honeypot_triggered')` logged; zero real database records created. | Passed |
+| `FORM-12` | Submission under 2 seconds after render | Pytest / Vitest | Signed time token verifies submission speed; submissions < 2s add risk score (+40), triggering Cloudflare Turnstile challenge. | Passed |
+
+---
+
+## 9. Multi-Browser Playwright End-to-End Test Matrix
 
 Run command: `npm --prefix frontend run test:e2e`  
 Total E2E Scenarios: **68 passed** (0 failures across Chromium, Firefox, WebKit, Mobile viewport 360x740)
@@ -166,7 +189,7 @@ Total E2E Scenarios: **68 passed** (0 failures across Chromium, Firefox, WebKit,
 
 ---
 
-## 9. Code Coverage & Invariants Verification
+## 10. Code Coverage & Invariants Verification
 
 - **Zero Emojis Everywhere**: Verified by `node frontend/scripts/check-no-emojis.js` (0 matches).
 - **Zero Glassmorphism**: Verified by automated regex check (0 backdrop-blur / 0 translucent form overlays).

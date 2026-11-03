@@ -27,7 +27,9 @@ from rest_framework.test import APIClient
 from accounts.models import Address, User
 from cart.models import Cart, CartItem
 from catalog.models import Category, Product, Review
-from content.models import SiteSetting
+from content.models import ContactMessage, SiteSetting
+from core.models import BotEvent
+from core.security import generate_time_token, verify_time_token
 from orders.models import Order, OrderItem
 from promotions.models import Coupon, CouponRedemption
 
@@ -1426,3 +1428,215 @@ class TestPolicySuite:
         res = api_client.post("/api/v1/contact/", payload, format="json")
         assert res.status_code == 201
         assert "thank you" in res.data["message"].lower()
+
+
+# ==============================================================================
+# FORM-01 to FORM-12: Forms Matrix Suite (Login, Register, Reset, Address, Checkout, Contact, Waitlist, Review)
+# ==============================================================================
+@pytest.mark.django_db
+class TestFormSuite:
+    @pytest.fixture(autouse=True)
+    def setup_cache(self):
+        cache.clear()
+        yield
+        cache.clear()
+
+    def test_form_01_submit_empty_required_fields_returns_mapped_field_errors(self, api_client):
+        """FORM-01 & FORM-07: Submit empty required fields -> Every required field shows error in response."""
+        # 1. Register with empty fields
+        res_reg = api_client.post("/api/v1/auth/register/", {}, format="json")
+        assert res_reg.status_code == 400
+        assert "email" in res_reg.data["fields"]
+        assert "password" in res_reg.data["fields"]
+        assert "full_name" in res_reg.data["fields"]
+
+        # 2. Login with empty fields
+        res_login = api_client.post("/api/v1/auth/login/", {}, format="json")
+        assert res_login.status_code == 400
+        assert "email" in res_login.data["fields"]
+        assert "password" in res_login.data["fields"]
+
+        # 3. Contact message with empty fields
+        res_contact = api_client.post("/api/v1/contact/", {}, format="json")
+        assert res_contact.status_code == 400
+        assert "name" in res_contact.data["fields"]
+        assert "email" in res_contact.data["fields"]
+        assert "message" in res_contact.data["fields"]
+
+        # 4. Checkout with empty fields
+        res_checkout = api_client.post("/api/v1/orders/create/", {}, format="json")
+        assert res_checkout.status_code == 400
+        assert "full_name" in res_checkout.data["fields"]
+        assert "phone" in res_checkout.data["fields"]
+
+    def test_form_02_whitespace_only_trimmed_and_rejected(self, api_client):
+        """FORM-02: Leading and trailing spaces trimmed; spaces-only rejected."""
+        # Spaces only for registration
+        res = api_client.post(
+            "/api/v1/auth/register/",
+            {"full_name": "   ", "email": "   ", "password": "   "},
+            format="json",
+        )
+        assert res.status_code == 400
+        assert "email" in res.data["fields"]
+
+        # Leading/trailing spaces on valid registration are trimmed
+        res_valid = api_client.post(
+            "/api/v1/auth/register/",
+            {
+                "full_name": "   Zaid Malik   ",
+                "email": "   zaid.trim@example.com   ",
+                "phone": "  03001234567  ",
+                "password": "SecurePassword123!",
+            },
+            format="json",
+        )
+        assert res_valid.status_code == 201
+        user = User.objects.get(email="zaid.trim@example.com")
+        assert user.full_name == "Zaid Malik"
+        assert user.phone == "+923001234567"
+
+    def test_form_03_max_length_plus_one_rejected(self, api_client):
+        """FORM-03: Maximum length plus one character rejected with field error."""
+        # Contact name max_length is 80
+        long_name = "A" * 81
+        res = api_client.post(
+            "/api/v1/contact/",
+            {
+                "name": long_name,
+                "email": "valid@example.com",
+                "phone": "03001234567",
+                "subject": "Question",
+                "message": "Valid detailed message about supplements.",
+            },
+            format="json",
+        )
+        assert res.status_code == 400
+        assert "name" in res.data["fields"]
+
+        # Register full_name max_length is 255
+        long_user_name = "B" * 256
+        res2 = api_client.post(
+            "/api/v1/auth/register/",
+            {
+                "full_name": long_user_name,
+                "email": "toolong@example.com",
+                "password": "ValidPass123!",
+            },
+            format="json",
+        )
+        assert res2.status_code == 400
+        assert "full_name" in res2.data["fields"]
+
+    def test_form_04_html_and_script_input_stored_safely_escaped(self, api_client, test_customer):
+        """FORM-04: HTML and script input (<script>alert(1)</script>) stored safely as text, never executed."""
+        api_client.force_authenticate(user=test_customer)
+        script_payload = "<script>alert('xss')</script>"
+        res = api_client.post(
+            "/api/v1/addresses/",
+            {
+                "full_name": script_payload,
+                "phone": "03001234567",
+                "line1": f"House 10 {script_payload}",
+                "city": "Lahore",
+                "province": "Punjab",
+            },
+            format="json",
+        )
+        assert res.status_code == 201
+        addr_id = res.data["id"]
+        addr = Address.objects.get(id=addr_id)
+        assert "<script>" in addr.full_name
+        assert "<script>" in addr.line1
+
+        # Retrieve and verify it is serialized safely without execution
+        get_res = api_client.get(f"/api/v1/addresses/{addr_id}/")
+        assert get_res.status_code == 200
+        assert get_res.data["full_name"] == script_payload
+
+    def test_form_05_sql_injection_input_treated_as_plain_text(self, api_client):
+        """FORM-05: SQL-like input (' OR 1=1 --) treated as plain text."""
+        sql_input = "' OR 1=1 --"
+        # Search endpoint
+        res = api_client.get(f"/api/v1/products/?search={sql_input}")
+        assert res.status_code == 200
+        # No 500 error or database syntax exception
+
+        # Contact form with SQL input
+        res_contact = api_client.post(
+            "/api/v1/contact/",
+            {
+                "name": f"User {sql_input}",
+                "email": "sqltest@example.com",
+                "phone": "03001234567",
+                "subject": sql_input,
+                "message": f"Trying SQL injection: {sql_input} safely handled.",
+            },
+            format="json",
+        )
+        assert res_contact.status_code == 201
+        msg = ContactMessage.objects.filter(email="sqltest@example.com").first()
+        assert msg is not None
+        assert sql_input in msg.name
+
+    def test_form_06_unicode_and_urdu_text_accepted_and_displayed(self, api_client, test_customer, test_product):
+        """FORM-06: Unicode input, Urdu text, long names accepted and displayed correctly."""
+        urdu_name = "محمد علی خان"
+        urdu_address = "مکان نمبر ۴۴، گلی نمبر ۵، سیکٹر جی ۱۱، اسلام آباد"
+        urdu_city = "اسلام آباد"
+        urdu_province = "وفاقی دارالحکومت"
+
+        api_client.force_authenticate(user=test_customer)
+        res = api_client.post(
+            "/api/v1/addresses/",
+            {
+                "full_name": urdu_name,
+                "phone": "03001234567",
+                "line1": urdu_address,
+                "city": urdu_city,
+                "province": urdu_province,
+            },
+            format="json",
+        )
+        assert res.status_code == 201
+        assert res.data["full_name"] == urdu_name
+        assert res.data["line1"] == urdu_address
+
+        # Check round-trip in database
+        addr = Address.objects.get(id=res.data["id"])
+        assert addr.full_name == urdu_name
+        assert addr.line1 == urdu_address
+
+    def test_form_11_honeypot_field_returns_silent_success_and_logs_bot_event(self, api_client):
+        """FORM-11: Honeypot filled -> Silent success to the bot, logged as a bot event, nothing saved."""
+        initial_events = BotEvent.objects.count()
+        initial_users = User.objects.count()
+
+        payload = {
+            "full_name": "Spam Bot",
+            "email": "spambot99@example.com",
+            "phone": "03001234567",
+            "password": "BotPassword123!",
+            "website": "http://evil-bot-link.ru",  # Honeypot filled
+        }
+        res = api_client.post("/api/v1/auth/register/", payload, format="json")
+        # Bot receives a normal-looking 201 Created response
+        assert res.status_code == 201
+        assert res.data["message"] == "Registration successful."
+
+        # Verify no real user was created in the database
+        assert User.objects.count() == initial_users
+        assert not User.objects.filter(email="spambot99@example.com").exists()
+
+        # Verify BotEvent was logged
+        assert BotEvent.objects.count() == initial_events + 1
+        last_event = BotEvent.objects.latest("created_at")
+        assert "honeypot" in last_event.reason.lower()
+
+    def test_form_12_time_trap_fast_submission_adds_risk_score(self):
+        """FORM-12: Form time token evaluated; sub-2-second submission flags too_fast and adds score."""
+        # Freshly minted token submitted instantly (< 2s)
+        token = generate_time_token()
+        status, risk = verify_time_token(token)
+        assert status == "too_fast"
+        assert risk == 40

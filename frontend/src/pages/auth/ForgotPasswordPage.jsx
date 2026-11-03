@@ -6,12 +6,19 @@ import { api } from '../../services/api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim() || !email.includes('@')) return;
+    setError('');
+    if (!email.trim() || !email.includes('@')) {
+      setError('Please provide a valid email address.');
+      const el = document.querySelector('[name="email"], #email');
+      if (el && typeof el.focus === 'function') el.focus();
+      return;
+    }
 
     setLoading(true);
     try {
@@ -61,9 +68,13 @@ export default function ForgotPasswordPage() {
                 name="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError('');
+                }}
                 placeholder="name@example.com"
                 required
+                error={error}
               />
 
               <Button

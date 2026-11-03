@@ -17,19 +17,32 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
+
+  const validate = () => {
+    const errs = {};
+    if (!password || password.length < 8) {
+      errs.password = 'Password must be at least 8 characters long.';
+    }
+    if (!confirmPassword) {
+      errs.confirmPassword = 'Please confirm your new password.';
+    } else if (password !== confirmPassword) {
+      errs.confirmPassword = 'Passwords do not match.';
+    }
+    setErrors(errs);
+    const keys = Object.keys(errs);
+    if (keys.length > 0) {
+      const el = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);
+      if (el && typeof el.focus === 'function') el.focus();
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!password || password.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
     try {
@@ -75,9 +88,13 @@ export default function ResetPasswordPage() {
               name="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+              }}
               placeholder="Minimum 8 characters"
               required
+              error={errors.password}
             />
 
             <Input
@@ -85,9 +102,13 @@ export default function ResetPasswordPage() {
               name="confirmPassword"
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: '' }));
+              }}
               placeholder="Re-enter password"
               required
+              error={errors.confirmPassword}
             />
 
             <Button

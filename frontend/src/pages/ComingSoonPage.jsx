@@ -54,8 +54,10 @@ export default function ComingSoonPage() {
     setError('');
     setSuccessMessage('');
 
-    if (!email || !email.includes('@')) {
+    if (!email.trim() || !email.includes('@')) {
       setError('Please provide a valid email address.');
+      const el = document.querySelector('[name="waitlistEmail"], #waitlistEmail');
+      if (el && typeof el.focus === 'function') el.focus();
       return;
     }
 

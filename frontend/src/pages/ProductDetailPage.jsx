@@ -52,6 +52,7 @@ export default function ProductDetailPage() {
   const [reviewBody, setReviewBody] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
+  const [reviewErrors, setReviewErrors] = useState({});
 
   useEffect(() => {
     setNotFound(false);
@@ -109,8 +110,18 @@ export default function ProductDetailPage() {
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     setReviewError('');
-    if (!reviewTitle.trim() || !reviewBody.trim()) {
-      setReviewError('Please provide both a title and review content.');
+    const errs = {};
+    if (!reviewTitle.trim()) {
+      errs.title = 'Please provide a review title.';
+    }
+    if (!reviewBody.trim()) {
+      errs.body = 'Please provide detailed review content.';
+    }
+    setReviewErrors(errs);
+    const errKeys = Object.keys(errs);
+    if (errKeys.length > 0) {
+      const el = document.querySelector(`[name="${errKeys[0]}"], #${errKeys[0]}`);
+      if (el && typeof el.focus === 'function') el.focus();
       return;
     }
 
@@ -546,9 +557,13 @@ export default function ProductDetailPage() {
                       label="Review Title"
                       name="title"
                       value={reviewTitle}
-                      onChange={(e) => setReviewTitle(e.target.value)}
+                      onChange={(e) => {
+                        setReviewTitle(e.target.value);
+                        if (reviewErrors.title) setReviewErrors(prev => ({ ...prev, title: '' }));
+                      }}
                       placeholder="e.g. Noticeable energy boost within a week"
                       required
+                      error={reviewErrors.title}
                     />
 
                     <div>
@@ -556,13 +571,27 @@ export default function ProductDetailPage() {
                         Detailed Review
                       </label>
                       <textarea
+                        name="body"
+                        id="body"
                         value={reviewBody}
-                        onChange={(e) => setReviewBody(e.target.value)}
+                        onChange={(e) => {
+                          setReviewBody(e.target.value);
+                          if (reviewErrors.body) setReviewErrors(prev => ({ ...prev, body: '' }));
+                        }}
                         rows={3}
-                        className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-green"
+                        aria-invalid={reviewErrors.body ? 'true' : 'false'}
+                        aria-describedby={reviewErrors.body ? 'body-error' : undefined}
+                        className={`w-full bg-white border rounded-sm p-2 text-xs text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-green ${
+                          reviewErrors.body ? 'border-status-error focus:ring-status-error' : 'border-surface-border'
+                        }`}
                         placeholder="Share your personal experience with dosage and results..."
                         required
                       />
+                      {reviewErrors.body && (
+                        <p id="body-error" className="text-xs font-medium text-status-error mt-1" role="alert">
+                          {reviewErrors.body}
+                        </p>
+                      )}
                     </div>
 
                     {reviewError && (
