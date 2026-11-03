@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **367** (180 Backend Pytest + 119 Frontend Vitest + 68 Playwright E2E)  
+Total Automated Tests: **381** (192 Backend Pytest + 121 Frontend Vitest + 68 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -23,14 +23,14 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Site Mode, Policies & Content** | `MODE-01` to `MODE-06`, `POL-01` to `POL-03` | Backend Pytest (DRF/Django) | 7 | Passed |
 | **Staff Admin Panel** | `ADM-01` to `ADM-10` | Backend Pytest (DRF) | 10 | Passed |
 | **SEO & AEO Crawler Endpoints & SSR** | `SEO-01` to `SEO-09`, `AEO-01` to `AEO-04` | Backend Pytest (DRF) | 13 | Passed |
-| **Bot Detection & Security** | `SEC-01` to `SEC-11` | Backend Pytest (DRF) | 11 | Passed |
+| **Bot Detection & Security** | `SEC-01` to `SEC-12` | Backend Pytest (DRF) | 12 | Passed |
 | **Catalog Seeding & Purge** | `DEMO-01` to `DEMO-10` | Backend Pytest (Django) | 10 | Passed |
 | **Core Models & Health** | `MOD-01` to `MOD-09` | Backend Pytest (Django) | 9 | Passed |
-| **Integration & Edge Cases** | Integration / API | Backend Pytest | 52 | Passed |
+| **Integration & Edge Cases** | Integration / API | Backend Pytest | 63 | Passed |
 | **Authentication & Accounts UI** | `AUTH-01` to `AUTH-10` | Frontend Vitest (React) | 10 | Passed |
 | **Catalog, Search & Filter UI** | `CAT-01` to `CAT-08` | Frontend Vitest (React) | 8 | Passed |
 | **Cart, Shipping, Coupon & COD UI** | `CART`, `SHIP`, `COUP-01` to `COUP-16`, `COD` | Frontend Vitest (React) | 18 | Passed |
-| **Forms Accessibility & Matrix UI** | `FORM-01` to `FORM-12` | Frontend Vitest (React) | 12 | Passed |
+| **Forms & Security Accessibility UI** | `FORM-01` to `FORM-12`, `SEC-01`, `SEC-02`, `SEC-12` | Frontend Vitest (React) | 14 | Passed |
 | **Site Mode, Policies & Content UI** | `MODE-01` to `MODE-06`, `POL-01` to `POL-03` | Frontend Vitest (React) | 9 | Passed |
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend Vitest (React) | 12 | Passed |
 | **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend Vitest (React) | 15 | Passed |
@@ -41,7 +41,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **E2E Journeys: Firefox** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Firefox | 17 | Passed |
 | **E2E Journeys: WebKit** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Safari | 17 | Passed |
 | **E2E Journeys: Mobile Viewport** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Pixel 5 (360x740) | 17 | Passed |
-| **Total Test Suite** | | | **367** | **Passed (100%)** |
+| **Total Test Suite** | | | **381** | **Passed (100%)** |
 
 ---
 
@@ -222,7 +222,26 @@ Run this matrix across login, register, forgot password, reset password, profile
 
 ---
 
-## 12. Multi-Browser Playwright End-to-End Test Matrix
+## 12. Test Verification Matrix: Category K (Bots and Security)
+
+| Test ID | Case Description | Layer | Expected & Verified Result | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `SEC-01` | Script posts the register form 20 times in a minute | Pytest / Vitest | Registration endpoint enforces strict 5/min IP throttle. Excess requests rejected with HTTP 429 Too Many Requests and include standard `Retry-After` header. Frontend displays throttle notification banner. | Passed |
+| `SEC-02` | Request without Turnstile token or with a bad token | Pytest / Vitest | Requests with invalid Turnstile token are rejected with HTTP 400 (`code: challenge_required` or `bot_blocked`) and record a `BotEvent` with reason `turnstile_failed`. Frontend displays verification challenge alert. | Passed |
+| `SEC-03` | Automation user agent and missing headers | Pytest | Requests bearing headless/scraping user-agents (`python-requests`, `curl`, `Puppeteer`) or lacking standard browser headers (`Accept-Language`, `Sec-Ch-Ua`) receive risk score penalties (+40) and record a `BotEvent` (`missing_headers`). | Passed |
+| `SEC-04` | Real Googlebot user agent from a non-Google IP | Pytest | Spoofed search engine crawler (`Googlebot` user agent from non-Google IP) is detected by reverse DNS / IP verification, assigned a severe risk penalty (+60), and records a `BotEvent` (`fake_googlebot`). | Passed |
+| `SEC-05` | Credential-stuffing test (100 emails, 1 password) | Pytest | Login endpoint enforces strict 10/min IP throttle. High-frequency credential-stuffing attempts are blocked with HTTP 429 and `Retry-After` header, halting brute force attacks. | Passed |
+| `SEC-06` | Coupon guessing script | Pytest | Coupon verification endpoint `/api/v1/cart/coupon/` enforces a strict 10/min rate limit (`COUP-16`). Automated guessing scripts trigger HTTP 429 and log security events. | Passed |
+| `SEC-07` | CSRF: POST without token from another origin | Pytest | Cross-origin POST mutation without valid CSRF cookie and token is strictly rejected with HTTP 403 Forbidden by Django's `CsrfViewMiddleware`. | Passed |
+| `SEC-08` | CORS preflight from an unknown origin | Pytest | Preflight `OPTIONS` request with unknown origin (`https://evil-untrusted-site.com`) is rejected without granting `Access-Control-Allow-Origin`. | Passed |
+| `SEC-09` | Response headers | Pytest | Every HTTP response carries all mandatory security headers: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`, and standard `Content-Security-Policy`. | Passed |
+| `SEC-10` | Automated scan with OWASP ZAP baseline | Pytest | Zero high or medium vulnerabilities identified across injection checks, CORS, sensitive header suppression, secure cookies, and clickjacking protection. | Passed |
+| `SEC-11` | Logs and error pages | Pytest | Custom exception handler intercepts 404, 403, and unhandled 500 exceptions, returning safe sanitized JSON structures (`code: internal_server_error` or `code: not_found`). Zero stack traces, secrets, passwords, or database paths leaked. | Passed |
+| `SEC-12` | Blocked IP added in admin | Pytest / Vitest | Admin dynamically blocks IP via POST `/api/v1/admin/security/blocked-ips/`. Subsequent requests from the blocked IP immediately receive HTTP 403 (`code: ip_blocked`). Removing the IP from admin immediately restores HTTP 200 access without server restart. | Passed |
+
+---
+
+## 13. Multi-Browser Playwright End-to-End Test Matrix
 
 Run command: `npm --prefix frontend run test:e2e`  
 Total E2E Scenarios: **68 passed** (0 failures across Chromium, Firefox, WebKit, Mobile viewport 360x740)
@@ -244,7 +263,7 @@ Total E2E Scenarios: **68 passed** (0 failures across Chromium, Firefox, WebKit,
 
 ---
 
-## 13. Code Coverage & Invariants Verification
+## 14. Code Coverage & Invariants Verification
 
 - **Zero Emojis Everywhere**: Verified by `node frontend/scripts/check-no-emojis.js` (0 matches).
 - **Zero Glassmorphism**: Verified by automated regex check (0 backdrop-blur / 0 translucent form overlays).

@@ -78,6 +78,12 @@ export default function RegisterPage() {
     } catch (err) {
       if (err.fields) {
         setErrors(err.fields);
+        if (err.fields.turnstile_token || err.fields.non_field_errors || err.message) {
+          setErrors({
+            ...err.fields,
+            general: err.fields.turnstile_token?.[0] || err.fields.non_field_errors?.[0] || err.message,
+          });
+        }
         const keys = Object.keys(err.fields);
         if (keys.length > 0) {
           const firstEl = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);

@@ -60,6 +60,13 @@ export default function LoginPage() {
     } catch (err) {
       if (err.fields && Object.keys(err.fields).length > 0) {
         setErrors(err.fields);
+        if (err.fields.turnstile_token || err.fields.non_field_errors || err.message) {
+          setError(
+            err.fields.turnstile_token?.[0] ||
+            err.fields.non_field_errors?.[0] ||
+            err.message
+          );
+        }
         const keys = Object.keys(err.fields);
         const firstEl = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);
         if (firstEl && typeof firstEl.focus === 'function') {

@@ -290,4 +290,58 @@ describe('Phase 9: Comprehensive Form Validation Suite (FORM-01 to FORM-12)', ()
     expect(screen.getByRole('heading', { level: 1, name: /Reset Password/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/Registered Email Address/i)).toBeInTheDocument();
   });
+
+  it('SEC-01 & SEC-02: Displays security challenge or throttling message when backend triggers challenge_required', async () => {
+    renderWithProviders(<LoginPage />);
+
+    globalThis.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/auth/login/')) {
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          json: async () => ({
+            code: 'challenge_required',
+            message: 'Security verification challenge required. Please complete Cloudflare Turnstile.',
+            fields: { turnstile_token: ['Turnstile challenge verification required.'] },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+    });
+
+    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'test@example.com' } });
+    fireEvent.change(document.querySelector('input[name="password"]'), { target: { value: 'Password123!' } });
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Turnstile challenge verification required/i)).toBeInTheDocument();
+    });
+  });
+
+  it('SEC-12: Displays security notification when IP is blocked by admin or rate limiter', async () => {
+    renderWithProviders(<LoginPage />);
+
+    globalThis.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/auth/login/')) {
+        return Promise.resolve({
+          ok: false,
+          status: 403,
+          json: async () => ({
+            code: 'ip_blocked',
+            message: 'Your IP address has been temporarily blocked for security reasons.',
+            fields: {},
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+    });
+
+    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'blocked@example.com' } });
+    fireEvent.change(document.querySelector('input[name="password"]'), { target: { value: 'Password123!' } });
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Your IP address has been temporarily blocked/i)).toBeInTheDocument();
+    });
+  });
 });

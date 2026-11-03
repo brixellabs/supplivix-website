@@ -36,7 +36,7 @@ class BotProtectionMiddleware:
             if blocked.expires_at and blocked.expires_at < timezone.now():
                 blocked.delete()
             else:
-                return JsonResponse(
+                response = JsonResponse(
                     {
                         'code': 'ip_blocked',
                         'message': 'Your IP address has been temporarily blocked for security reasons.',
@@ -44,16 +44,19 @@ class BotProtectionMiddleware:
                     },
                     status=403
                 )
+                return self._inject_security_headers(response)
 
         response = self.get_response(request)
+        return self._inject_security_headers(response)
 
-        # 2. Inject Security Headers on All Responses
+    def _inject_security_headers(self, response):
         response['X-Frame-Options'] = 'DENY'
         response['X-Content-Type-Options'] = 'nosniff'
         response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        if not response.has_header('Strict-Transport-Security'):
+            response['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
         if 'Content-Security-Policy' not in response:
             response['Content-Security-Policy'] = self.CSP_POLICY
-
         return response
 
     @staticmethod

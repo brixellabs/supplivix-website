@@ -45,5 +45,22 @@ def custom_exception_handler(exc, context):
             'fields': fields,
         }
         response.data = formatted_data
+    else:
+        # SEC-11: Generic error message for unhandled 500 exceptions, zero stack traces/secrets leaked
+        import logging
+
+        from rest_framework import status
+        from rest_framework.response import Response
+
+        logger = logging.getLogger('core.security')
+        logger.error(f"Unhandled API error: {exc.__class__.__name__}: {exc}")
+        response = Response(
+            {
+                'code': 'internal_server_error',
+                'message': 'An internal server error occurred. Our team has been notified.',
+                'fields': {},
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
     return response

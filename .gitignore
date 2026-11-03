@@ -50,6 +50,7 @@ pnpm-debug.log*
 frontend/dist/
 frontend/dist-ssr/
 frontend/.vite/
+.vite/
 
 # Testing & Coverage
 .pytest_cache/

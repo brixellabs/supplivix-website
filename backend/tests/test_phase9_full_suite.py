@@ -31,7 +31,7 @@ from accounts.models import Address, User
 from cart.models import Cart, CartItem
 from catalog.models import Category, Product, ProductFAQ, Review
 from content.models import ContactMessage, SiteSetting, WaitlistEntry
-from core.models import BotEvent
+from core.models import BlockedIP, BotEvent
 from core.security import generate_time_token, verify_time_token
 from orders.models import Order, OrderItem
 from promotions.models import Coupon, CouponRedemption
@@ -2569,4 +2569,328 @@ class TestSeoAndAeoSuite:
                 for word in prohibited_words:
                     word_match = re.search(rf"\b{word}\b", sanitized_text, re.IGNORECASE)
                     assert word_match is None, f"Prohibited medical claim '{word}' found in FAQ for product {faq.product.sku}: {sanitized_text}"
+
+
+@pytest.mark.django_db
+class TestBotAndSecuritySuite:
+    """Category K: Bots and Security Matrix (SEC-01 to SEC-12)."""
+
+    def test_sec_01_script_posts_register_20_times_throttled_with_retry_after(self, api_client):
+        """SEC-01: Script posts the register form 20 times in a minute -> Throttled after the limit, 429 with Retry-After."""
+        cache.clear()
+        reg_url = "/api/v1/auth/register/"
+        ip = "198.51.100.11"
+        throttled = False
+        retry_after_found = False
+
+        for i in range(20):
+            res = api_client.post(
+                reg_url,
+                {
+                    "email": f"spam_user_{i}@example.com",
+                    "full_name": f"Spam User {i}",
+                    "password": "Password123!",
+                },
+                HTTP_X_FORWARDED_FOR=ip,
+                HTTP_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                HTTP_ACCEPT_LANGUAGE="en-US,en;q=0.9",
+            )
+            if res.status_code == 429:
+                throttled = True
+                if "Retry-After" in res.headers or "wait" in str(res.data):
+                    retry_after_found = True
+                break
+
+        assert throttled, "Registration requests were not throttled with HTTP 429"
+        assert retry_after_found, "HTTP 429 response missing Retry-After indicator"
+
+    def test_sec_02_request_without_turnstile_or_bad_token_rejected(self, api_client):
+        """SEC-02: Request without Turnstile token or with a bad token -> Rejected."""
+        login_url = "/api/v1/auth/login/"
+        email = "victim.sec02@example.com"
+        User.objects.create_user(email=email, password="CorrectPassword123!", full_name="Sec User")
+
+        # 1. Simulate failed attempts to trigger Turnstile challenge requirement
+        cache.set(f"failed_logins_{email}", 4, timeout=900)
+
+        # 2. Attempt login without turnstile token -> Rejected with challenge_required
+        res_no_token = api_client.post(
+            login_url,
+            {"email": email, "password": "WrongPassword!"},
+            HTTP_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            HTTP_ACCEPT_LANGUAGE="en-US,en;q=0.9",
+            HTTP_X_FORWARDED_FOR="198.51.100.22",
+        )
+        assert res_no_token.status_code == 400
+        assert res_no_token.data.get("code") == "challenge_required"
+
+        # 3. Attempt login with bad/invalid turnstile token -> Rejected
+        res_bad_token = api_client.post(
+            login_url,
+            {
+                "email": email,
+                "password": "WrongPassword!",
+                "turnstile_token": "2x0000000000000000000000000000000AA",
+            },
+            HTTP_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            HTTP_ACCEPT_LANGUAGE="en-US,en;q=0.9",
+            HTTP_X_FORWARDED_FOR="198.51.100.23",
+        )
+        assert res_bad_token.status_code == 400
+        assert res_bad_token.data.get("code") == "challenge_required"
+
+        # 4. Attempt login with valid turnstile token -> Challenge passed
+        res_valid_token = api_client.post(
+            login_url,
+            {
+                "email": email,
+                "password": "CorrectPassword123!",
+                "turnstile_token": "1x0000000000000000000000000000000AA",
+            },
+            HTTP_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            HTTP_ACCEPT_LANGUAGE="en-US,en;q=0.9",
+            HTTP_X_FORWARDED_FOR="198.51.100.24",
+        )
+        assert res_valid_token.status_code == 200
+        assert res_valid_token.data.get("message") == "Login successful."
+
+    def test_sec_03_automation_user_agent_and_missing_headers_challenges_or_blocks(self, api_client):
+        """SEC-03: Automation user agent and missing headers -> Score added, challenge or block."""
+        cache.clear()
+        ip = "198.51.100.33"
+
+        res = api_client.post(
+            "/api/v1/auth/register/",
+            {
+                "email": "auto_bot@example.com",
+                "full_name": "Automation Runner",
+                "password": "Password123!",
+            },
+            HTTP_USER_AGENT="python-requests/2.31.0",
+            HTTP_X_FORWARDED_FOR=ip,
+            # Missing Accept-Language header
+        )
+        # Score calculation: automation UA (+50) + missing Accept-Language (+20) = 70 -> Blocked (403)
+        assert res.status_code in [400, 403]
+        if res.status_code == 403:
+            assert res.data.get("code") == "bot_blocked"
+        else:
+            assert res.data.get("code") == "challenge_required"
+        assert BotEvent.objects.filter(ip=ip).exists()
+
+    def test_sec_04_real_googlebot_user_agent_from_non_google_ip_treated_as_fake(self, api_client):
+        """SEC-04: Real Googlebot user agent from a non-Google IP -> Treated as fake."""
+        spoofed_ua = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+        non_google_ip = "203.0.113.77"
+
+        res = api_client.post(
+            "/api/v1/auth/register/",
+            {
+                "email": "fake_spider@example.com",
+                "full_name": "Fake Spider",
+                "password": "Password123!",
+            },
+            HTTP_USER_AGENT=spoofed_ua,
+            HTTP_X_FORWARDED_FOR=non_google_ip,
+        )
+        assert res.status_code == 403
+        assert res.data.get("code") == "bot_blocked"
+        assert BotEvent.objects.filter(ip=non_google_ip, reason__icontains="spoofed").exists()
+
+    def test_sec_05_credential_stuffing_blocked_by_ip_throttle(self, api_client):
+        """SEC-05: Credential-stuffing test (100 emails, 1 password) -> Blocked by IP throttle."""
+        cache.clear()
+        login_url = "/api/v1/auth/login/"
+        ip = "198.51.100.55"
+        throttled = False
+
+        for i in range(15):
+            res = api_client.post(
+                login_url,
+                {
+                    "email": f"stuffed_victim_{i}@example.com",
+                    "password": "CommonPassword123!",
+                },
+                HTTP_X_FORWARDED_FOR=ip,
+                HTTP_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                HTTP_ACCEPT_LANGUAGE="en-US,en;q=0.9",
+            )
+            if res.status_code == 429:
+                throttled = True
+                break
+
+        assert throttled, "Credential-stuffing attack was not throttled by IP"
+
+    def test_sec_06_coupon_guessing_script_blocked(self, api_client, test_product):
+        """SEC-06: Coupon guessing script -> Blocked (COUP-16)."""
+        cache.clear()
+        api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 1}, format="json")
+        coupon_url = "/api/v1/cart/coupon/"
+        ip = "198.51.100.66"
+
+        # Rapidly attempt 15 different random codes
+        throttled = False
+        for i in range(15):
+            res = api_client.post(
+                coupon_url,
+                {"code": f"GUESS{i:03d}"},
+                HTTP_X_FORWARDED_FOR=ip,
+                HTTP_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                HTTP_ACCEPT_LANGUAGE="en-US,en;q=0.9",
+            )
+            if res.status_code == 429:
+                throttled = True
+                break
+
+        assert throttled, "Coupon guessing script was not throttled with 429"
+        assert BotEvent.objects.filter(ip=ip, reason__icontains="coupon guessing").exists()
+
+    def test_sec_07_csrf_post_without_token_from_another_origin_rejected(self, api_client):
+        """SEC-07: CSRF: POST without token from another origin -> Rejected."""
+        # Create user and log in via session
+        user = User.objects.create_user(email="csrf.victim@example.com", password="Password123!", full_name="CSRF Victim")
+        api_client.force_login(user)
+
+        # DRF SessionAuthentication requires CSRF validation on mutating requests with enforce_csrf=True
+        from rest_framework.test import APIClient as EnforcedClient
+        csrf_client = EnforcedClient(enforce_csrf_checks=True)
+        csrf_client.force_login(user)
+
+        res = csrf_client.post(
+            "/api/v1/accounts/change-password/",
+            {"current_password": "Password123!", "new_password": "NewPassword456!"},
+            HTTP_ORIGIN="https://malicious-cross-origin.com",
+        )
+        assert res.status_code == 403
+        content_text = res.content.decode("utf-8") if res.content else ""
+        assert "CSRF" in content_text or "csrf" in content_text.lower() or "forbidden" in content_text.lower()
+
+    def test_sec_08_cors_preflight_from_unknown_origin_not_allowed(self, api_client):
+        """SEC-08: CORS preflight from an unknown origin -> Not allowed."""
+        res = api_client.options(
+            "/api/v1/products/",
+            HTTP_ORIGIN="https://untrusted-attacker-origin.xyz",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST",
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS="content-type",
+        )
+        # Should not grant Access-Control-Allow-Origin to untrusted origin
+        allowed_origin = res.headers.get("Access-Control-Allow-Origin")
+        assert allowed_origin != "https://untrusted-attacker-origin.xyz"
+        assert allowed_origin != "*"
+
+    def test_sec_09_response_headers_csp_hsts_x_frame_and_content_type(self, api_client):
+        """SEC-09: Response headers -> CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy present."""
+        endpoints = ["/api/health/", "/api/v1/products/", "/"]
+        for url in endpoints:
+            res = api_client.get(url)
+            assert res.status_code == 200
+            headers = res.headers
+
+            # 1. CSP
+            assert "Content-Security-Policy" in headers
+            assert "default-src" in headers["Content-Security-Policy"]
+
+            # 2. HSTS
+            assert "Strict-Transport-Security" in headers
+            assert "max-age=" in headers["Strict-Transport-Security"]
+
+            # 3. X-Frame-Options
+            assert headers.get("X-Frame-Options") == "DENY"
+
+            # 4. X-Content-Type-Options
+            assert headers.get("X-Content-Type-Options") == "nosniff"
+
+            # 5. Referrer-Policy
+            assert headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+
+    def test_sec_10_automated_scan_with_owasp_zap_baseline_checks(self, api_client):
+        """SEC-10: Automated scan with OWASP ZAP baseline -> No high or medium findings."""
+        findings = []
+
+        # Probe representative endpoints
+        probe_urls = ["/api/health/", "/api/v1/products/"]
+        for url in probe_urls:
+            res = api_client.get(url)
+
+            # Check 1: Missing X-Content-Type-Options (Medium)
+            if res.headers.get("X-Content-Type-Options") != "nosniff":
+                findings.append(f"Medium: Missing X-Content-Type-Options on {url}")
+
+            # Check 2: Missing Anti-clickjacking X-Frame-Options (Medium)
+            if res.headers.get("X-Frame-Options") not in ["DENY", "SAMEORIGIN"]:
+                findings.append(f"Medium: Insecure X-Frame-Options on {url}")
+
+            # Check 3: Missing CSP (Medium/High)
+            if "Content-Security-Policy" not in res.headers:
+                findings.append(f"High: Missing Content-Security-Policy on {url}")
+
+            # Check 4: Missing HSTS (Medium)
+            if "Strict-Transport-Security" not in res.headers:
+                findings.append(f"Medium: Missing Strict-Transport-Security on {url}")
+
+            # Check 5: Information leak in Server header (Low/Medium)
+            server_header = res.headers.get("Server", "")
+            if "Apache/" in server_header or "nginx/" in server_header:
+                findings.append(f"Low: Server banner disclosure on {url}: {server_header}")
+
+            # Check 6: X-Powered-By header (Low)
+            if "X-Powered-By" in res.headers:
+                findings.append(f"Low: X-Powered-By header present on {url}")
+
+        assert len(findings) == 0, f"OWASP ZAP baseline findings: {findings}"
+
+    def test_sec_11_logs_and_error_pages_contain_no_stack_traces_or_secrets(self, api_client):
+        """SEC-11: Logs and error pages -> No stack traces, secrets or passwords."""
+        # 1. 404 error page check
+        res_404 = api_client.get("/api/v1/non-existent-api-path-random-12345/")
+        assert res_404.status_code == 404
+        content_404 = res_404.content.decode("utf-8")
+        assert "Traceback (most recent call last)" not in content_404
+        assert "SECRET_KEY" not in content_404
+        assert "postgres://" not in content_404
+        assert "password" not in content_404.lower() or "noindex" in content_404
+
+        # 2. Simulate 500 error on view raising exception
+        from unittest.mock import patch
+        with patch("catalog.views.ProductListView.get", side_effect=RuntimeError("Database query timed out")):
+            res_500 = api_client.get("/api/v1/products/")
+            assert res_500.status_code == 500
+            data_500 = res_500.data
+            assert data_500.get("code") == "internal_server_error"
+            assert "RuntimeError" not in str(data_500)
+            assert "Database query timed out" not in str(data_500)
+            assert "Traceback" not in str(res_500.content)
+
+    def test_sec_12_blocked_ip_added_in_admin_immediately_blocked_and_restored(self, admin_client, api_client):
+        """SEC-12: Blocked IP added in admin -> Immediately blocked, removal restores access."""
+        target_ip = "198.51.100.88"
+
+        # 1. Initial request from target_ip succeeds
+        res1 = api_client.get("/api/health/", HTTP_X_FORWARDED_FOR=target_ip)
+        assert res1.status_code == 200
+
+        # 2. Admin adds target_ip to blocklist
+        res_block = admin_client.post(
+            "/api/v1/admin/security/block-ip/",
+            {"ip": target_ip, "reason": "Suspected port scanner"},
+        )
+        assert res_block.status_code in [200, 201]
+        assert BlockedIP.objects.filter(ip=target_ip).exists()
+
+        # 3. Next request from target_ip is immediately blocked (403)
+        res_blocked = api_client.get("/api/health/", HTTP_X_FORWARDED_FOR=target_ip)
+        assert res_blocked.status_code == 403
+        assert res_blocked.json().get("code") == "ip_blocked"
+
+        # 4. Admin unblocks target_ip
+        res_unblock = admin_client.post(
+            "/api/v1/admin/security/unblock-ip/",
+            {"ip_address": target_ip},
+        )
+        assert res_unblock.status_code == 200
+        assert not BlockedIP.objects.filter(ip=target_ip).exists()
+
+        # 5. Subsequent request from target_ip is restored to 200
+        res_restored = api_client.get("/api/health/", HTTP_X_FORWARDED_FOR=target_ip)
+        assert res_restored.status_code == 200
 

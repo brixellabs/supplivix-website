@@ -235,6 +235,17 @@ def spa_shell_view(request, path=""):
     base_url = getattr(settings, 'SITE_BASE_URL', 'https://supplivix.com').rstrip('/')
     clean_path = path.strip('/')
 
+    # Unmatched API routes fall through to 404 JSON, not HTML SPA shell
+    if clean_path.startswith('api/'):
+        return JsonResponse(
+            {
+                'code': 'not_found',
+                'message': 'API endpoint not found.',
+                'fields': {}
+            },
+            status=404
+        )
+
     # Site mode enforcement (coming_soon vs live)
     site_mode = SiteSetting.get_setting('site_mode', 'live')
     user = getattr(request, 'user', None)
