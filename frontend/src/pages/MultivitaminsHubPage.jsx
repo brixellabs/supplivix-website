@@ -73,9 +73,43 @@ const FAQS = [
 ];
 
 export default function MultivitaminsHubPage() {
+  const hubSchema = [
+    {
+      '@type': 'CollectionPage',
+      name: 'Multivitamins Hub',
+      description: 'Discover bioavailable multivitamins formulated for cellular absorption in Pakistan.',
+      url: 'https://supplivix.com/multivitamins/',
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: COMPARISON_DATA.map((item, idx) => ({
+          '@type': 'ListItem',
+          position: idx + 1,
+          name: item.name,
+          url: `https://supplivix.com/products/${item.slug}/`,
+        })),
+      },
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: FAQS.map((faq) => ({
+        '@type': 'Question',
+        name: faq.title,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.content,
+        },
+      })),
+    },
+  ];
+
   return (
     <div className="bg-white">
-      <SEOHead title="Multivitamins Hub - Complete Daily Formulas" description="Discover bioavailable multivitamins formulated for optimal cellular absorption. 100% Cash on Delivery across Pakistan." canonical="/multivitamins" />
+      <SEOHead
+        title="Multivitamins Hub | Bioavailable Formulas Pakistan"
+        description="Discover bioavailable multivitamins formulated for optimal cellular absorption. 100% Cash on Delivery across Pakistan."
+        canonical="/multivitamins"
+        schema={hubSchema}
+      />
       <Breadcrumbs items={[{ label: 'Multivitamins Hub', href: '/multivitamins' }]} />
 
       {/* Flagship Hero Header */}
@@ -89,6 +123,17 @@ export default function MultivitaminsHubPage() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold uppercase tracking-tight text-brand-ink leading-tight mb-4">
               Bioavailable Multivitamins for Daily Vitality
             </h1>
+
+            {/* AEO 40-60 Word Direct Summary */}
+            <div className="mb-6 p-4 bg-white border-l-4 border-brand-green rounded-r-md shadow-sm text-xs md:text-sm text-brand-ink leading-relaxed">
+              <strong className="block text-[11px] uppercase tracking-wider text-brand-green mb-1 font-bold">
+                Hub Formulation Brief:
+              </strong>
+              <span>
+                Supplivix multivitamins are bioavailable micronutrient formulations engineered for adults to address documented nutritional deficiencies. They support cellular vitality, metabolic energy, and immune resilience with chelated zinc, methylfolate, and active B-complex vitamins. Delivered nationwide across Pakistan via standard Cash on Delivery.
+              </span>
+            </div>
+
             <p className="text-sm md:text-base text-ink-muted leading-relaxed mb-6">
               Specifically formulated to address documented micronutrient deficiencies across Pakistan (including Vitamin D3, B12, Zinc, and active Folate). Delivered nationwide with Cash on Delivery (COD).
             </p>

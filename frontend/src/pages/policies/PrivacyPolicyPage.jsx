@@ -19,6 +19,7 @@ export default function PrivacyPolicyPage() {
   return (
     <PolicyLayout
       title="Privacy Policy"
+      canonical="/privacy-policy"
       lastUpdated="November 2, 2026"
       sections={SECTIONS}
     >

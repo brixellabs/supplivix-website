@@ -5,6 +5,7 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import Badge from '../components/ui/Badge';
+import SEOHead from '../components/seo/SEOHead';
 import { api } from '../services/api';
 
 const ORDER_STEPS = [
@@ -73,6 +74,11 @@ export default function TrackOrderPage() {
 
   return (
     <div className="bg-white min-h-screen pb-16">
+      <SEOHead
+        title="Track Order Status | Supplivix"
+        description="Check real-time delivery status for your Supplivix Cash on Delivery order across Pakistan."
+        canonical="/track"
+      />
       <Breadcrumbs items={[{ label: 'Track Order', href: '/track' }]} />
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">

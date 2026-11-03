@@ -7,6 +7,7 @@ import Input from '../components/ui/Input';
 import Icon from '../components/ui/Icon';
 import EmptyState from '../components/ui/EmptyState';
 import ProductIllustration from '../components/ui/ProductIllustration';
+import SEOHead from '../components/seo/SEOHead';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../components/ui/Toast';
 
@@ -56,6 +57,12 @@ export default function CartPage() {
   if (!loading && items.length === 0) {
     return (
       <div className="bg-white min-h-[60vh]">
+        <SEOHead
+          title="Shopping Cart | Supplivix"
+          description="View your shopping cart at Supplivix Pakistan. Multivitamins and skincare with Cash on Delivery."
+          canonical="/cart"
+          noindex={true}
+        />
         <Breadcrumbs items={[{ label: 'Cart' }]} />
         <div className="max-w-site mx-auto px-4 py-16">
           <EmptyState
@@ -72,6 +79,12 @@ export default function CartPage() {
 
   return (
     <div className="bg-white min-h-screen">
+      <SEOHead
+        title="Shopping Cart | Supplivix"
+        description="View your shopping cart at Supplivix Pakistan. Multivitamins and skincare with Cash on Delivery."
+        canonical="/cart"
+        noindex={true}
+      />
       <Breadcrumbs items={[{ label: 'Shopping Cart', href: '/cart' }]} />
 
       <div className="max-w-site mx-auto px-4 sm:px-6 py-8">

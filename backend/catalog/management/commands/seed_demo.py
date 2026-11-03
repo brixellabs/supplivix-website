@@ -8,7 +8,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from accounts.models import User
-from catalog.models import Category, Product, Review
+from catalog.models import Category, Product, ProductFAQ, Review
 from content.models import SiteSetting
 from promotions.models import Coupon
 
@@ -691,6 +691,55 @@ class Command(BaseCommand):
                     body='High quality bioavailable formula that does not irritate the stomach. Quick COD delivery in Lahore.',
                     is_approved=True,
                 )
+
+            # Seed at least 4 ProductFAQ entries per product for AEO and rich snippets
+            if not product.faqs.exists():
+                if product.product_type == 'multivitamin':
+                    faqs_data = [
+                        (
+                            'How many multivitamin tablets should I take daily?',
+                            'Follow the label directions. Typical products list one tablet per day, preferably with breakfast and a glass of water.',
+                        ),
+                        (
+                            'Who is this multivitamin formula designed for?',
+                            'This daily formulation is designed for adults seeking to support their dietary micronutrient intake alongside a balanced diet.',
+                        ),
+                        (
+                            'Does this multivitamin contain synthetic colorants or preservatives?',
+                            'No. Supplivix formulations avoid unnecessary artificial fillers and colorants, prioritizing bioavailable forms of essential nutrients.',
+                        ),
+                        (
+                            'What is the payment and delivery procedure in Pakistan?',
+                            'We deliver nationwide across Pakistan via standard Cash on Delivery (COD). You inspect the package and pay the courier rider in cash upon arrival.',
+                        ),
+                    ]
+                else:
+                    faqs_data = [
+                        (
+                            'When should I apply this formulation in my routine?',
+                            'Apply to clean skin in the morning or evening before heavier moisturizers, following the specific product directions.',
+                        ),
+                        (
+                            'Is this product suitable for sensitive skin?',
+                            'Formulated with gentle, skin-compatible ingredients. Perform a 24-hour patch test before full facial application.',
+                        ),
+                        (
+                            'How long will one bottle last with regular usage?',
+                            'With typical daily application, a standard bottle provides approximately 30 to 45 days of consistent use.',
+                        ),
+                        (
+                            'How is payment collected upon delivery?',
+                            'We operate exclusively with nationwide Cash on Delivery (COD). You pay the courier rider in whole PKR when the parcel arrives.',
+                        ),
+                    ]
+
+                for order_idx, (q, a) in enumerate(faqs_data):
+                    ProductFAQ.objects.create(
+                        product=product,
+                        question=q,
+                        answer=a,
+                        sort_order=order_idx,
+                    )
 
         # 5. Coupons
         Coupon.objects.update_or_create(

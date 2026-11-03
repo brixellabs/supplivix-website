@@ -1,11 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Badge from '../../components/ui/Badge';
+import SEOHead from '../../components/seo/SEOHead';
 import logoImg from '../../assets/brand/logo.png';
 
-export default function PolicyLayout({ title, lastUpdated, sections = [], children }) {
+export default function PolicyLayout({ title, description, canonical, lastUpdated, sections = [], children }) {
+  const metaDesc =
+    description ||
+    `Official ${title.toLowerCase()} for Supplivix Pakistan. Transparent multivitamins, skincare, and nationwide Cash on Delivery policies.`;
+
   return (
     <div className="min-h-screen bg-white text-brand-ink flex flex-col justify-between">
+      <SEOHead
+        title={`${title} | Supplivix`}
+        description={metaDesc}
+        canonical={canonical}
+      />
       {/* Policy Header */}
       <header className="border-b border-surface-border bg-white sticky top-0 z-30">
         <div className="max-w-site mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">

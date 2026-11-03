@@ -3,10 +3,16 @@ import { Link } from 'react-router-dom';
 import Breadcrumbs from '../components/layout/Breadcrumbs';
 import Icon from '../components/ui/Icon';
 import Button from '../components/ui/Button';
+import SEOHead from '../components/seo/SEOHead';
 
 export default function AboutPage() {
   return (
     <div className="bg-white min-h-screen">
+      <SEOHead
+        title="About Supplivix | Pure Multivitamins & Skincare"
+        description="Learn about Supplivix: high-absorption bioavailable multivitamins, chelated minerals, clean skincare, and dependable Cash on Delivery across Pakistan."
+        canonical="/about"
+      />
       <Breadcrumbs items={[{ label: 'About Us', href: '/about' }]} />
 
       {/* Hero Section */}

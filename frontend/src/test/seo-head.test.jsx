@@ -7,7 +7,9 @@ describe('Phase 6: Frontend SEO & AEO (SEOHead Component)', () => {
   beforeEach(() => {
     // Reset head elements before each test
     document.title = '';
-    const metaTags = document.querySelectorAll('meta[name="description"], meta[name="robots"], meta[property^="og:"], meta[name^="twitter:"]');
+    const metaTags = document.querySelectorAll(
+      'meta[name="description"], meta[name="robots"], meta[property^="og:"], meta[name^="twitter:"]'
+    );
     metaTags.forEach((el) => el.remove());
 
     const canonical = document.querySelector('link[rel="canonical"]');
@@ -31,6 +33,23 @@ describe('Phase 6: Frontend SEO & AEO (SEOHead Component)', () => {
     expect(descMeta.getAttribute('content')).toBe(
       'Explore targeted multivitamins formulated for optimal cellular absorption.'
     );
+  });
+
+  it('strictly caps title under 60 characters and description under 160 characters', () => {
+    const longTitle = 'Super Long Multivitamins Formula Title That Exceeds The Sixty Character Limit Easily';
+    const longDesc =
+      'This is a very long meta description designed to test truncation. In technical SEO, descriptions over 160 characters are truncated by search engines like Google and Bing in SERP snippets, causing poor click-through rates. Therefore Supplivix enforces strict limits.';
+
+    render(
+      <SEOHead
+        title={longTitle}
+        description={longDesc}
+      />
+    );
+
+    expect(document.title.length).toBeLessThan(60);
+    const descMeta = document.querySelector('meta[name="description"]');
+    expect(descMeta.getAttribute('content').length).toBeLessThan(160);
   });
 
   it('sets canonical link and OpenGraph tags correctly', () => {
@@ -67,7 +86,7 @@ describe('Phase 6: Frontend SEO & AEO (SEOHead Component)', () => {
     expect(robots.getAttribute('content')).toBe('noindex, nofollow');
   });
 
-  it('injects JSON-LD schema for search engines and AEO parsers', () => {
+  it('injects JSON-LD schema with Organization, WebSite SearchAction, and Product in graph', () => {
     const productSchema = {
       '@context': 'https://schema.org',
       '@type': 'Product',
@@ -91,8 +110,79 @@ describe('Phase 6: Frontend SEO & AEO (SEOHead Component)', () => {
     expect(schemaScript).not.toBeNull();
     expect(schemaScript.getAttribute('type')).toBe('application/ld+json');
     const parsed = JSON.parse(schemaScript.textContent);
-    expect(parsed.name).toBe('Supplivix Complete Daily Multivitamin 60s');
-    expect(parsed.offers.priceCurrency).toBe('PKR');
+
+    expect(parsed['@context']).toBe('https://schema.org');
+    expect(Array.isArray(parsed['@graph'])).toBe(true);
+
+    const org = parsed['@graph'].find((item) => item['@type'] === 'Organization');
+    expect(org).toBeDefined();
+    expect(org.name).toBe('Supplivix');
+
+    const website = parsed['@graph'].find((item) => item['@type'] === 'WebSite');
+    expect(website).toBeDefined();
+    expect(website.potentialAction['@type']).toBe('SearchAction');
+
+    const product = parsed['@graph'].find((item) => item['@type'] === 'Product');
+    expect(product).toBeDefined();
+    expect(product.name).toBe('Supplivix Complete Daily Multivitamin 60s');
+    expect(product.offers.priceCurrency).toBe('PKR');
+  });
+
+  it('supports CollectionPage with ItemList and FAQPage schemas in @graph', () => {
+    const customGraph = {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'CollectionPage',
+          name: 'Multivitamins Hub',
+          url: 'https://supplivix.pk/multivitamins',
+        },
+        {
+          '@type': 'ItemList',
+          itemListElement: [
+            {
+              '@type': 'ListItem',
+              position: 1,
+              name: 'Supplivix Daily 60s',
+            },
+          ],
+        },
+        {
+          '@type': 'FAQPage',
+          mainEntity: [
+            {
+              '@type': 'Question',
+              name: 'Are Supplivix multivitamins third-party tested?',
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: 'Yes, every batch undergoes independent verification.',
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    render(
+      <SEOHead
+        title="Multivitamins Hub"
+        canonical="/multivitamins"
+        schema={customGraph}
+      />
+    );
+
+    const schemaScript = document.getElementById('supplivix-jsonld-schema');
+    const parsed = JSON.parse(schemaScript.textContent);
+
+    const collection = parsed['@graph'].find((item) => item['@type'] === 'CollectionPage');
+    expect(collection).toBeDefined();
+
+    const itemList = parsed['@graph'].find((item) => item['@type'] === 'ItemList');
+    expect(itemList).toBeDefined();
+    expect(itemList.itemListElement).toHaveLength(1);
+
+    const faq = parsed['@graph'].find((item) => item['@type'] === 'FAQPage');
+    expect(faq).toBeDefined();
+    expect(faq.mainEntity[0].name).toContain('third-party tested');
   });
 });
-

@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import EmptyState from '../components/ui/EmptyState';
 import Skeleton from '../components/ui/Skeleton';
+import SEOHead from '../components/seo/SEOHead';
 import { api } from '../services/api';
 
 const CATEGORIES = [
@@ -262,6 +263,27 @@ export default function ShopPage() {
     return count;
   }, [currentCategory, searchQuery, inStockOnly, minPrice, maxPrice]);
 
+  const currentCategoryLabel = currentCategory
+    ? CATEGORIES.find((c) => c.slug === currentCategory)?.label || currentCategory
+    : 'All Formulations';
+
+  const shopSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `${currentCategoryLabel} | Supplivix Pakistan`,
+    description: 'Browse pure, bioavailable multivitamins and targeted skincare formulations with Cash on Delivery across Pakistan.',
+    url: 'https://supplivix.pk/shop',
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: products.slice(0, 20).map((prod, idx) => ({
+        '@type': 'ListItem',
+        position: idx + 1,
+        name: prod.name,
+        url: `https://supplivix.pk/products/${prod.slug}`,
+      })),
+    },
+  };
+
   const breadcrumbItems = [
     { label: 'Shop', href: '/shop' },
     ...(currentCategory ? [{ label: CATEGORIES.find((c) => c.slug === currentCategory)?.label || currentCategory }] : []),
@@ -357,6 +379,12 @@ export default function ShopPage() {
 
   return (
     <div className="bg-white min-h-screen">
+      <SEOHead
+        title={currentCategory ? `${currentCategoryLabel} | Supplivix` : 'Shop Multivitamins & Skincare | Supplivix'}
+        description="Shop bioavailable daily multivitamins, zinc, vitamin D3, and targeted skincare in Pakistan. Fast nationwide Cash on Delivery with free delivery over Rs. 2,000."
+        canonical="/shop"
+        schema={shopSchema}
+      />
       <Breadcrumbs items={breadcrumbItems} />
 
       <div className="max-w-site mx-auto px-4 sm:px-6 py-8">

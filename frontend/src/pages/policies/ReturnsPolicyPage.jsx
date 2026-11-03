@@ -3,7 +3,11 @@ import PolicyLayout from './PolicyLayout';
 
 export default function ReturnsPolicyPage() {
   return (
-    <PolicyLayout title="Returns and Replacement Policy" lastUpdated="November 2, 2026">
+    <PolicyLayout
+      title="Returns and Replacement Policy"
+      canonical="/returns-policy"
+      lastUpdated="November 2, 2026"
+    >
       <section>
         <h2 className="text-lg font-bold text-brand-ink uppercase mb-2">1. 7-Day Return Window</h2>
         <p>

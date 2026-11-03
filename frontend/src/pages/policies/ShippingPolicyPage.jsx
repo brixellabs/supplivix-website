@@ -3,7 +3,11 @@ import PolicyLayout from './PolicyLayout';
 
 export default function ShippingPolicyPage() {
   return (
-    <PolicyLayout title="Shipping and COD Policy" lastUpdated="November 2, 2026">
+    <PolicyLayout
+      title="Shipping and COD Policy"
+      canonical="/shipping-policy"
+      lastUpdated="November 2, 2026"
+    >
       <section>
         <h2 className="text-lg font-bold text-brand-ink uppercase mb-2">1. Delivery Timeline</h2>
         <p>

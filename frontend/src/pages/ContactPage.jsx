@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../services/api';
+import SEOHead from '../components/seo/SEOHead';
 
 export default function ContactPage() {
   const { showToast } = useToast();
@@ -73,6 +74,17 @@ export default function ContactPage() {
 
   return (
     <div className="bg-white min-h-screen pb-16">
+      <SEOHead
+        title="Contact Supplivix Care | Nationwide COD Support"
+        description="Get in touch with Supplivix customer care in Karachi. Phone, WhatsApp, and email support for all Cash on Delivery orders across Pakistan."
+        canonical="/contact"
+        schema={{
+          '@type': 'ContactPage',
+          name: 'Contact Supplivix Care',
+          url: 'https://supplivix.com/contact/',
+          description: 'Official customer support and inquiry channel for Supplivix in Pakistan.',
+        }}
+      />
       <Breadcrumbs items={[{ label: 'Contact Us', href: '/contact' }]} />
 
       <div className="max-w-site mx-auto px-4 sm:px-6 py-10">

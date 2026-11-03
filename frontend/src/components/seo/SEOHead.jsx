@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 
 /**
  * SEOHead: Lightweight client-side meta and structured data injector for SPA.
- * Manages document.title, canonical link, OpenGraph tags, Twitter Card tags,
- * robots indexing, and Schema.org JSON-LD scripts for SEO & AEO (Phase 6).
+ * Manages document.title (under 60 chars), meta description (under 160 chars),
+ * canonical URL, OpenGraph tags, Twitter Card tags, robots indexing,
+ * and Schema.org JSON-LD scripts for SEO & AEO (Phase 6).
  */
 export default function SEOHead({
   title,
@@ -15,10 +16,13 @@ export default function SEOHead({
   schema = null,
 }) {
   useEffect(() => {
-    // 1. Title
-    const formattedTitle = title
-      ? `${title} | Supplivix`
-      : 'Supplivix | Bioavailable Multivitamins & Skincare Pakistan';
+    // 1. Title (strictly under 60 characters)
+    let rawTitle = title
+      ? title.includes('Supplivix')
+        ? title
+        : `${title} | Supplivix`
+      : 'Supplivix | Bioavailable Multivitamins Pakistan';
+    const formattedTitle = rawTitle.slice(0, 59);
     document.title = formattedTitle;
 
     // Helper to find or create a meta tag
@@ -33,22 +37,24 @@ export default function SEOHead({
       el.setAttribute('content', content);
     };
 
-    // 2. Standard Meta
+    // 2. Standard Meta Description (strictly under 160 characters)
     const defaultDesc =
-      'Supplivix is Pakistan premier wellness platform for bioavailable multivitamins and skincare with Cash on Delivery nationwide.';
-    const finalDesc = description || defaultDesc;
+      'Supplivix is Pakistan premier wellness store for bioavailable multivitamins and skincare. 100% Cash on Delivery with free delivery over Rs. 2,000.';
+    const finalDesc = (description || defaultDesc).slice(0, 158);
     setMetaTag('name', 'description', finalDesc);
 
     // 3. Robots
     setMetaTag('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow');
 
     // 4. Canonical Link
-    const baseSiteUrl = window.location.origin;
+    const baseSiteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://supplivix.com';
     const finalCanonical = canonical
       ? canonical.startsWith('http')
         ? canonical
         : `${baseSiteUrl}${canonical.startsWith('/') ? '' : '/'}${canonical}`
-      : window.location.href.split('?')[0];
+      : typeof window !== 'undefined'
+      ? window.location.href.split('?')[0]
+      : `${baseSiteUrl}/`;
 
     let canonicalEl = document.querySelector('link[rel="canonical"]');
     if (!canonicalEl) {
@@ -89,7 +95,44 @@ export default function SEOHead({
         scriptEl.type = 'application/ld+json';
         document.head.appendChild(scriptEl);
       }
-      scriptEl.textContent = JSON.stringify(schema);
+
+      const defaultOrg = {
+        '@type': 'Organization',
+        name: 'Supplivix',
+        url: 'https://supplivix.com',
+        logo: 'https://supplivix.com/assets/logo.png',
+        contactPoint: {
+          '@type': 'ContactPoint',
+          telephone: '+92-300-0000000',
+          contactType: 'customer support',
+          areaServed: 'PK',
+          availableLanguage: ['English', 'Urdu'],
+        },
+      };
+
+      const defaultWebSite = {
+        '@type': 'WebSite',
+        name: 'Supplivix',
+        url: 'https://supplivix.com',
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: 'https://supplivix.com/shop?search={search_term_string}',
+          'query-input': 'required name=search_term_string',
+        },
+      };
+
+      let finalJsonLd;
+      if (schema['@graph']) {
+        finalJsonLd = schema;
+      } else {
+        const items = Array.isArray(schema) ? schema : [schema];
+        finalJsonLd = {
+          '@context': 'https://schema.org',
+          '@graph': [defaultOrg, defaultWebSite, ...items],
+        };
+      }
+
+      scriptEl.textContent = JSON.stringify(finalJsonLd);
     } else if (scriptEl) {
       scriptEl.remove();
     }
@@ -97,4 +140,3 @@ export default function SEOHead({
 
   return null;
 }
-

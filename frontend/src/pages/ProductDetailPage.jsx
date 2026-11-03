@@ -136,9 +136,116 @@ export default function ProductDetailPage() {
     { label: product.name },
   ];
 
+  // AEO visible FAQs
+  const productFaqs =
+    product.faqs && product.faqs.length > 0
+      ? product.faqs
+      : [
+          {
+            question: 'How many multivitamin tablets should I take daily?',
+            answer: 'Follow the label directions. Typical products list one tablet per day, preferably with breakfast and a glass of water.',
+          },
+          {
+            question: 'Who is this multivitamin formula designed for?',
+            answer: 'This daily formulation is designed for adults seeking to support their dietary micronutrient intake alongside a balanced diet.',
+          },
+          {
+            question: 'Does this multivitamin contain synthetic colorants or preservatives?',
+            answer: 'No. Supplivix formulations avoid unnecessary artificial fillers and colorants, prioritizing bioavailable forms of essential nutrients.',
+          },
+          {
+            question: 'What is the payment and delivery procedure in Pakistan?',
+            answer: 'We deliver nationwide across Pakistan via standard Cash on Delivery (COD). You inspect the package and pay the courier rider in cash upon arrival.',
+          },
+        ];
+
+  // Schema.org structured data for SEO & AEO (Phase 6)
+  const productSchema = {
+    '@type': 'Product',
+    name: product.name,
+    sku: product.sku || 'SPLV-MV-01',
+    description: product.description,
+    brand: { '@type': 'Brand', name: 'Supplivix' },
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'PKR',
+      price: product.price,
+      priceValidUntil: '2027-12-31',
+      availability:
+        (product.inventory_count > 0 || product.stock > 0)
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/OutOfStock',
+      url: `https://supplivix.com/products/${product.slug}/`,
+      seller: { '@type': 'Organization', name: 'Supplivix' },
+    },
+  };
+
+  // Only real approved reviews feed aggregateRating
+  const approvedReviews = (reviews || []).filter((r) => r.is_approved);
+  if (approvedReviews.length > 0) {
+    const avg =
+      Math.round(
+        (approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length) * 10
+      ) / 10;
+    productSchema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: avg,
+      reviewCount: approvedReviews.length,
+      bestRating: 5,
+      worstRating: 1,
+    };
+    productSchema.review = approvedReviews.slice(0, 5).map((r) => ({
+      '@type': 'Review',
+      author: { '@type': 'Person', name: r.user?.full_name || 'Verified Buyer' },
+      datePublished: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : '2026-11-01',
+      reviewRating: { '@type': 'Rating', ratingValue: r.rating, bestRating: 5 },
+      name: r.title,
+      reviewBody: r.body || r.content,
+    }));
+  }
+
+  const breadcrumbsSchema = {
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://supplivix.com/' },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: product.category_name || 'Catalog',
+        item: `https://supplivix.com/shop?category=${product.category_slug || ''}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: product.name,
+        item: `https://supplivix.com/products/${product.slug}/`,
+      },
+    ],
+  };
+
+  const faqSchema = {
+    '@type': 'FAQPage',
+    mainEntity: productFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: f.answer,
+      },
+    })),
+  };
+
+  const fullSchema = [productSchema, breadcrumbsSchema, faqSchema];
+
   return (
     <div className="bg-white min-h-screen pb-16">
-      <SEOHead title={product.name} description={product.short_description || product.description} canonical={`/products/${product.slug}`} ogType="product" />
+      <SEOHead
+        title={product.name}
+        description={product.short_description || product.description}
+        canonical={`/products/${product.slug}`}
+        ogType="product"
+        schema={fullSchema}
+      />
       <Breadcrumbs items={breadcrumbs} />
 
       <div className="max-w-site mx-auto px-4 sm:px-6 py-8">
@@ -187,6 +294,18 @@ export default function ProductDetailPage() {
               <h1 className="text-2xl sm:text-3xl font-bold uppercase tracking-tight text-brand-ink leading-snug mb-3">
                 {product.name}
               </h1>
+
+              {/* AEO 40-60 Word Direct Summary: What is it, who is it for, how is it used */}
+              <div className="mb-4 p-3 bg-surface-subtle border-l-4 border-brand-green text-xs text-brand-ink leading-relaxed rounded-r-sm">
+                <strong className="block text-[10px] uppercase tracking-wider text-brand-green mb-1 font-bold">
+                  Direct Formulation Summary:
+                </strong>
+                <span>
+                  {product.product_type === 'multivitamin'
+                    ? `${product.name} is a high-potency bioavailable multivitamin formulated for adults to address documented micronutrient gaps. It supports metabolic cellular energy and daily immune resilience. Adults take one tablet daily in the morning with a full glass of water and breakfast alongside a balanced diet.`
+                    : `${product.name} is a science-backed topical skincare formulation engineered for all skin types to fortify the epidermal barrier and restore natural skin hydration. Apply a few drops gently to clean skin daily in the morning or evening before heavier moisturizers.`}
+                </span>
+              </div>
 
               {/* Reviews Star Rating */}
               <div className="flex items-center gap-2 mb-4 text-xs">
@@ -325,6 +444,17 @@ export default function ProductDetailPage() {
               }`}
             >
               Verified Reviews ({reviews.length || product.reviews_count || 52})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('faqs')}
+              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'faqs'
+                  ? 'border-brand-ink text-brand-ink'
+                  : 'border-transparent text-ink-muted hover:text-brand-ink'
+              }`}
+            >
+              Frequently Asked Questions ({productFaqs.length})
             </button>
           </div>
 
@@ -466,6 +596,35 @@ export default function ProductDetailPage() {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'faqs' && (
+              <div className="max-w-3xl space-y-4">
+                <div className="mb-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-brand-ink mb-1">
+                    Formulation Questions &amp; Answers
+                  </h3>
+                  <p className="text-xs text-ink-muted">
+                    Factual guidance feeding search engines and personal assistants. No unsubstantiated medical claims.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  {productFaqs.map((faq, idx) => (
+                    <div
+                      key={idx}
+                      className="border border-surface-border rounded-md p-4 bg-white shadow-sm"
+                    >
+                      <h4 className="text-xs font-bold text-brand-ink mb-1.5 flex items-center gap-2">
+                        <Icon name="info" className="text-brand-green text-xs" />
+                        <span>{faq.question}</span>
+                      </h4>
+                      <p className="text-xs text-ink-muted leading-relaxed pl-5">
+                        {faq.answer}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

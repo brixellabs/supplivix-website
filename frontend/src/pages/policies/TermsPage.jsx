@@ -3,7 +3,11 @@ import PolicyLayout from './PolicyLayout';
 
 export default function TermsPage() {
   return (
-    <PolicyLayout title="Terms and Conditions" lastUpdated="November 2, 2026">
+    <PolicyLayout
+      title="Terms and Conditions"
+      canonical="/terms"
+      lastUpdated="November 2, 2026"
+    >
       <section>
         <h2 className="text-lg font-bold text-brand-ink uppercase mb-2">1. Agreement to Terms</h2>
         <p>

@@ -8,6 +8,7 @@ import Badge from '../components/ui/Badge';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
+import SEOHead from '../components/seo/SEOHead';
 import { api } from '../services/api';
 
 const PROVINCES = [
@@ -231,6 +232,12 @@ export default function CheckoutPage() {
 
   return (
     <div className="bg-white min-h-screen pb-16">
+      <SEOHead
+        title="Cash on Delivery Checkout | Supplivix"
+        description="Complete your Cash on Delivery order for authentic multivitamins and skincare at Supplivix Pakistan."
+        canonical="/checkout"
+        noindex={true}
+      />
       <Breadcrumbs items={[{ label: 'Cart', href: '/cart' }, { label: 'Checkout' }]} />
 
       <div className="max-w-site mx-auto px-4 sm:px-6 py-8">
