@@ -82,6 +82,12 @@ class Order(models.Model):
     def __str__(self):
         return f"Order #{self.number} ({self.get_status_display()})"
 
+    @property
+    def customer_email(self):
+        if self.user and self.user.email:
+            return self.user.email
+        return self.guest_email or self.shipping_address_snapshot.get('email', '')
+
     @classmethod
     def generate_order_number(cls):
         """Generate unique readable order number: SPLV-XXXX-XXXX."""

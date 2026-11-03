@@ -127,20 +127,20 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 
 | Test ID | Case Description | Layer | Expected & Verified Result | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| `COD-01` | Guest checkout with valid data | Pytest / Vitest / Playwright | Order created with status `pending`, inventory reduced, tracking key generated. | Passed |
-| `COD-02` | Authenticated checkout with saved address | Pytest / Vitest | Shipping address snapshot captured immutably. | Passed |
-| `COD-03` | Non-COD payment method rejection | Pytest / Vitest | Serializer validation enforces `payment_method='COD'`; all other values rejected. | Passed |
-| `COD-04` | Missing or invalid required fields | Pytest / Vitest / Playwright | Client and server return field errors for missing name, phone, line1, or city. | Passed |
-| `COD-05` | Pakistani phone normalization (`03XXXXXXXXX`) | Pytest / Vitest / Playwright | Normalizes `+923001234567`, `0300-1234567`, `0300 1234567` to standard format. | Passed |
-| `COD-06` | Concurrency: last unit checkout | Pytest / Vitest | Atomic transaction prevents overselling; only one order succeeds, second receives 400. | Passed |
-| `COD-07` | Double-click idempotency key | Pytest / Vitest | Identical `idempotency_key` returns existing cached order without duplicate order or charge. | Passed |
-| `COD-08` | Empty cart checkout | Pytest / Vitest | HTTP 400 `Cart is empty.` returned. | Passed |
-| `COD-09` | Order totals & snapshot calculation | Pytest / Vitest / Playwright | Grand total equals `subtotal - discount_total + shipping_total`; item price frozen. | Passed |
-| `COD-10` | Subsequent product price changes | Pytest / Vitest | Existing orders retain snapshot unit prices and totals unchanged. | Passed |
-| `COD-11` | Order cancellation while pending | Pytest / Vitest | Inventory stock restored, status transitioned to `cancelled`, audit note logged. | Passed |
-| `COD-12` | Order cancellation while shipped | Pytest / Vitest | Cancellation rejected with HTTP 400 `Orders that have been shipped cannot be cancelled.` | Passed |
-| `COD-13` | Track order lookup security | Pytest / Vitest / Playwright | Tracking requires matching phone number; mismatch returns 404 without data leak. | Passed |
-| `COD-14` | Safe client retry | Pytest / Vitest | Network error retry with idempotency key safely returns confirmed order. | Passed |
+| `COD-01` | Guest places a valid COD order | Pytest / Vitest / Playwright | HTTP 201, formatted order number (`SPLV-XXXX-XXXX`), status `pending`, product stock decremented, order confirmation email dispatched (verified via `mail.outbox`), cart cleared. | Passed |
+| `COD-02` | Logged-in user with a saved address | Pytest / Vitest | Immutable address snapshot captured in `shipping_address_snapshot` on the order record. | Passed |
+| `COD-03` | Payment method other than COD in the payload | Pytest / Vitest | Serializer validation enforces `payment_method='COD'`; all other values rejected with HTTP 400. | Passed |
+| `COD-04` | Missing or invalid name, phone, email, address, city, province | Pytest / Vitest / Playwright | Client and server return specific inline errors for invalid/missing fields; zero database records written. | Passed |
+| `COD-05` | Phone formats `03001234567`, `+923001234567`, `0300-1234567`, `12345`, letters | Pytest / Vitest / Playwright | First three normalized to Pakistani standard mobile format and accepted; last two strictly rejected. | Passed |
+| `COD-06` | Stock is 1 and two buyers submit together | Pytest / Vitest | Database row lock (`select_for_update()`) ensures exactly one order succeeds; second receives clear insufficient stock error; inventory stock never drops below 0. | Passed |
+| `COD-07` | Double-click on place order with same idempotency key | Pytest / Vitest | Cache-backed idempotency key returns existing order without creating duplicate orders or double-deducting stock. | Passed |
+| `COD-08` | Empty cart checkout | Pytest / Vitest / Playwright | Client displays "No Items to Checkout" prompt directing to shop; server rejects with HTTP 400 empty cart message. | Passed |
+| `COD-09` | Order totals with coupon and shipping | Pytest / Vitest / Playwright | `grand_total = subtotal - discount + shipping`; line items preserve immutable unit price snapshot. | Passed |
+| `COD-10` | Product price changes after order placed | Pytest / Vitest | Existing orders retain original snapshot unit prices and line totals; post-order price modifications do not affect past orders. | Passed |
+| `COD-11` | Cancel an order in pending status | Pytest / Vitest | Inventory stock restored, coupon redemptions released for reuse, status transitioned to `cancelled`, and `OrderStatusHistory` row written. | Passed |
+| `COD-12` | Cancel an order in shipped status | Pytest / Vitest | Cancellation rejected with HTTP 400 (`Orders with status 'Shipped' cannot be cancelled.`). | Passed |
+| `COD-13` | Track order with correct vs wrong number and phone | Pytest / Vitest / Playwright | Tracking lookup requires exact order number and normalized recipient phone match; mismatches return HTTP 404 with zero data leakage. | Passed |
+| `COD-14` | Network failure during place order | Pytest / Vitest | Client retries safely with the same idempotency key without generating duplicate orders. | Passed |
 
 ---
 

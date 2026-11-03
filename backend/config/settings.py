@@ -215,3 +215,8 @@ TURNSTILE_SITE_KEY = os.environ.get(
 # Demo and Store Seed Defaults
 DEMO_STAFF_EMAIL = os.environ.get('DEMO_STAFF_EMAIL', 'admin@supplivix.com')
 DEMO_STAFF_PASSWORD = os.environ.get('DEMO_STAFF_PASSWORD', 'SupplivixAdmin2026!')
+
+# Email Configuration
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.locmem.EmailBackend')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'orders@supplivix.com')
+

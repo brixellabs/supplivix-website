@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
@@ -223,4 +225,47 @@ def place_cod_order(cart, checkout_data, user=None):
     cart.coupon_code = ''
     cart.save(update_fields=['coupon_code'])
 
+    # 10. Send order confirmation email
+    _send_order_confirmation(order.id)
+
     return order
+
+
+def _send_order_confirmation(order_id):
+    try:
+        ord_obj = Order.objects.prefetch_related('items').get(id=order_id)
+        recipient = ord_obj.customer_email
+        if not recipient:
+            return
+        items_summary = "\n".join(
+            [f"- {item.product_name} x {item.quantity}: Rs. {item.line_total:,}" for item in ord_obj.items.all()]
+        )
+        subject = f"Order Confirmation - {ord_obj.number} - Supplivix"
+        message = (
+            f"Dear {ord_obj.shipping_address_snapshot.get('full_name', 'Customer')},\n\n"
+            f"Thank you for placing your order with Supplivix.\n\n"
+            f"Order Number: {ord_obj.number}\n"
+            f"Payment Method: Cash on Delivery (COD)\n"
+            f"Status: Pending Confirmation\n\n"
+            f"Items:\n{items_summary}\n\n"
+            f"Subtotal: Rs. {ord_obj.subtotal:,}\n"
+            f"Discount: Rs. {ord_obj.discount_total:,}\n"
+            f"Shipping: Rs. {ord_obj.shipping_total:,}\n"
+            f"Total Payable at Delivery: Rs. {ord_obj.grand_total:,}\n\n"
+            f"Delivery Address:\n"
+            f"{ord_obj.shipping_address_snapshot.get('line1', '')}\n"
+            f"{ord_obj.shipping_address_snapshot.get('city', '')}, {ord_obj.shipping_address_snapshot.get('province', '')}\n"
+            f"Phone: {ord_obj.shipping_address_snapshot.get('phone', '')}\n\n"
+            f"Our team will prepare your package. Please keep exact cash ready upon arrival.\n\n"
+            f"Regards,\nSupplivix Team"
+        )
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'orders@supplivix.com'),
+            recipient_list=[recipient],
+            fail_silently=True,
+        )
+    except Exception:
+        pass
+

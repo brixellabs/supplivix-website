@@ -1078,6 +1078,13 @@ class TestCodSuite:
         cart = api_client.get("/api/v1/cart/").data
         assert len(cart["items"]) == 0
 
+        # Assert email sent to customer (COD-01 requirement)
+        from django.core import mail
+        assert len(mail.outbox) >= 1
+        assert "ayesha@example.com" in mail.outbox[-1].to
+        assert "SPLV-" in mail.outbox[-1].subject
+        assert "Cash on Delivery" in mail.outbox[-1].body
+
     def test_cod_02_saved_address_snapshot_stored(self, api_client, test_customer, test_product):
         """COD-02: Logged-in user with a saved address -> Address snapshot saved on the order."""
         addr = Address.objects.create(
