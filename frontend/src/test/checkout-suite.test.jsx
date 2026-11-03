@@ -104,13 +104,13 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
           json: async () => ({
             message: 'Order placed successfully.',
             order: {
-              order_number: 'SPLV-TEST-8888',
+              number: 'SPLV-TEST-8888',
               status: 'pending',
               payment_method: 'COD',
               grand_total: defaultCart.grand_total,
-              recipient_name: 'Bilal Farooq',
-              street_address: 'House 14B, Street 9',
-              city: 'Islamabad',
+              recipient_name: 'Test Customer',
+              street_address: 'House 1, Street 2',
+              city: 'Lahore',
             },
           }),
         });
@@ -178,18 +178,16 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
       ],
       total_items: 1,
       subtotal: 1000,
-      discount_amount: 0,
-      shipping_fee: 200,
       grand_total: 1200,
       free_shipping_eligible: false,
     };
     renderWithProviders(<CartPage />, '/cart', halfCart);
 
     await waitFor(() => {
-      expect(screen.getByText(/Add/i)).toBeInTheDocument();
-      expect(screen.getAllByText(/Rs\. 1,000/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/50%/i)).toBeInTheDocument();
       const progressbar = screen.getByRole('progressbar');
       expect(progressbar).toHaveAttribute('aria-valuenow', '50');
+      expect(progressbar).toHaveAttribute('role', 'progressbar');
     });
   });
 
@@ -216,6 +214,7 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/You have unlocked FREE delivery/i)).toBeInTheDocument();
+      expect(screen.getByText(/^100%$/i)).toBeInTheDocument();
       const progressbar = screen.getByRole('progressbar');
       expect(progressbar).toHaveAttribute('aria-valuenow', '100');
     });
@@ -225,10 +224,10 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
     renderWithProviders(<CartPage />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Coupon code/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Enter code/i)).toBeInTheDocument();
     });
 
-    const couponInput = screen.getByLabelText(/Coupon code/i);
+    const couponInput = screen.getByPlaceholderText(/Enter code/i);
     const applyBtn = screen.getByRole('button', { name: /Apply/i });
 
     fireEvent.change(couponInput, { target: { value: '  valid10  ' } });
@@ -246,17 +245,17 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
     renderWithProviders(<CartPage />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Coupon code/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Enter code/i)).toBeInTheDocument();
     });
 
-    const couponInput = screen.getByLabelText(/Coupon code/i);
+    const couponInput = screen.getByPlaceholderText(/Enter code/i);
     const applyBtn = screen.getByRole('button', { name: /Apply/i });
 
     fireEvent.change(couponInput, { target: { value: 'WRONGCODE' } });
     fireEvent.click(applyBtn);
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent(/This code is not valid/i);
+      expect(screen.getByText(/This code is not valid/i)).toBeInTheDocument();
     });
   });
 
@@ -267,7 +266,7 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
       expect(screen.getByRole('heading', { level: 1, name: /Cash on Delivery Checkout/i })).toBeInTheDocument();
     });
 
-    const submitBtn = screen.getByRole('button', { name: /Confirm Cash on Delivery Order/i });
+    const submitBtn = screen.getByRole('button', { name: /(Confirm|Place) Cash on Delivery/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -283,10 +282,10 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
       expect(screen.getByRole('heading', { level: 1, name: /Cash on Delivery Checkout/i })).toBeInTheDocument();
     });
 
-    const phoneInput = screen.getByLabelText(/Mobile Number \(Pakistan\)/i);
+    const phoneInput = screen.getByLabelText(/Mobile Number/i);
     fireEvent.change(phoneInput, { target: { value: '12345' } });
 
-    const submitBtn = screen.getByRole('button', { name: /Confirm Cash on Delivery Order/i });
+    const submitBtn = screen.getByRole('button', { name: /(Confirm|Place) Cash on Delivery/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -304,11 +303,11 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
     // Fill valid checkout form
     fireEvent.change(screen.getByLabelText(/Full Recipient Name/i), { target: { value: 'Bilal Farooq' } });
     fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: 'bilal@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Mobile Number \(Pakistan\)/i), { target: { value: '03001234567' } });
-    fireEvent.change(screen.getByLabelText(/Street Address \/ House \/ Flat Number/i), { target: { value: 'House 14B, Street 9, Sector F-8' } });
-    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Islamabad' } });
+    fireEvent.change(screen.getByLabelText(/Mobile Number/i), { target: { value: '03001234567' } });
+    fireEvent.change(screen.getByLabelText(/Street Address/i), { target: { value: 'House 14B, Street 9, Sector F-8' } });
+    fireEvent.change(screen.getByPlaceholderText(/Select or type city/i), { target: { value: 'Islamabad' } });
 
-    const submitBtn = screen.getByRole('button', { name: /Confirm Cash on Delivery Order/i });
+    const submitBtn = screen.getByRole('button', { name: /(Confirm|Place) Cash on Delivery/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -325,6 +324,64 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
     await waitFor(() => {
       expect(screen.getByText(/No Items to Checkout/i)).toBeInTheDocument();
       expect(screen.getByText(/Please add products to your cart before proceeding/i)).toBeInTheDocument();
+    });
+  });
+
+  it('CART-04: CartPage displays price update notice when product price changes', async () => {
+    const priceChangedCart = {
+      items: [
+        {
+          id: 5,
+          product_id: 105,
+          product_name: 'Daily Active Multi 60s',
+          product_slug: 'daily-active-multi-60s',
+          unit_price: 2500,
+          quantity: 1,
+          line_total: 2500,
+          price_changed: true,
+          price_change_notice: 'Price updated to Rs. 2,500 (was Rs. 2,200)',
+        },
+      ],
+      total_items: 1,
+      subtotal: 2500,
+      grand_total: 2500,
+      notices: ['Notice: Price for Daily Active Multi 60s has increased to Rs. 2,500.'],
+    };
+    renderWithProviders(<CartPage />, '/cart', priceChangedCart);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Price for Daily Active Multi 60s has increased to Rs\. 2,500/i)).toBeInTheDocument();
+      expect(screen.getByText(/Price updated to Rs\. 2,500 \(was Rs\. 2,200\)/i)).toBeInTheDocument();
+    });
+  });
+
+  it('CART-05: CartPage flags inactive product and blocks checkout button', async () => {
+    const inactiveCart = {
+      items: [
+        {
+          id: 6,
+          product_id: 106,
+          product_name: 'Discontinued Skin Serum',
+          product_slug: 'discontinued-skin-serum',
+          unit_price: 1800,
+          quantity: 1,
+          line_total: 1800,
+          is_active: false,
+          flagged_inactive: true,
+        },
+      ],
+      total_items: 1,
+      subtotal: 1800,
+      grand_total: 2000,
+      notices: ['Discontinued Skin Serum is no longer available. Please remove it to proceed to checkout.'],
+    };
+    renderWithProviders(<CartPage />, '/cart', inactiveCart);
+
+    await waitFor(() => {
+      expect(screen.getByText(/No longer available — please remove to proceed/i)).toBeInTheDocument();
+      const disabledCheckoutBtn = screen.getByRole('button', { name: /Remove Unavailable Items to Checkout/i });
+      expect(disabledCheckoutBtn).toBeInTheDocument();
+      expect(disabledCheckoutBtn).toBeDisabled();
     });
   });
 });

@@ -23,13 +23,17 @@ export default function CartPage() {
 
   const items = cart?.items || [];
   const subtotal = cart?.subtotal || 0;
-  const discountAmount = cart?.discount_amount || 0;
+  const discountAmount = cart?.discount_total || cart?.discount_amount || 0;
   const netSubtotal = Math.max(0, subtotal - discountAmount);
-  const shippingFee = cart?.shipping_fee !== undefined ? cart.shipping_fee : (netSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 200);
+  const shippingFee = cart?.shipping_total !== undefined ? cart.shipping_total : (cart?.shipping_fee !== undefined ? cart.shipping_fee : (netSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 200));
   const grandTotal = cart?.grand_total || (netSubtotal + shippingFee);
 
   const amountNeeded = Math.max(0, FREE_SHIPPING_THRESHOLD - netSubtotal);
   const freeShippingProgress = Math.min(100, Math.round((netSubtotal / FREE_SHIPPING_THRESHOLD) * 100));
+
+  const hasInactiveItems = items.some(
+    (item) => item.is_active === false || item.flagged_inactive || (item.product && item.product.is_active === false)
+  );
 
   const handleApplyCoupon = async (e) => {
     e.preventDefault();
@@ -122,6 +126,21 @@ export default function CartPage() {
           </div>
         </div>
 
+        {/* Notices Banner (Price Changes or Inactive Items) */}
+        {cart?.notices && cart.notices.length > 0 && (
+          <div className="space-y-2 mb-8">
+            {cart.notices.map((notice, nIdx) => (
+              <div
+                key={nIdx}
+                className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm"
+              >
+                <Icon name="info" className="text-amber-600 flex-shrink-0 text-sm" />
+                <span>{notice}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* 2-Column Grid: Items List & Order Summary */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column: Cart Items List */}
@@ -158,6 +177,16 @@ export default function CartPage() {
                         <div className="text-xs text-ink-muted mt-1">
                           Rs. {Number(item.unit_price).toLocaleString()} each
                         </div>
+                        {(item.is_active === false || item.flagged_inactive || (item.product && item.product.is_active === false)) && (
+                          <div className="inline-block text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded mt-1">
+                            No longer available — please remove to proceed
+                          </div>
+                        )}
+                        {(item.price_changed || item.price_change_notice) && (
+                          <div className="inline-block text-[11px] font-semibold text-brand-green bg-green-50 border border-green-200 px-2 py-0.5 rounded mt-1">
+                            {item.price_change_notice || 'Price updated to current rate'}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -281,11 +310,22 @@ export default function CartPage() {
               </div>
 
               {/* Checkout Action */}
-              <Link to="/checkout" className="block w-full">
-                <Button variant="primary" size="lg" className="w-full h-[46px]">
-                  Proceed to Checkout
-                </Button>
-              </Link>
+              {hasInactiveItems ? (
+                <div className="space-y-2">
+                  <Button variant="primary" size="lg" disabled className="w-full h-[46px] opacity-60 cursor-not-allowed">
+                    Remove Unavailable Items to Checkout
+                  </Button>
+                  <p className="text-[11px] text-red-600 text-center font-medium">
+                    One or more items are no longer available. Please remove them to proceed.
+                  </p>
+                </div>
+              ) : (
+                <Link to="/checkout" className="block w-full">
+                  <Button variant="primary" size="lg" className="w-full h-[46px]">
+                    Proceed to Checkout
+                  </Button>
+                </Link>
+              )}
 
               <div className="mt-4 text-center">
                 <Link

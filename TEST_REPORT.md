@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **291** (144 Backend Pytest + 79 Frontend Vitest + 68 Playwright E2E)  
+Total Automated Tests: **293** (144 Backend Pytest + 81 Frontend Vitest + 68 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -27,7 +27,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Integration & Edge Cases** | Integration / API | Backend Pytest | 30 | Passed |
 | **Authentication & Accounts UI** | `AUTH-01` to `AUTH-10` | Frontend Vitest (React) | 10 | Passed |
 | **Catalog, Search & Filter UI** | `CAT-01` to `CAT-08` | Frontend Vitest (React) | 8 | Passed |
-| **Cart, Shipping, Coupon & COD UI** | `CART-01`, `SHIP-06`, `COUP`, `COD` | Frontend Vitest (React) | 10 | Passed |
+| **Cart, Shipping, Coupon & COD UI** | `CART-01`, `CART-04`, `CART-05`, `SHIP-06`, `COUP`, `COD` | Frontend Vitest (React) | 12 | Passed |
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend Vitest (React) | 12 | Passed |
 | **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend Vitest (React) | 15 | Passed |
 | **Staff Dashboard UI** | `DASH-01` to `DASH-07` | Frontend Vitest (React) | 7 | Passed |
@@ -37,7 +37,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **E2E Journeys: Firefox** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Firefox | 17 | Passed |
 | **E2E Journeys: WebKit** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Safari | 17 | Passed |
 | **E2E Journeys: Mobile Viewport** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Pixel 5 (360x740) | 17 | Passed |
-| **Total Test Suite** | | | **291** | **Passed (100%)** |
+| **Total Test Suite** | | | **293** | **Passed (100%)** |
 
 ---
 
@@ -80,8 +80,8 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | `CART-01` | Add item to cart, change quantity, remove | Pytest / Vitest / Playwright | Quantities update atomically, subtotals recalculate in real-time, line item deleted cleanly. | Passed |
 | `CART-02` | Quantity zero, negative, non-integer | Pytest / Vitest | Serializer validation rejects input with HTTP 400 and clear error message. | Passed |
 | `CART-03` | Quantity exceeds available stock | Pytest / Vitest | HTTP 400 `insufficient_stock` returned with available stock figure. | Passed |
-| `CART-04` | Product price changes while item in cart | Pytest / Vitest | Cart recalculates based on live product price; stale stored prices discarded. | Passed |
-| `CART-05` | Product deactivated while item in cart | Pytest / Vitest | Inactive item detected at checkout quotation, order placement rejected until item removed. | Passed |
+| `CART-04` | Product price changes while item in cart | Pytest / Vitest | Cart recalculates based on live product price; `price_changed` flag and notice (`Price updated to Rs. X (was Rs. Y)`) rendered; notice banner displayed in UI. | Passed |
+| `CART-05` | Product deactivated while item in cart | Pytest / Vitest | Inactive product flagged in cart with unavailable badge; checkout button disabled until removed; backend quotation and order placement block checkout with 400. | Passed |
 | `CART-06` | Cart persistence across sessions | Pytest / Vitest | Session key or user ID keeps cart stored across page refresh and navigation. | Passed |
 | `CART-07` | Tampered cart item payload | Pytest / Vitest | Unit prices and discounts computed strictly from server database state; client values ignored. | Passed |
 

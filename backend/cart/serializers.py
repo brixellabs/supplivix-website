@@ -16,10 +16,32 @@ class CartItemSerializer(serializers.ModelSerializer):
         write_only=True
     )
     line_total = serializers.IntegerField(read_only=True)
+    price_when_added = serializers.IntegerField(read_only=True)
+    price_changed = serializers.SerializerMethodField()
+    price_change_notice = serializers.SerializerMethodField()
+    is_active = serializers.BooleanField(source='product.is_active', read_only=True)
+    flagged_inactive = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
-        fields = ['id', 'product', 'product_id', 'quantity', 'line_total']
+        fields = [
+            'id', 'product', 'product_id', 'quantity', 'line_total',
+            'price_when_added', 'price_changed', 'price_change_notice',
+            'is_active', 'flagged_inactive'
+        ]
+
+    def get_price_changed(self, obj):
+        if obj.price_when_added is not None and obj.product.price != obj.price_when_added:
+            return True
+        return False
+
+    def get_price_change_notice(self, obj):
+        if obj.price_when_added is not None and obj.product.price != obj.price_when_added:
+            return f"Price updated to Rs. {obj.product.price:,} (was Rs. {obj.price_when_added:,})"
+        return None
+
+    def get_flagged_inactive(self, obj):
+        return not obj.product.is_active
 
 
 class AddCartItemSerializer(serializers.Serializer):
@@ -79,6 +101,9 @@ class CartDetailSerializer(serializers.ModelSerializer):
     amount_needed_for_free_shipping = serializers.SerializerMethodField()
     free_shipping_message = serializers.SerializerMethodField()
     free_shipping_eligible = serializers.SerializerMethodField()
+    notices = serializers.SerializerMethodField()
+    has_inactive_items = serializers.SerializerMethodField()
+    checkout_blocked = serializers.SerializerMethodField()
 
     class Meta:
         model = Cart
@@ -86,7 +111,8 @@ class CartDetailSerializer(serializers.ModelSerializer):
             'id', 'items', 'total_items', 'subtotal', 'coupon_code',
             'discount_total', 'shipping_total', 'grand_total',
             'free_shipping_threshold', 'amount_needed_for_free_shipping',
-            'free_shipping_message', 'free_shipping_eligible'
+            'free_shipping_message', 'free_shipping_eligible',
+            'notices', 'has_inactive_items', 'checkout_blocked'
         ]
 
     def _get_calculation(self, obj):
@@ -167,3 +193,22 @@ class CartDetailSerializer(serializers.ModelSerializer):
 
     def get_free_shipping_eligible(self, obj):
         return self._get_calculation(obj)['eligible']
+
+    def get_notices(self, obj):
+        notices = []
+        for item in obj.items.select_related('product').all():
+            if not item.product.is_active:
+                notices.append(f"{item.product.name} is no longer available. Please remove it to proceed to checkout.")
+            elif item.price_when_added is not None and item.product.price != item.price_when_added:
+                diff = item.product.price - item.price_when_added
+                direction = "increased" if diff > 0 else "decreased"
+                notices.append(
+                    f"Notice: Price for {item.product.name} has {direction} to Rs. {item.product.price:,} (was Rs. {item.price_when_added:,})."
+                )
+        return notices
+
+    def get_has_inactive_items(self, obj):
+        return any(not item.product.is_active for item in obj.items.select_related('product').all())
+
+    def get_checkout_blocked(self, obj):
+        return self.get_has_inactive_items(obj)

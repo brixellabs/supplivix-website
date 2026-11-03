@@ -636,9 +636,10 @@ class TestCartSuite:
 
     def test_cart_02_invalid_quantities_rejected(self, api_client, test_product):
         """CART-02: Quantity 0, negative, 11, decimal, text -> Rejected with a message."""
-        for invalid_qty in [0, -1, -5, 11, 99]:
+        for invalid_qty in [0, -1, -5, 11, 99, 1.5, "two", "invalid"]:
             res = api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": invalid_qty}, format="json")
             assert res.status_code == 400
+            assert "message" in res.data or "quantity" in str(res.data)
 
     def test_cart_03_quantity_above_stock_rejected(self, api_client, test_product):
         """CART-03: Quantity above stock -> Capped or rejected with stock message."""
@@ -647,6 +648,7 @@ class TestCartSuite:
 
         res = api_client.post("/api/v1/cart/items/", {"product_id": test_product.id, "quantity": 5}, format="json")
         assert res.status_code == 400
+        assert "stock" in str(res.data).lower()
 
     def test_cart_04_product_price_changes_reflects_in_cart(self, api_client, test_product):
         """CART-04: Product price changes while it is in the cart -> Cart shows the new price with a notice."""
@@ -659,6 +661,10 @@ class TestCartSuite:
 
         res2 = api_client.get("/api/v1/cart/")
         assert res2.data["subtotal"] == 5000
+        assert res2.data["items"][0]["price_changed"] is True
+        assert "Price updated" in res2.data["items"][0]["price_change_notice"]
+        assert len(res2.data["notices"]) > 0
+        assert "increased to Rs. 2,500" in res2.data["notices"][0]
 
     def test_cart_05_inactive_product_blocks_checkout(self, api_client, test_product):
         """CART-05: Product becomes inactive while in cart -> Item flagged, checkout blocked until removed."""
@@ -666,6 +672,12 @@ class TestCartSuite:
 
         test_product.is_active = False
         test_product.save(update_fields=["is_active"])
+
+        # Cart API flags item as inactive and checkout_blocked as True
+        cart_res = api_client.get("/api/v1/cart/")
+        assert cart_res.data["items"][0]["flagged_inactive"] is True
+        assert cart_res.data["has_inactive_items"] is True
+        assert cart_res.data["checkout_blocked"] is True
 
         payload = {
             "full_name": "Asim Raza",

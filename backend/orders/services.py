@@ -24,6 +24,8 @@ def calculate_checkout_quote(cart_items, coupon_code=None, user=None, email=None
 
     for item in cart_items:
         product = item.product
+        if not product.is_active:
+            raise ValidationError({'cart': f"Product {product.name} is no longer available. Please remove it to proceed."})
         unit_price = product.price
         qty = item.quantity
         line_total = unit_price * qty

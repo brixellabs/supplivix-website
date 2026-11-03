@@ -59,10 +59,12 @@ class AddCartItemView(APIView):
         cart_item, created = CartItem.objects.get_or_create(
             cart=cart,
             product=product,
-            defaults={'quantity': quantity}
+            defaults={'quantity': quantity, 'price_when_added': product.price}
         )
 
         if not created:
+            if cart_item.price_when_added is None:
+                cart_item.price_when_added = product.price
             new_qty = cart_item.quantity + quantity
             if new_qty > product.stock:
                 return Response(
