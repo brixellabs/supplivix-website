@@ -87,7 +87,7 @@ export default function LoginPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-brand-ink">
+                <label htmlFor="password" className="text-xs font-semibold text-brand-ink">
                   Password
                 </label>
                 <Link
@@ -99,6 +99,7 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <input
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={password}

@@ -153,11 +153,12 @@ export default function RegisterPage() {
             />
 
             <div>
-              <label className="block text-xs font-semibold text-brand-ink mb-1">
+              <label htmlFor="register-password" className="block text-xs font-semibold text-brand-ink mb-1">
                 Password (min 8 chars)
               </label>
               <div className="relative">
                 <input
+                  id="register-password"
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
