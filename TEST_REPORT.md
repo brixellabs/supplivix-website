@@ -1,8 +1,8 @@
 # Supplivix Automated Test Suite Report (Phase 9)
 
-Generated: November 2, 2026  
+Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: 98 (68 Backend Pytest + 30 Frontend Vitest)  
+Total Automated Tests: 136 (85 Backend Pytest + 51 Frontend Vitest)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD)
 
 ---
@@ -17,18 +17,19 @@ The entire test suite for the Supplivix e-commerce platform has executed with a 
 | **Catalog & Multivitamins Focus** | `CAT-01` to `CAT-08` | Backend / DRF | 8 | Passed |
 | **Cart Management** | `CART-01` to `CART-08` | Backend / DRF | 6 | Passed |
 | **Shipping Rules (Free >= Rs. 2,000)** | `SHIP-01` to `SHIP-04` | Backend / DRF | 3 | Passed |
-| **Coupons & Discount Tokens** | `COUP-01` to `COUP-06` | Backend / DRF | 4 | Passed |
-| **Cash on Delivery (COD)** | `COD-01` to `COD-14` | Backend / DRF | 8 | Passed |
-| **Staff Admin Panel** | `ADM-01` to `ADM-10` | Backend / DRF | 8 | Passed |
-| **SEO & AEO Crawler Endpoints** | `SEO-01` to `SEO-06` | Backend / DRF | 4 | Passed |
+| **Coupons & Discount Tokens** | `COUP-01` to `COUP-06` | Backend / DRF | 6 | Passed |
+| **Cash on Delivery (COD)** | `COD-01` to `COD-14` | Backend / DRF | 9 | Passed |
+| **Staff Admin Panel** | `ADM-01` to `ADM-15` | Backend / DRF | 15 | Passed |
+| **SEO & AEO Crawler Endpoints & SSR** | `SEO-01` to `SEO-07` | Backend / DRF | 7 | Passed |
 | **Bot Detection & Security** | `SEC-01` to `SEC-08` | Backend / DRF | 5 | Passed |
 | **Catalog Seeding & Purge** | `DEMO-01` to `DEMO-05` | Backend / DRF | 5 | Passed |
 | **Core Models & Database** | `MOD-01` to `MOD-09` | Backend / Django | 9 | Passed |
-| **Design System UI Primitives** | `DS-01` to `DS-08` | Frontend / Vitest | 8 | Passed |
-| **Frontend Pages & Routes** | `PAGE-01` to `PAGE-09` | Frontend / Vitest | 9 | Passed |
-| **Staff Dashboard UI** | `DASH-01` to `DASH-02` | Frontend / Vitest | 2 | Passed |
-| **UI Invariants & Viewports** | `UI-01` to `UI-08`, `FORM`, `POL` | Frontend / Vitest | 11 | Passed |
-| **Total** | | | **98** | **Passed** |
+| **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend / Vitest | 12 | Passed |
+| **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend / Vitest | 15 | Passed |
+| **Staff Dashboard UI** | `DASH-01` to `DASH-07` | Frontend / Vitest | 7 | Passed |
+| **SEO Head & Structured Data** | `SEO-UI-01` to `SEO-UI-06` | Frontend / Vitest | 6 | Passed |
+| **UI Invariants & Viewports** | `UI-01` to `UI-11` | Frontend / Vitest | 11 | Passed |
+| **Total** | | | **136** | **Passed** |
 
 ---
 
@@ -93,7 +94,7 @@ The entire test suite for the Supplivix e-commerce platform has executed with a 
 - `COD-12`: Guest order tracking lookup by order number and phone number returns timeline. (Passed)
 - `COD-13`: Anti-snooping protection: lookup with mismatched phone returns HTTP 404. (Passed)
 
-### G. Staff Admin Dashboard (ADM-01 to ADM-10)
+### G. Staff Admin Dashboard (ADM-01 to ADM-15)
 - `ADM-01`: Admin endpoints strictly restricted to authenticated staff users (401/403 for unauthorized). (Passed)
 - `ADM-02`: KPI statistics endpoint provides COD revenue, order counts, pending dispatches, out of stock alerts. (Passed)
 - `ADM-03`: Full product CRUD operations with instant price and stock adjustments. (Passed)
@@ -102,12 +103,22 @@ The entire test suite for the Supplivix e-commerce platform has executed with a 
 - `ADM-06`: Customer account toggle active/inactive. (Passed)
 - `ADM-07`: Customer product review moderation (approve/reject). (Passed)
 - `ADM-08`: Security logs view and unblocking of blocked IPs. (Passed)
+- `ADM-09`: Audit log records who, what, when, and IP address for every mutation. (Passed)
+- `ADM-10`: Site settings PATCH endpoint for free shipping threshold and site mode. (Passed)
+- `ADM-11`: Bulk activate and deactivate product catalog items. (Passed)
+- `ADM-12`: Order mark COD collected updates payment state and audit trail. (Passed)
+- `ADM-13`: Coupon lifecycle management (create, edit, deactivate). (Passed)
+- `ADM-14`: Product FAQ management and editor. (Passed)
+- `ADM-15`: Security manual IP block management. (Passed)
 
-### H. SEO and AEO Optimization (SEO-01 to SEO-06)
-- `SEO-01`: `/robots.txt` disallows sensitive paths and references dynamic sitemap. (Passed)
-- `SEO-02`: `/sitemap.xml` generates valid XML with active product and category URLs. (Passed)
+### H. SEO and AEO Optimization (SEO-01 to SEO-07)
+- `SEO-01`: `/robots.txt` disallows private paths, allows AI bots (`GPTBot`, `ClaudeBot`, `PerplexityBot`), and references dynamic sitemap. (Passed)
+- `SEO-02`: `/sitemap.xml` generates dynamic XML with `<lastmod>` timestamps for products, categories, and policies. (Passed)
 - `SEO-03`: `/llms.txt` structured AEO specifications provide concise brand and catalog summary for AI search engines. (Passed)
-- `SEO-04`: Schema.org `Organization` JSON-LD endpoint with Pakistani address and COD terms. (Passed)
+- `SEO-04`: Schema.org `Organization` and `WebSite` JSON-LD graphs with Pakistani address and COD terms. (Passed)
+- `SEO-05`: `spa_shell_view` SSR catches routes, serving pre-populated `<title>` (<60 chars), `<meta description>` (<160 chars), PKR prices, and `<noscript>` blocks without JavaScript. (Passed)
+- `SEO-06`: Dedicated `/multivitamins` hub SSR shell populated with formulation list. (Passed)
+- `SEO-07`: Private routes (`/admin-panel/`, `/cart`, `/checkout`, `/account`) strictly served with `noindex, nofollow`. (Passed)
 
 ### I. Security & Bot Defense (SEC-01 to SEC-08)
 - `SEC-01`: `BlockedIP` middleware returns 403 Forbidden with `ip_blocked` code. (Passed)
@@ -117,8 +128,8 @@ The entire test suite for the Supplivix e-commerce platform has executed with a 
 - `SEC-05`: Honeypot fields silently trap automated bot submissions and record `BotEvent` telemetry. (Passed)
 - `SEC-06`: Argon2 password hashing verified. (Passed)
 
-### J. UI & Design System Invariants (UI-01 to UI-08)
-- `UI-01`: Zero emojis verified across all 13 pages, components, buttons, and badges. (Passed)
+### J. UI & Design System Invariants (UI-01 to UI-11, DS-01 to DS-12, PAGE-01 to PAGE-15)
+- `UI-01`: Zero emojis verified across all 16 pages, components, buttons, and badges. (Passed)
 - `UI-02`: Zero glassmorphism verified (`backdrop-blur` absent everywhere, solid surfaces with 1px border). (Passed)
 - `UI-03`: Accessible labels and aria-attributes on all form controls. (Passed)
 - `UI-04`: Fluid responsiveness tested at 360px mobile width (hamburger menu, full-width checkout). (Passed)
@@ -126,12 +137,15 @@ The entire test suite for the Supplivix e-commerce platform has executed with a 
 - `UI-06`: Fluid responsiveness tested at 1280px desktop width (header nav, multi-column catalog grid). (Passed)
 - `UI-07`: Self-hosted FontAwesome Free SVG icons used exclusively without CDN dependencies. (Passed)
 - `UI-08`: Mandatory regulatory health disclaimer rendered on all multivitamin pages and site footer. (Passed)
+- `UI-09`: All forms validate on client and server with identical error representations. (Passed)
+- `UI-10`: Self-hosted Poppins font with `font-display: swap`. (Passed)
+- `UI-11`: Coming Soon mode redirect gates public access when active, with staff preview bypass. (Passed)
 
 ---
 
 ## 3. Linters and Build Verification
 
 - **Backend Ruff Linter**: `ruff check backend/` - 0 errors, 0 warnings.
-- **Frontend ESLint 9**: `eslint . --max-warnings 0` - 0 errors, 0 warnings.
-- **Emoji Checker**: `node scripts/check-no-emojis.js` - Zero emojis found in `src/`.
-- **Vite Production Build**: `vite build` completed in 8.42s with zero warnings.
+- **Frontend ESLint**: `eslint . --max-warnings 0` - 0 errors, 0 warnings.
+- **Emoji Checker**: `node scripts/check-no-emojis.js` - Zero emojis found across `frontend/src/`.
+- **Vite Production Build & Pre-Render**: `npm --prefix frontend run build` completed with 9 pre-rendered static HTML routes.
