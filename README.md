@@ -77,12 +77,114 @@ npm run dev
 ### Running Tests
 
 ```bash
-# Backend tests
+# Backend pytest suite (197 tests)
 cd backend
-pytest
+pytest -v
 
-# Frontend tests
+# Frontend vitest suite (133 tests)
 cd frontend
-npm run test
+npm run test -- --run
+
+# Multi-browser Playwright E2E suite (91 scenarios across Chromium, Firefox, WebKit, Mobile, Edge)
+cd frontend
+npm run test:e2e
+
+# 100-User Load Test & Concurrency Simulation
+python loadtests/run_load_test.py
+
+# Or via Locust CLI
+locust -f loadtests/locustfile.py --host=http://localhost:8000
 ```
+
+## Production Deployment & Operations
+
+### 1. Environment Configuration
+
+Create `.env` in `backend/` with production variables:
+
+```bash
+DEBUG=False
+SECRET_KEY=generate-strong-64-char-random-key
+ALLOWED_HOSTS=supplivix.com,www.supplivix.com,api.supplivix.com
+CORS_ALLOWED_ORIGINS=https://supplivix.com,https://www.supplivix.com
+
+# Neon PostgreSQL Database URLs
+# Pooled URL for web queries (PgBouncer port 6543)
+DATABASE_URL=postgresql://user:pass@ep-cool-sample-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
+# Direct URL for schema migrations (Direct port 5432)
+DIRECT_DATABASE_URL=postgresql://user:pass@ep-cool-sample.us-east-2.aws.neon.tech/neondb?sslmode=require
+
+# Cloudflare Turnstile Bot Protection
+TURNSTILE_SITE_KEY=0x4AAAAAA...
+TURNSTILE_SECRET_KEY=0x4AAAAAA...
+
+# Email Delivery (SMTP)
+EMAIL_HOST=smtp.sendgrid.net
+EMAIL_PORT=587
+EMAIL_HOST_USER=apikey
+EMAIL_HOST_PASSWORD=your-sendgrid-api-key
+DEFAULT_FROM_EMAIL=Supplivix <orders@supplivix.com>
+```
+
+### 2. Static & Media Asset Build
+
+```bash
+# Frontend production build
+cd frontend
+npm run build
+
+# Backend static files collection
+cd ../backend
+python manage.py collectstatic --noinput
+```
+
+### 3. Database Management Commands
+
+```bash
+# Run schema migrations (routes through DIRECT_DATABASE_URL automatically)
+python manage.py migrate
+
+# Seed baseline demo catalog (48 products, 6 categories, 6 coupons)
+python manage.py seed_demo
+
+# Purge demo products before loading client inventory
+python manage.py purge_demo --confirm
+
+# Seed 100 load test users on staging branch (never runs on main/production)
+python manage.py seed_load_users --count 100
+
+# Execute Neon Point-In-Time Recovery drill
+python manage.py neon_restore_drill --verify
+```
+
+### 4. Production Web Server (Gunicorn + Uvicorn Worker)
+
+```bash
+gunicorn config.wsgi:application \
+  --workers 4 \
+  --worker-class gthread \
+  --threads 4 \
+  --bind 0.0.0.0:8000 \
+  --timeout 30 \
+  --max-requests 1000 \
+  --max-requests-jitter 100
+```
+
+## Documentation Index
+
+- [`TEST_REPORT.md`](file:///d:/Brixellabs/supplivix/supplivix_website/TEST_REPORT.md): Complete 421-test automated suite report (100% pass across Pytest, Vitest, and Playwright).
+- [`LOAD_TEST_REPORT.md`](file:///d:/Brixellabs/supplivix/supplivix_website/LOAD_TEST_REPORT.md): 100-user load test benchmark report (Cold, Warm, Spike, Bot simulation, READY verdict).
+- [`docs/admin-user-guide.md`](file:///d:/Brixellabs/supplivix/supplivix_website/docs/admin-user-guide.md): One page per module user guide for the Staff Admin Panel.
+- [`docs/design-spec.md`](file:///d:/Brixellabs/supplivix/supplivix_website/docs/design-spec.md): Design tokens, color palette, typography hierarchy, and UI guidelines.
+- [`docs/neon-reliability.md`](file:///d:/Brixellabs/supplivix/supplivix_website/docs/neon-reliability.md): Neon serverless connection topology and PITR drill procedures.
+- [`docs/asset-audit.md`](file:///d:/Brixellabs/supplivix/supplivix_website/docs/asset-audit.md): Codebase audit confirming 100% original assets and zero third-party stock photos.
+
+## Architectural Assumptions
+
+1. **Free Shipping Threshold**: Nationwide Cash on Delivery (COD) only. Orders with subtotal >= Rs. 2,000 receive free delivery; orders < Rs. 2,000 incur a flat Rs. 200 delivery fee.
+2. **Shipping Fee**: Configurable in admin (`SiteSetting`), defaults to flat Rs. 200 nationwide.
+3. **Currency & Whole Integers**: Stored and calculated in Pakistani Rupees (PKR) as whole integers (`Rs. 2,400`). Decimals are disallowed.
+4. **Turnstile Bot Protection**: Cloudflare Turnstile serves as the interactive challenge provider, supported by off-screen honeypot traps and signed timestamp tokens.
+5. **Pre-Rendering & SEO**: Hybrid SSR shell injection dynamically injects `<title>`, `<meta>`, canonical links, and Schema.org JSON-LD scripts into the static HTML shell before delivering it to web crawlers.
+6. **Regulatory Health Disclaimer**: Standard regulatory disclaimer is mandatory and rendered on every multivitamin product page, hub page, catalog description, and site footer.
 

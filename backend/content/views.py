@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.cache import cache
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -130,6 +131,10 @@ class PublicSettingsView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
+        cached_settings = cache.get("public_settings_cache")
+        if cached_settings:
+            return Response(cached_settings, status=status.HTTP_200_OK)
+
         settings_dict = {
             'site_mode': SiteSetting.get_setting('site_mode', 'live'),
             'launch_date': SiteSetting.get_setting('launch_date', '2026-12-01T00:00:00Z'),
@@ -138,4 +143,5 @@ class PublicSettingsView(APIView):
             'store_phone': SiteSetting.get_setting('store_phone', '0300-0000000'),
             'store_email': SiteSetting.get_setting('store_email', 'info@supplivix.com'),
         }
+        cache.set("public_settings_cache", settings_dict, timeout=300)
         return Response(settings_dict, status=status.HTTP_200_OK)

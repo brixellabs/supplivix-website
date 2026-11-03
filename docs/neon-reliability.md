@@ -105,3 +105,4 @@ Neon utilizes copy-on-write storage (Pageserver and Safekeepers) allowing instan
    ```
 5. **Verify Data Integrity**:
    Verify product counts (48), orders, user accounts, and coupons match pre-incident snapshot.
+

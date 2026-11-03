@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.db import models
 
 
@@ -16,10 +17,26 @@ class SiteSetting(models.Model):
     def __str__(self):
         return f"{self.key}: {self.value}"
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        cache.delete(f"sitesetting_{self.key}")
+        cache.delete("public_settings_cache")
+
+    def delete(self, *args, **kwargs):
+        cache.delete(f"sitesetting_{self.key}")
+        cache.delete("public_settings_cache")
+        super().delete(*args, **kwargs)
+
     @classmethod
     def get_setting(cls, key, default=''):
+        cache_key = f"sitesetting_{key}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
         try:
-            return cls.objects.get(key=key).value
+            val = cls.objects.get(key=key).value
+            cache.set(cache_key, val, timeout=300)
+            return val
         except cls.DoesNotExist:
             return default
 

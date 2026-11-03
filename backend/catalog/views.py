@@ -23,7 +23,11 @@ class CategoryListView(generics.ListAPIView):
     pagination_class = None
 
     def get_queryset(self):
-        return Category.objects.filter(is_active=True, parent__isnull=True).order_by('sort_order', 'name')
+        return (
+            Category.objects.filter(is_active=True, parent__isnull=True)
+            .prefetch_related('children')
+            .order_by('sort_order', 'name')
+        )
 
 
 class ProductListView(generics.ListAPIView):

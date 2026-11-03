@@ -3,7 +3,9 @@ Django management command to generate users for load testing (Phase 10).
 Strictly zero emojis. Creates 100 benchmark customer accounts with addresses.
 """
 
-from django.core.management.base import BaseCommand
+import os
+
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from accounts.models import Address, User
@@ -29,6 +31,15 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        # Invariant: Never run against the main/production Neon database branch
+        neon_branch = os.environ.get('NEON_BRANCH', '').strip().lower()
+        db_url = os.environ.get('DATABASE_URL', '').lower()
+        if neon_branch in ['main', 'production'] or 'ep-prod' in db_url:
+            raise CommandError(
+                "ABORT: seed_load_users cannot be run against the main or production database branch. "
+                "Execute strictly against a dedicated Neon test/staging branch."
+            )
+
         count = options['count']
         prefix = options['prefix']
         created_count = 0

@@ -13,7 +13,7 @@ Strictly zero emojis anywhere. Nationwide Cash on Delivery (COD). Whole PKR pric
 
 import random
 
-from locust import HttpUser, between, task
+from locust import HttpUser, LoadTestShape, between, task
 
 
 class BrowserShopper(HttpUser):
@@ -124,18 +124,31 @@ class CartBuilder(HttpUser):
 
 class Buyer(HttpUser):
     """
-    20% Share: Converting buyer.
+    20% Share: Converting buyer (logged-in or guest).
     Adds items, requests checkout quote, places COD order, and views confirmation.
     """
     weight = 20
     wait_time = between(1.5, 3.5)
 
     def on_start(self):
+        self.is_guest = random.choice([True, False])
         self.user_idx = random.randint(1, 100)
-        self.email = f"load+{self.user_idx}@example.com"
-        self.phone = f"0300{self.user_idx:07d}"
         self.client_ip = f"198.51.100.{self.user_idx}"
         self.headers = {"X-Forwarded-For": self.client_ip}
+
+        if self.is_guest:
+            self.email = f"guest_{self.user_idx}_{random.randint(1000, 9999)}@example.com"
+            self.phone = f"0300{self.user_idx:07d}"
+        else:
+            self.email = f"load+{self.user_idx}@example.com"
+            self.phone = f"0300{self.user_idx:07d}"
+            # Authenticate session
+            self.client.post(
+                "/api/v1/auth/login/",
+                json={"email": self.email, "password": "LoadTestPass2026!"},
+                headers=self.headers,
+                name="/api/v1/auth/login/ [POST]"
+            )
 
     @task
     def buy_cod_journey(self):
@@ -296,11 +309,40 @@ class EdgeCaseTester(HttpUser):
             else:
                 res.failure(f"Expected 400 for non-COD payment, got {res.status_code}")
 
+    @task(1)
+    def test_out_of_stock_add(self):
+        with self.client.post(
+            "/api/v1/cart/items/",
+            json={"product_id": 999999, "quantity": 100},
+            headers=self.headers,
+            name="/api/v1/cart/items/ [Edge 400 OOS]",
+            catch_response=True,
+        ) as res:
+            if res.status_code in [400, 404, 429]:
+                res.success()
+            else:
+                res.failure(f"Expected 400/404 for out of stock, got {res.status_code}")
+
+    @task(1)
+    def test_invalid_contact_form(self):
+        with self.client.post(
+            "/api/v1/content/contact/",
+            json={"name": "", "email": "not-an-email", "message": ""},
+            headers=self.headers,
+            name="/api/v1/content/contact/ [Edge 400 Form]",
+            catch_response=True,
+        ) as res:
+            if res.status_code in [400, 429]:
+                res.success()
+            else:
+                res.failure(f"Expected 400 for invalid contact form, got {res.status_code}")
+
 
 class BotAttacker(HttpUser):
     """
     Simulated automated bot traffic (50 scripted clients).
-    Spams endpoints, scrapes quickly, and sends automation user agents to verify bot mitigation.
+    Spams registration, login, contact, waitlist, and coupon endpoints,
+    scrapes products quickly, and sends automation user agents.
     """
     weight = 0  # Run independently or with dedicated tags
     wait_time = between(0.1, 0.5)
@@ -347,3 +389,94 @@ class BotAttacker(HttpUser):
                 res.success()
             else:
                 res.failure(f"Bot register failed: {res.status_code}")
+
+    @task(2)
+    def spam_contact(self):
+        with self.client.post(
+            "/api/v1/content/contact/",
+            json={
+                "name": "Bot Spammer",
+                "email": f"spambot_{random.randint(1, 1000)}@botnet.test",
+                "message": "Spam message testing security defenses.",
+                "website": "http://spambot-link.com",
+            },
+            headers=self.headers,
+            name="/api/v1/content/contact/ [Bot Honeypot]",
+            catch_response=True,
+        ) as res:
+            if res.status_code in [200, 201, 400, 403, 429]:
+                res.success()
+            else:
+                res.failure(f"Bot contact failed: {res.status_code}")
+
+    @task(2)
+    def spam_coupon_guessing(self):
+        with self.client.post(
+            "/api/v1/cart/coupon/",
+            json={"code": f"GUESS_{random.randint(1000, 9999)}"},
+            headers=self.headers,
+            name="/api/v1/cart/coupon/ [Bot Guessing]",
+            catch_response=True,
+        ) as res:
+            if res.status_code in [400, 403, 429]:
+                res.success()
+            else:
+                res.failure(f"Bot coupon guessing failed: {res.status_code}")
+
+    @task(3)
+    def rapid_product_scrape(self):
+        self.client.get(
+            "/api/v1/products/?page=1",
+            headers=self.headers,
+            name="/api/v1/products/ [Bot Scrape]"
+        )
+
+
+class RampHoldDownShape(LoadTestShape):
+    """
+    Standard Load Profile:
+    Ramp from 0 to 100 concurrent users over 2 minutes (120s),
+    hold for 10 minutes (600s, total 720s),
+    ramp down over 1 minute (60s, total 780s).
+    """
+    time_limit = 780
+
+    def tick(self):
+        run_time = self.get_run_time()
+        if run_time > self.time_limit:
+            return None
+
+        if run_time < 120:
+            user_count = int((run_time / 120.0) * 100)
+            return (max(1, user_count), 1.0)
+        elif run_time < 720:
+            return (100, 2.0)
+        else:
+            remaining = 780 - run_time
+            user_count = int((remaining / 60.0) * 100)
+            return (max(0, user_count), 2.0)
+
+
+class SpikeLoadShape(LoadTestShape):
+    """
+    Spike Profile:
+    Ramp to 100 users, spike to 150 users for 1 minute (60s), ramp down.
+    """
+    time_limit = 300
+
+    def tick(self):
+        run_time = self.get_run_time()
+        if run_time > self.time_limit:
+            return None
+
+        if run_time < 60:
+            user_count = int((run_time / 60.0) * 100)
+            return (max(1, user_count), 2.0)
+        elif run_time < 120:
+            return (150, 5.0)
+        elif run_time < 240:
+            return (100, 2.0)
+        else:
+            remaining = 300 - run_time
+            user_count = int((remaining / 60.0) * 100)
+            return (max(0, user_count), 2.0)

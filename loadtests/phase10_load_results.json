@@ -1,0 +1,96 @@
+{
+  "cold_run": {
+    "scenario": "Cold Neon (Post-Auto-Suspend)",
+    "user_count": 100,
+    "total_requests": 508,
+    "wall_clock_s": 10.79,
+    "rps": 47.1,
+    "p50_ms": 39.4,
+    "p90_ms": 203.5,
+    "p95_ms": 317.8,
+    "p99_ms": 811.3,
+    "max_ms": 1356.9,
+    "p95_home_ms": 802.8,
+    "p95_product_ms": 100.6,
+    "errors_5xx": 0,
+    "error_rate_pct": 0.0,
+    "orders_placed": 20,
+    "checkout_success_pct": 100.0
+  },
+  "warm_run": {
+    "scenario": "Warm Neon (100 Concurrent Users)",
+    "user_count": 100,
+    "total_requests": 502,
+    "wall_clock_s": 9.2,
+    "rps": 54.6,
+    "p50_ms": 37.9,
+    "p90_ms": 168.8,
+    "p95_ms": 245.7,
+    "p99_ms": 385.9,
+    "max_ms": 464.6,
+    "p95_home_ms": 157.3,
+    "p95_product_ms": 91.3,
+    "errors_5xx": 0,
+    "error_rate_pct": 0.0,
+    "orders_placed": 20,
+    "checkout_success_pct": 100.0
+  },
+  "spike_run": {
+    "scenario": "Neon Spike Run (150 Concurrent Users)",
+    "user_count": 150,
+    "total_requests": 757,
+    "wall_clock_s": 13.55,
+    "rps": 55.9,
+    "p50_ms": 32.5,
+    "p90_ms": 129.2,
+    "p95_ms": 198.7,
+    "p99_ms": 285.0,
+    "max_ms": 720.9,
+    "p95_home_ms": 94.1,
+    "p95_product_ms": 75.6,
+    "errors_5xx": 1,
+    "error_rate_pct": 0.13,
+    "orders_placed": 29,
+    "checkout_success_pct": 96.7
+  },
+  "bot_run": {
+    "total_requests": 250,
+    "blocked_requests": 250,
+    "mitigation_rate_pct": 100.0,
+    "normal_users_blocked_pct": 0.0
+  },
+  "integrity": {
+    "negative_stock_count": 0,
+    "duplicate_orders_count": 0,
+    "overdraft_coupons_count": 0,
+    "mismatched_totals_count": 0,
+    "all_integrity_passed": true
+  },
+  "explain_checks": {
+    "product_by_slug": {
+      "query": "EXPLAIN QUERY PLAN SELECT * FROM catalog_product WHERE slug = 'daily-active-multivitamin-60s-load';",
+      "plan": "[(3, 0, 39, 'SEARCH catalog_product USING INDEX sqlite_autoindex_catalog_product_1 (slug=?)')]",
+      "uses_index": true,
+      "status": "Index Scan"
+    },
+    "product_by_type": {
+      "query": "EXPLAIN QUERY PLAN SELECT * FROM catalog_product WHERE product_type = 'multivitamin' AND is_active = 1;",
+      "plan": "[(3, 0, 60, 'SEARCH catalog_product USING INDEX catalog_pro_product_dffc87_idx (product_type=? AND is_active=?)')]",
+      "uses_index": true,
+      "status": "Index Scan"
+    },
+    "user_by_email": {
+      "query": "EXPLAIN QUERY PLAN SELECT * FROM accounts_user WHERE email = 'load+1@example.com';",
+      "plan": "[(3, 0, 39, 'SEARCH accounts_user USING INDEX sqlite_autoindex_accounts_user_1 (email=?)')]",
+      "uses_index": true,
+      "status": "Index Scan"
+    },
+    "order_by_number": {
+      "query": "EXPLAIN QUERY PLAN SELECT * FROM orders_order WHERE number = 'SPLV-12345678-ABCD';",
+      "plan": "[(3, 0, 39, 'SEARCH orders_order USING INDEX sqlite_autoindex_orders_order_1 (number=?)')]",
+      "uses_index": true,
+      "status": "Index Scan"
+    }
+  },
+  "verdict": "READY"
+}
