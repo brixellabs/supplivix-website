@@ -162,12 +162,12 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/min',
         'user': '1000/min',
-        'login': '15/min',
+        'login': '5/min',
         'register': '5/hour',
-        'coupon': '20/min',
-        'order': '30/min',
-        'contact': '10/hour',
-        'waitlist': '20/min',
+        'coupon': '10/min',
+        'order': '30/hour',
+        'contact': '3/hour',
+        'waitlist': '10/min',
     },
 }
 
@@ -192,6 +192,7 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 X_FRAME_OPTIONS = 'DENY'
 SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
@@ -205,6 +206,10 @@ if not DEBUG:
 TURNSTILE_SECRET_KEY = os.environ.get(
     'TURNSTILE_SECRET_KEY',
     '1x0000000000000000000000000000000AA'
+)
+TURNSTILE_SITE_KEY = os.environ.get(
+    'TURNSTILE_SITE_KEY',
+    '1x00000000000000000000AA'
 )
 
 # Demo and Store Seed Defaults

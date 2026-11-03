@@ -1,10 +1,13 @@
 from django.contrib.auth import login, logout
 from django.contrib.auth.tokens import default_token_generator
+from django.core.cache import cache
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from core.security import evaluate_risk
 
 from .models import Address, User
 from .serializers import (
@@ -23,6 +26,41 @@ class RegisterView(APIView):
     throttle_scope = 'register'
 
     def post(self, request):
+        action, score = evaluate_risk(request)
+        if action == 'honeypot_fake_success':
+            return Response(
+                {
+                    'message': 'Registration successful.',
+                    'user': {
+                        'id': 9999,
+                        'email': request.data.get('email', 'bot@example.com'),
+                        'full_name': request.data.get('full_name', 'Customer'),
+                        'phone': '',
+                        'is_staff': False,
+                    },
+                },
+                status=status.HTTP_201_CREATED
+            )
+        if action == 'token_expired':
+            return Response(
+                {'code': 'token_expired', 'message': 'Form session expired. Please refresh and try again.', 'fields': {}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if action == 'block':
+            return Response(
+                {'code': 'bot_blocked', 'message': 'Access denied due to automated activity detection.', 'fields': {}},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if action == 'challenge_required':
+            return Response(
+                {
+                    'code': 'challenge_required',
+                    'message': 'Security verification challenge required. Please complete Cloudflare Turnstile.',
+                    'fields': {'turnstile_token': ['Turnstile challenge verification required.']}
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = RegisterSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -41,6 +79,45 @@ class LoginView(APIView):
     throttle_scope = 'login'
 
     def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        failed_count = cache.get(f"failed_logins_{email}", 0) if email else 0
+        required_challenge = failed_count >= 3
+
+        action, score = evaluate_risk(request, required_challenge=required_challenge)
+        if action == 'honeypot_fake_success':
+            return Response(
+                {
+                    'message': 'Login successful.',
+                    'user': {
+                        'id': 9999,
+                        'email': email or 'customer@example.com',
+                        'full_name': 'Customer',
+                        'phone': '',
+                        'is_staff': False,
+                    },
+                },
+                status=status.HTTP_200_OK
+            )
+        if action == 'token_expired':
+            return Response(
+                {'code': 'token_expired', 'message': 'Form session expired. Please refresh and try again.', 'fields': {}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if action == 'block':
+            return Response(
+                {'code': 'bot_blocked', 'message': 'Access denied due to automated activity detection.', 'fields': {}},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if action == 'challenge_required':
+            return Response(
+                {
+                    'code': 'challenge_required',
+                    'message': 'Security verification challenge required after consecutive failed attempts.',
+                    'fields': {'turnstile_token': ['Turnstile challenge verification required.']}
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = LoginSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']

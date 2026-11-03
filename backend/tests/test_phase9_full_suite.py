@@ -102,19 +102,29 @@ class TestAuthSuite:
 
     def test_auth_10_account_lockout_after_consecutive_failed_logins(self, api_client, test_customer):
         cache.clear()
-        for _ in range(5):
+        for i in range(5):
             res = api_client.post(
                 '/api/v1/auth/login/',
-                {'email': test_customer.email, 'password': 'wrong-password'},
-                format='json'
+                {
+                    'email': test_customer.email,
+                    'password': 'wrong-password',
+                    'turnstile_token': '1x0000000000000000000000000000000AA',
+                },
+                format='json',
+                HTTP_X_FORWARDED_FOR=f"203.0.113.{20 + i}",
             )
             assert res.status_code == 400
 
         # 6th attempt is locked
         res6 = api_client.post(
             '/api/v1/auth/login/',
-            {'email': test_customer.email, 'password': 'wrong-password'},
-            format='json'
+            {
+                'email': test_customer.email,
+                'password': 'wrong-password',
+                'turnstile_token': '1x0000000000000000000000000000000AA',
+            },
+            format='json',
+            HTTP_X_FORWARDED_FOR='203.0.113.26',
         )
         assert res6.status_code == 400
         assert 'locked' in str(res6.data).lower()

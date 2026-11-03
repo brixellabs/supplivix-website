@@ -22,6 +22,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [honeypot, setHoneypot] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,6 +63,7 @@ export default function RegisterPage() {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         password: formData.password,
+        website: honeypot,
       });
       showToast('Registration complete! Welcome to Supplivix.');
       navigate('/account');
@@ -99,6 +101,16 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-3.5" noValidate>
+            <input
+              type="text"
+              name="website"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+              className="hidden"
+              aria-hidden="true"
+            />
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="First Name"

@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from cart.views import get_or_create_cart
+from core.security import evaluate_risk
 from promotions.models import CouponRedemption
 
 from .models import Order
@@ -58,6 +59,40 @@ class PlaceOrderView(APIView):
     throttle_scope = 'order'
 
     def post(self, request):
+        action, score = evaluate_risk(request)
+        if action == 'honeypot_fake_success':
+            return Response(
+                {
+                    'message': 'Order placed successfully.',
+                    'order': {
+                        'number': 'SPLV-BOT-TRAP-9999',
+                        'status': 'pending',
+                        'payment_method': 'cod',
+                        'grand_total': 2450,
+                    }
+                },
+                status=status.HTTP_201_CREATED
+            )
+        if action == 'token_expired':
+            return Response(
+                {'code': 'token_expired', 'message': 'Checkout session expired. Please refresh and try again.', 'fields': {}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if action == 'block':
+            return Response(
+                {'code': 'bot_blocked', 'message': 'Access denied due to automated activity detection.', 'fields': {}},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if action == 'challenge_required':
+            return Response(
+                {
+                    'code': 'challenge_required',
+                    'message': 'Security verification challenge required before order placement.',
+                    'fields': {'turnstile_token': ['Turnstile challenge verification required.']}
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         cart = get_or_create_cart(request)
         if not cart.items.exists():
             return Response(

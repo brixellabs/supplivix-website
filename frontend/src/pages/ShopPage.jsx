@@ -307,11 +307,10 @@ export default function ShopPage() {
                   updateParam('category', cat.slug);
                   setMobileFilterOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-sm text-xs transition-colors flex items-center justify-between ${
-                  isActive
-                    ? 'bg-brand-ink text-white font-bold'
-                    : 'text-ink-muted hover:bg-surface-subtle hover:text-brand-ink'
-                }`}
+                className={`w-full text-left px-3 py-2 rounded-sm text-xs transition-colors flex items-center justify-between ${isActive
+                  ? 'bg-brand-ink text-white font-bold'
+                  : 'text-ink-muted hover:bg-surface-subtle hover:text-brand-ink'
+                  }`}
               >
                 <span>{cat.label}</span>
                 {isActive && <Icon name="check" className="text-xs" />}

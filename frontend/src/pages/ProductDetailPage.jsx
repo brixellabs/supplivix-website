@@ -68,7 +68,7 @@ export default function ProductDetailPage() {
         if (Array.isArray(data)) setReviews(data);
         else if (data && data.results) setReviews(data.results);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [slug]);
 
   const discountPercent =
@@ -141,23 +141,23 @@ export default function ProductDetailPage() {
     product.faqs && product.faqs.length > 0
       ? product.faqs
       : [
-          {
-            question: 'How many multivitamin tablets should I take daily?',
-            answer: 'Follow the label directions. Typical products list one tablet per day, preferably with breakfast and a glass of water.',
-          },
-          {
-            question: 'Who is this multivitamin formula designed for?',
-            answer: 'This daily formulation is designed for adults seeking to support their dietary micronutrient intake alongside a balanced diet.',
-          },
-          {
-            question: 'Does this multivitamin contain synthetic colorants or preservatives?',
-            answer: 'No. Supplivix formulations avoid unnecessary artificial fillers and colorants, prioritizing bioavailable forms of essential nutrients.',
-          },
-          {
-            question: 'What is the payment and delivery procedure in Pakistan?',
-            answer: 'We deliver nationwide across Pakistan via standard Cash on Delivery (COD). You inspect the package and pay the courier rider in cash upon arrival.',
-          },
-        ];
+        {
+          question: 'How many multivitamin tablets should I take daily?',
+          answer: 'Follow the label directions. Typical products list one tablet per day, preferably with breakfast and a glass of water.',
+        },
+        {
+          question: 'Who is this multivitamin formula designed for?',
+          answer: 'This daily formulation is designed for adults seeking to support their dietary micronutrient intake alongside a balanced diet.',
+        },
+        {
+          question: 'Does this multivitamin contain synthetic colorants or preservatives?',
+          answer: 'No. Supplivix formulations avoid unnecessary artificial fillers and colorants, prioritizing bioavailable forms of essential nutrients.',
+        },
+        {
+          question: 'What is the payment and delivery procedure in Pakistan?',
+          answer: 'We deliver nationwide across Pakistan via standard Cash on Delivery (COD). You inspect the package and pay the courier rider in cash upon arrival.',
+        },
+      ];
 
   // Schema.org structured data for SEO & AEO (Phase 6)
   const productSchema = {
@@ -415,44 +415,40 @@ export default function ProductDetailPage() {
             <button
               type="button"
               onClick={() => setActiveTab('overview')}
-              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'overview'
-                  ? 'border-brand-ink text-brand-ink'
-                  : 'border-transparent text-ink-muted hover:text-brand-ink'
-              }`}
+              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'overview'
+                ? 'border-brand-ink text-brand-ink'
+                : 'border-transparent text-ink-muted hover:text-brand-ink'
+                }`}
             >
               Overview & Directions
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('supplement-facts')}
-              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'supplement-facts'
-                  ? 'border-brand-ink text-brand-ink'
-                  : 'border-transparent text-ink-muted hover:text-brand-ink'
-              }`}
+              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'supplement-facts'
+                ? 'border-brand-ink text-brand-ink'
+                : 'border-transparent text-ink-muted hover:text-brand-ink'
+                }`}
             >
               Supplement Facts
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('reviews')}
-              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'reviews'
-                  ? 'border-brand-ink text-brand-ink'
-                  : 'border-transparent text-ink-muted hover:text-brand-ink'
-              }`}
+              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'reviews'
+                ? 'border-brand-ink text-brand-ink'
+                : 'border-transparent text-ink-muted hover:text-brand-ink'
+                }`}
             >
               Verified Reviews ({reviews.length || product.reviews_count || 52})
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('faqs')}
-              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'faqs'
-                  ? 'border-brand-ink text-brand-ink'
-                  : 'border-transparent text-ink-muted hover:text-brand-ink'
-              }`}
+              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'faqs'
+                ? 'border-brand-ink text-brand-ink'
+                : 'border-transparent text-ink-muted hover:text-brand-ink'
+                }`}
             >
               Frequently Asked Questions ({productFaqs.length})
             </button>

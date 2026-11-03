@@ -2,6 +2,8 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.models import BotEvent
+from core.security import get_client_ip, track_coupon_guessing
 from promotions.models import Coupon, CouponRedemption
 
 from .models import Cart, CartItem
@@ -131,6 +133,15 @@ class ApplyCouponView(APIView):
 
         coupon = Coupon.objects.filter(code=code).first()
         if not coupon:
+            ip = get_client_ip(request)
+            if track_coupon_guessing(ip, code):
+                BotEvent.objects.create(
+                    ip=ip,
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+                    path=request.path,
+                    reason=f"Coupon guessing attack detected: attempted {code}",
+                    score=35
+                )
             return Response(
                 {'code': 'invalid_code', 'message': 'This code is not valid.', 'fields': {'code': ['Code not recognized.']}},
                 status=status.HTTP_400_BAD_REQUEST

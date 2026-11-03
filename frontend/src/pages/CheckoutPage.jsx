@@ -246,7 +246,17 @@ export default function CheckoutPage() {
         </h1>
 
         <form onSubmit={handleSubmitOrder} noValidate>
-          {/* Honeypot trap */}
+          {/* Honeypot traps */}
+          <input
+            type="text"
+            name="website"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+            className="hidden"
+            aria-hidden="true"
+          />
           <input
             type="text"
             name="company_name"

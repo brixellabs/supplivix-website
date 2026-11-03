@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [honeypot, setHoneypot] = useState('');
 
   const redirectPath = location.state?.from?.pathname || '/account';
 
@@ -31,7 +32,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password, { website: honeypot });
       showToast('Welcome back to Supplivix!');
       navigate(redirectPath, { replace: true });
     } catch (err) {
@@ -64,6 +65,16 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            <input
+              type="text"
+              name="website"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+              className="hidden"
+              aria-hidden="true"
+            />
             <Input
               label="Email Address"
               name="email"

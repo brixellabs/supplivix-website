@@ -1,9 +1,9 @@
+from django.conf import settings
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.middleware import BotProtectionMiddleware
-from core.models import BotEvent
+from core.security import evaluate_risk, generate_time_token
 
 from .models import SiteSetting, WaitlistEntry
 from .serializers import ContactMessageSerializer, WaitlistSerializer
@@ -16,19 +16,30 @@ class WaitlistView(APIView):
     throttle_scope = 'waitlist'
 
     def post(self, request):
-        honeypot = request.data.get('website') or request.data.get('company_name')
-        if honeypot:
-            ip = BotProtectionMiddleware.get_client_ip(request)
-            BotEvent.objects.create(
-                ip=ip,
-                user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                path=request.path,
-                reason='Honeypot triggered on waitlist submission',
-                score=100
-            )
+        action, score = evaluate_risk(request)
+        if action == 'honeypot_fake_success':
             return Response(
                 {'message': 'Thank you for joining the waitlist! We will notify you at launch.'},
                 status=status.HTTP_200_OK
+            )
+        if action == 'token_expired':
+            return Response(
+                {'code': 'token_expired', 'message': 'Form session expired. Please refresh and try again.', 'fields': {}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if action == 'block':
+            return Response(
+                {'code': 'bot_blocked', 'message': 'Access denied due to automated activity detection.', 'fields': {}},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if action == 'challenge_required':
+            return Response(
+                {
+                    'code': 'challenge_required',
+                    'message': 'Security verification challenge required. Please complete Cloudflare Turnstile.',
+                    'fields': {'turnstile_token': ['Turnstile challenge required.']}
+                },
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         email = request.data.get('email', '').strip().lower()
@@ -62,6 +73,32 @@ class ContactView(APIView):
     throttle_scope = 'contact'
 
     def post(self, request):
+        action, score = evaluate_risk(request)
+        if action == 'honeypot_fake_success':
+            return Response(
+                {'message': 'Thank you for contacting Supplivix. Our team will get back to you shortly.'},
+                status=status.HTTP_200_OK
+            )
+        if action == 'token_expired':
+            return Response(
+                {'code': 'token_expired', 'message': 'Form session expired. Please refresh and try again.', 'fields': {}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if action == 'block':
+            return Response(
+                {'code': 'bot_blocked', 'message': 'Access denied due to automated activity detection.', 'fields': {}},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if action == 'challenge_required':
+            return Response(
+                {
+                    'code': 'challenge_required',
+                    'message': 'Security verification challenge required. Please complete Cloudflare Turnstile.',
+                    'fields': {'turnstile_token': ['Turnstile challenge required.']}
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = ContactMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -69,6 +106,21 @@ class ContactView(APIView):
         return Response(
             {'message': 'Thank you for contacting Supplivix. Our team will get back to you shortly.'},
             status=status.HTTP_201_CREATED
+        )
+
+
+class SecurityTokenView(APIView):
+    """Provide signed form timestamp and Turnstile public site key for frontend forms."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response(
+            {
+                'time_token': generate_time_token(),
+                'turnstile_site_key': getattr(settings, 'TURNSTILE_SITE_KEY', '1x00000000000000000000AA'),
+            },
+            status=status.HTTP_200_OK
         )
 
 
