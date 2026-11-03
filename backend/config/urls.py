@@ -11,7 +11,8 @@ from core.seo_views import llms_txt, robots_txt, sitemap_xml, structured_data_me
 from core.views import health_check
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # Emergency fallback access for Django admin on a non-obvious obscure path
+    path('emergency-vault-admin/', admin.site.urls),
     path('robots.txt', robots_txt, name='robots-txt'),
     path('sitemap.xml', sitemap_xml, name='sitemap-xml'),
     path('llms.txt', llms_txt, name='llms-txt'),

@@ -312,8 +312,8 @@ class TestDjangoAdmin:
         )
         client.force_login(superuser)
 
-        # 1. Admin index returns 200
-        index_res = client.get('/admin/')
+        # 1. Admin index returns 200 via obscure emergency admin path
+        index_res = client.get(reverse('admin:index'))
         assert index_res.status_code == 200
 
         # Required models from the specification

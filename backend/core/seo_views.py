@@ -15,6 +15,7 @@ def robots_txt(request):
     base_url = getattr(settings, 'SITE_BASE_URL', 'https://supplivix.com').rstrip('/')
     content = f"""User-agent: *
 Disallow: /admin/
+Disallow: /emergency-vault-admin/
 Disallow: /admin-panel/
 Disallow: /api/
 Disallow: /cart

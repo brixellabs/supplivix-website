@@ -162,3 +162,121 @@ class TestPhase5AdminAPI:
         res = admin_client.post(url, {'ip_address': '192.168.1.100'})
         assert res.status_code == status.HTTP_200_OK
         assert not BlockedIP.objects.filter(ip='192.168.1.100').exists()
+
+    def test_admin_audit_logging(self, admin_client):
+        from core.models import AdminAuditLog
+        initial_count = AdminAuditLog.objects.count()
+
+        url = reverse('admin-settings')
+        res = admin_client.patch(url, {'free_shipping_threshold': 2500, 'site_mode': 'live'})
+        assert res.status_code == status.HTTP_200_OK
+
+        # Audit log must be recorded
+        assert AdminAuditLog.objects.count() == initial_count + 1
+        log = AdminAuditLog.objects.latest('created_at')
+        assert log.action == 'update_site_settings'
+        assert log.target_model == 'SiteSetting'
+        assert log.user.email == 'staff@supplivix.com'
+
+        # Query audit logs endpoint
+        audit_url = reverse('admin-audit-logs')
+        audit_res = admin_client.get(audit_url)
+        assert audit_res.status_code == status.HTTP_200_OK
+        assert audit_res.data['count'] >= 1
+
+    def test_admin_settings_get_and_patch(self, admin_client):
+        url = reverse('admin-settings')
+        get_res = admin_client.get(url)
+        assert get_res.status_code == status.HTTP_200_OK
+        assert 'free_shipping_threshold' in get_res.data
+        assert 'flat_shipping_fee' in get_res.data
+
+        patch_res = admin_client.patch(url, {'flat_shipping_fee': 250})
+        assert patch_res.status_code == status.HTTP_200_OK
+        assert patch_res.data['settings']['flat_shipping_fee'] == '250'
+
+    def test_admin_bulk_status_update(self, admin_client):
+        category = Category.objects.create(name='BulkCat', slug='bulk-cat')
+        p1 = Product.objects.create(name='P1', slug='p1', sku='SKU-BULK-1', category=category, price=1000, is_active=True)
+        p2 = Product.objects.create(name='P2', slug='p2', sku='SKU-BULK-2', category=category, price=2000, is_active=True)
+
+        url = reverse('admin-products-bulk-status')
+        res = admin_client.post(url, {'ids': [p1.id, p2.id], 'is_active': False}, format='json')
+        assert res.status_code == status.HTTP_200_OK
+
+        p1.refresh_from_db()
+        p2.refresh_from_db()
+        assert p1.is_active is False
+        assert p2.is_active is False
+
+    def test_admin_order_mark_cod_collected(self, admin_client):
+        order = Order.objects.create(
+            number='SPLV-COD-7777',
+            guest_email='buyer7@example.com',
+            shipping_address_snapshot={'full_name': 'Cash Buyer', 'phone': '+923007777777', 'city': 'Rawalpindi'},
+            status='delivered',
+            subtotal=3000,
+            grand_total=3000,
+            payment_method='COD',
+        )
+        url = reverse('admin-order-mark-cod-collected', kwargs={'number': order.number})
+        res = admin_client.post(url)
+        assert res.status_code == status.HTTP_200_OK
+        assert res.data['status'] == 'cod_collected'
+
+        order.refresh_from_db()
+        assert order.status == 'cod_collected'
+
+    def test_admin_coupon_lifecycle(self, admin_client):
+        gen_url = reverse('admin-coupon-generate-code')
+        gen_res = admin_client.get(gen_url)
+        assert gen_res.status_code == status.HTTP_200_OK
+        assert 'code' in gen_res.data
+        code = gen_res.data['code']
+
+        create_url = reverse('admin-coupons')
+        create_res = admin_client.post(create_url, {
+            'code': code,
+            'discount_type': 'percentage',
+            'discount_value': 15,
+            'min_order_amount': 1500,
+        })
+        assert create_res.status_code == status.HTTP_201_CREATED
+        coupon_id = create_res.data['id']
+
+        redemptions_url = reverse('admin-coupon-redemptions', kwargs={'pk': coupon_id})
+        redemptions_res = admin_client.get(redemptions_url)
+        assert redemptions_res.status_code == status.HTTP_200_OK
+        assert redemptions_res.data['count'] == 0
+
+    def test_admin_product_faq_management(self, admin_client):
+        from catalog.models import ProductFAQ
+        category = Category.objects.create(name='FAQCat', slug='faq-cat')
+        product = Product.objects.create(name='FAQProduct', slug='faq-prod', sku='SKU-FAQ-PROD', category=category, price=1000)
+
+        url = reverse('admin-product-faqs', kwargs={'pk': product.id})
+        res = admin_client.post(url, {
+            'question': 'How many tablets daily?',
+            'answer': 'Take 1 tablet in the morning after breakfast.',
+        })
+        assert res.status_code == status.HTTP_201_CREATED
+        faq_id = res.data['id']
+
+        assert ProductFAQ.objects.filter(pk=faq_id, product=product).exists()
+
+        # Delete FAQ
+        del_url = reverse('admin-product-faq-detail', kwargs={'pk': product.id, 'faq_id': faq_id})
+        del_res = admin_client.delete(del_url)
+        assert del_res.status_code == status.HTTP_200_OK
+        assert not ProductFAQ.objects.filter(pk=faq_id).exists()
+
+    def test_admin_security_manual_block(self, admin_client):
+        url = reverse('admin-security-block-ip')
+        res = admin_client.post(url, {
+            'ip': '203.0.113.42',
+            'reason': 'Excessive checkout spamming',
+            'hours': 48,
+        })
+        assert res.status_code == status.HTTP_201_CREATED
+        assert BlockedIP.objects.filter(ip='203.0.113.42').exists()
+

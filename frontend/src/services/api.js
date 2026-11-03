@@ -17,6 +17,10 @@ export async function apiRequest(endpoint, options = {}) {
     ...(options.headers || {}),
   };
 
+  if (options.body && options.body.constructor && options.body.constructor.name === 'FormData') {
+    delete headers['Content-Type'];
+  }
+
   const config = {
     ...options,
     headers,
@@ -168,6 +172,7 @@ export const api = {
     const q = new URLSearchParams(params).toString();
     return apiRequest(`/admin/products/${q ? `?${q}` : ''}`);
   },
+  getAdminProductDetail: (id) => apiRequest(`/admin/products/${id}/`),
   createAdminProduct: (payload) =>
     apiRequest('/admin/products/', {
       method: 'POST',
@@ -178,6 +183,62 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+  deleteAdminProduct: (id) =>
+    apiRequest(`/admin/products/${id}/`, {
+      method: 'DELETE',
+    }),
+  bulkUpdateProductStatus: (ids, is_active) =>
+    apiRequest('/admin/products/bulk-status/', {
+      method: 'POST',
+      body: JSON.stringify({ ids, is_active }),
+    }),
+  importAdminProductsCSV: (formData) =>
+    apiRequest('/admin/products/import-csv/', {
+      method: 'POST',
+      body: formData,
+    }),
+  uploadProductImage: (productId, formData) =>
+    apiRequest(`/admin/products/${productId}/images/`, {
+      method: 'POST',
+      body: formData,
+    }),
+  deleteProductImage: (productId, imageId) =>
+    apiRequest(`/admin/products/${productId}/images/${imageId}/`, {
+      method: 'DELETE',
+    }),
+  addProductFAQ: (productId, payload) =>
+    apiRequest(`/admin/products/${productId}/faqs/`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteProductFAQ: (productId, faqId) =>
+    apiRequest(`/admin/products/${productId}/faqs/${faqId}/`, {
+      method: 'DELETE',
+    }),
+
+  // Categories
+  getAdminCategories: () => apiRequest('/admin/categories/'),
+  createAdminCategory: (payload) =>
+    apiRequest('/admin/categories/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAdminCategory: (id, payload) =>
+    apiRequest(`/admin/categories/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteAdminCategory: (id) =>
+    apiRequest(`/admin/categories/${id}/`, {
+      method: 'DELETE',
+    }),
+  reorderAdminCategories: (order) =>
+    apiRequest('/admin/categories/reorder/', {
+      method: 'POST',
+      body: JSON.stringify({ order }),
+    }),
+
+  // Orders
   getAdminOrders: (params = {}) => {
     const q = new URLSearchParams(params).toString();
     return apiRequest(`/admin/orders/${q ? `?${q}` : ''}`);
@@ -188,38 +249,99 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ status, notes }),
     }),
-  getAdminCategories: () => apiRequest('/admin/categories/'),
-  createAdminCategory: (payload) =>
-    apiRequest('/admin/categories/', {
+  markAdminOrderCODCollected: (number) =>
+    apiRequest(`/admin/orders/${number}/mark-cod-collected/`, {
       method: 'POST',
-      body: JSON.stringify(payload),
     }),
+
+  // Coupons
   getAdminCoupons: () => apiRequest('/admin/coupons/'),
   createAdminCoupon: (payload) =>
     apiRequest('/admin/coupons/', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  getAdminCustomers: () => apiRequest('/admin/customers/'),
+  updateAdminCoupon: (id, payload) =>
+    apiRequest(`/admin/coupons/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteAdminCoupon: (id) =>
+    apiRequest(`/admin/coupons/${id}/`, {
+      method: 'DELETE',
+    }),
+  generateAdminCouponCode: (prefix = 'SPLV') =>
+    apiRequest(`/admin/coupons/generate-code/?prefix=${prefix}`),
+  getAdminCouponRedemptions: (id) =>
+    apiRequest(`/admin/coupons/${id}/redemptions/`),
+
+  // Shipping & Settings
+  getAdminSettings: () => apiRequest('/admin/settings/'),
+  updateAdminSettings: (payload) =>
+    apiRequest('/admin/settings/', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+
+  // Customers
+  getAdminCustomers: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiRequest(`/admin/customers/${q ? `?${q}` : ''}`);
+  },
+  getAdminCustomerOrders: (id) =>
+    apiRequest(`/admin/customers/${id}/orders/`),
   toggleAdminCustomer: (id) =>
     apiRequest(`/admin/customers/${id}/toggle-status/`, {
       method: 'POST',
     }),
-  getAdminReviews: () => apiRequest('/admin/reviews/'),
+
+  // Reviews
+  getAdminReviews: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiRequest(`/admin/reviews/${q ? `?${q}` : ''}`);
+  },
   moderateAdminReview: (id, approved) =>
     apiRequest(`/admin/reviews/${id}/moderate/`, {
       method: 'POST',
       body: JSON.stringify({ approved }),
     }),
-  getAdminMessages: () => apiRequest('/admin/messages/'),
+  deleteAdminReview: (id) =>
+    apiRequest(`/admin/reviews/${id}/`, {
+      method: 'DELETE',
+    }),
+
+  // Messages & Waitlist
+  getAdminMessages: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiRequest(`/admin/messages/${q ? `?${q}` : ''}`);
+  },
   markAdminMessageRead: (id) =>
     apiRequest(`/admin/messages/${id}/mark-read/`, {
       method: 'POST',
     }),
+  toggleAdminMessageHandled: (id) =>
+    apiRequest(`/admin/messages/${id}/toggle-handled/`, {
+      method: 'POST',
+    }),
+  getAdminWaitlist: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiRequest(`/admin/waitlist/${q ? `?${q}` : ''}`);
+  },
+
+  // Security & Audit Logs
   getAdminSecurityLogs: () => apiRequest('/admin/security/logs/'),
+  blockAdminIP: (payload) =>
+    apiRequest('/admin/security/block-ip/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   unblockAdminIP: (ip) =>
     apiRequest('/admin/security/unblock-ip/', {
       method: 'POST',
       body: JSON.stringify({ ip }),
     }),
+  getAdminAuditLogs: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiRequest(`/admin/audit-logs/${q ? `?${q}` : ''}`);
+  },
 };

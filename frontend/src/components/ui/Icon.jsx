@@ -40,6 +40,10 @@ import {
   faHeart,
   faSliders,
   faFileInvoice,
+  faDownload,
+  faUpload,
+  faPrint,
+  faChartLine,
 } from '@fortawesome/free-solid-svg-icons';
 
 import {
@@ -94,6 +98,10 @@ const ICON_MAP = {
   heart: faHeart,
   sliders: faSliders,
   invoice: faFileInvoice,
+  download: faDownload,
+  upload: faUpload,
+  print: faPrint,
+  chart: faChartLine,
   whatsapp: faWhatsapp,
   facebook: faFacebook,
   instagram: faInstagram,

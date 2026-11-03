@@ -333,9 +333,8 @@ export default function CheckoutPage() {
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         placeholder="Select or type city"
-                        className={`w-full bg-white border ${
-                          errors.city ? 'border-red-500' : 'border-surface-border'
-                        } rounded-sm p-2 text-xs text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-green`}
+                        className={`w-full bg-white border ${errors.city ? 'border-red-500' : 'border-surface-border'
+                          } rounded-sm p-2 text-xs text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-green`}
                         required
                       />
                       <datalist id="city-suggestions">

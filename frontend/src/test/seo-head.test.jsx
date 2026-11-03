@@ -95,3 +95,4 @@ describe('Phase 6: Frontend SEO & AEO (SEOHead Component)', () => {
     expect(parsed.offers.priceCurrency).toBe('PKR');
   });
 });
+

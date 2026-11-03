@@ -88,6 +88,15 @@ class LoginSerializer(serializers.Serializer):
         user = authenticate(request=self.context.get('request'), email=email, password=password)
         if not user:
             cache.set(lockout_key, failed_count + 1, timeout=900)
+            request = self.context.get('request')
+            if request:
+                from core.models import FailedLoginLog
+                ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1')).split(',')[0].strip()
+                FailedLoginLog.objects.create(
+                    email=email,
+                    ip_address=ip or '127.0.0.1',
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')[:500]
+                )
             # Identical error message for unknown email and wrong password
             raise serializers.ValidationError('Invalid email or password.')
 
