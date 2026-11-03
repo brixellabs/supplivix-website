@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: 142 (91 Backend Pytest + 51 Frontend Vitest)  
+Total Automated Tests: 147 (96 Backend Pytest + 51 Frontend Vitest)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD)
 
 ---
@@ -22,14 +22,14 @@ The entire test suite for the Supplivix e-commerce platform has executed with a 
 | **Staff Admin Panel** | `ADM-01` to `ADM-15` | Backend / DRF | 15 | Passed |
 | **SEO & AEO Crawler Endpoints & SSR** | `SEO-01` to `SEO-07` | Backend / DRF | 7 | Passed |
 | **Bot Detection & Security** | `SEC-01` to `SEC-11` | Backend / DRF | 11 | Passed |
-| **Catalog Seeding & Purge** | `DEMO-01` to `DEMO-05` | Backend / DRF | 5 | Passed |
+| **Catalog Seeding & Purge** | `DEMO-01` to `DEMO-10` | Backend / DRF | 10 | Passed |
 | **Core Models & Database** | `MOD-01` to `MOD-09` | Backend / Django | 9 | Passed |
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend / Vitest | 12 | Passed |
 | **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend / Vitest | 15 | Passed |
 | **Staff Dashboard UI** | `DASH-01` to `DASH-07` | Frontend / Vitest | 7 | Passed |
 | **SEO Head & Structured Data** | `SEO-UI-01` to `SEO-UI-06` | Frontend / Vitest | 6 | Passed |
 | **UI Invariants & Viewports** | `UI-01` to `UI-11` | Frontend / Vitest | 11 | Passed |
-| **Total** | | | **142** | **Passed** |
+| **Total** | | | **147** | **Passed** |
 
 ---
 
@@ -133,7 +133,19 @@ The entire test suite for the Supplivix e-commerce platform has executed with a 
 - `SEC-10`: Rapid coupon guessing (> 3 failed codes in 5 min) and registration velocity flags high-risk behavioral signals. (Passed)
 - `SEC-11`: Scripted bot run acceptance test confirms >= 95% automated bot traffic mitigation and 0% false positives for normal users. (Passed)
 
-### J. UI & Design System Invariants (UI-01 to UI-11, DS-01 to DS-12, PAGE-01 to PAGE-15)
+### J. Catalog Seeding & Original Assets (DEMO-01 to DEMO-10)
+- `DEMO-01`: Seeding generates 48 products with multivitamins as primary focus (>=28 multivitamins, 20 skincare). (Passed)
+- `DEMO-02`: All multivitamin and supplement products carry the mandatory regulatory health disclaimer. (Passed)
+- `DEMO-03`: Prices in whole-rupee integers (PKR) and zero emojis across catalog text. (Passed)
+- `DEMO-04`: Demo coupons and staff user account populated. (Passed)
+- `DEMO-05`: Command refuses execution when `DEBUG=False` unless `--force` is passed. (Passed)
+- `DEMO-06`: Idempotency verified: repeated executions produce identical record counts without duplication. (Passed)
+- `DEMO-07`: 20 demo users (`demo+N@example.com`), 3 saved addresses, and 30 COD orders across all 5 statuses populated. (Passed)
+- `DEMO-08`: Every product populated with attributes, 3-5 FAQs, and approved reviews. (Passed)
+- `DEMO-09`: Original SVG illustrations and WebP/AVIF fallbacks generated with `demo-` prefix and alt text. (Passed)
+- `DEMO-10`: `purge_demo` safely removes demo products, orders, users, and images, leaving an operational store. (Passed)
+
+### K. UI & Design System Invariants (UI-01 to UI-11, DS-01 to DS-12, PAGE-01 to PAGE-15)
 - `UI-01`: Zero emojis verified across all 16 pages, components, buttons, and badges. (Passed)
 - `UI-02`: Zero glassmorphism verified (`backdrop-blur` absent everywhere, solid surfaces with 1px border). (Passed)
 - `UI-03`: Accessible labels and aria-attributes on all form controls. (Passed)
