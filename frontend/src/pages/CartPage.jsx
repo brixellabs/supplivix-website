@@ -8,10 +8,9 @@ import Icon from '../components/ui/Icon';
 import EmptyState from '../components/ui/EmptyState';
 import ProductIllustration from '../components/ui/ProductIllustration';
 import SEOHead from '../components/seo/SEOHead';
+import FreeShippingProgressBar from '../components/cart/FreeShippingProgressBar';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../components/ui/Toast';
-
-const FREE_SHIPPING_THRESHOLD = 2000;
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -25,11 +24,13 @@ export default function CartPage() {
   const subtotal = cart?.subtotal || 0;
   const discountAmount = cart?.discount_total || cart?.discount_amount || 0;
   const netSubtotal = Math.max(0, subtotal - discountAmount);
-  const shippingFee = cart?.shipping_total !== undefined ? cart.shipping_total : (cart?.shipping_fee !== undefined ? cart.shipping_fee : (netSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 200));
+  const threshold = Number(cart?.free_shipping_threshold) || 2000;
+  const shippingFee = cart?.shipping_total !== undefined ? cart.shipping_total : (cart?.shipping_fee !== undefined ? cart.shipping_fee : (netSubtotal >= threshold ? 0 : 200));
   const grandTotal = cart?.grand_total || (netSubtotal + shippingFee);
 
-  const amountNeeded = Math.max(0, FREE_SHIPPING_THRESHOLD - netSubtotal);
-  const freeShippingProgress = Math.min(100, Math.round((netSubtotal / FREE_SHIPPING_THRESHOLD) * 100));
+  const amountNeeded = cart?.amount_needed_for_free_shipping !== undefined
+    ? cart.amount_needed_for_free_shipping
+    : Math.max(0, threshold - netSubtotal);
 
   const hasInactiveItems = items.some(
     (item) => item.is_active === false || item.flagged_inactive || (item.product && item.product.is_active === false)
@@ -97,34 +98,12 @@ export default function CartPage() {
         </h1>
 
         {/* Free Shipping Progress Alert */}
-        <div className="bg-surface-subtle border border-surface-border rounded-lg p-4 mb-8 shadow-card">
-          <div className="flex items-center justify-between text-xs font-semibold mb-2">
-            <span className="flex items-center gap-1.5 text-brand-ink">
-              <Icon name="truck" className="text-brand-green" />
-              {amountNeeded === 0 ? (
-                <strong className="text-brand-green">You have unlocked FREE delivery across Pakistan!</strong>
-              ) : (
-                <span>
-                  Add <strong className="text-brand-ink">Rs. {amountNeeded.toLocaleString()}</strong> more to get <strong>FREE delivery</strong>
-                </span>
-              )}
-            </span>
-            <span className="text-ink-muted">{freeShippingProgress}%</span>
-          </div>
-          <div
-            className="w-full bg-surface-border rounded-full h-2 overflow-hidden"
-            role="progressbar"
-            aria-valuenow={freeShippingProgress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Free shipping progress"
-          >
-            <div
-              className="bg-brand-green h-2 rounded-full transition-all duration-300"
-              style={{ width: `${freeShippingProgress}%` }}
-            />
-          </div>
-        </div>
+        <FreeShippingProgressBar
+          threshold={threshold}
+          subtotal={netSubtotal}
+          amountNeeded={amountNeeded}
+          className="mb-8"
+        />
 
         {/* Notices Banner (Price Changes or Inactive Items) */}
         {cart?.notices && cart.notices.length > 0 && (

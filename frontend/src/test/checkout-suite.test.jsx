@@ -10,6 +10,7 @@ import React from 'react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import CartPage from '../pages/CartPage';
 import CheckoutPage from '../pages/CheckoutPage';
+import FreeShippingProgressBar from '../components/cart/FreeShippingProgressBar';
 import { AuthProvider } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
 import { ToastProvider } from '../components/ui/Toast';
@@ -164,40 +165,78 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
     });
   });
 
-  it('SHIP-01 & SHIP-06: Free shipping progress bar displays at 50% threshold with accessible role and message', async () => {
-    const halfCart = {
+  it('SHIP-01: Subtotal Rs. 1,999 displays shipping Rs. 200 and message Add Rs. 1 more for free shipping', async () => {
+    const ship1999Cart = {
       items: [
         {
-          id: 2,
-          product_id: 102,
-          product_name: 'Zinc Tablet',
-          unit_price: 1000,
+          id: 201,
+          product_id: 201,
+          product_name: 'Formula 1999',
+          unit_price: 1999,
           quantity: 1,
-          line_total: 1000,
+          line_total: 1999,
         },
       ],
       total_items: 1,
-      subtotal: 1000,
-      grand_total: 1200,
+      subtotal: 1999,
+      shipping_total: 200,
+      grand_total: 2199,
       free_shipping_eligible: false,
+      free_shipping_threshold: 2000,
+      amount_needed_for_free_shipping: 1,
     };
-    renderWithProviders(<CartPage />, '/cart', halfCart);
+    renderWithProviders(<CartPage />, '/cart', ship1999Cart);
 
     await waitFor(() => {
-      expect(screen.getByText(/50%/i)).toBeInTheDocument();
+      expect(screen.getByText(/Add/i)).toBeInTheDocument();
+      expect(screen.getByText(/^Rs\.\s*1$/i)).toBeInTheDocument();
+      expect(screen.getByText(/free shipping/i)).toBeInTheDocument();
+      expect(screen.getByText(/Rs\. 200/i)).toBeInTheDocument();
+      expect(screen.getByText(/^99%$/i)).toBeInTheDocument();
       const progressbar = screen.getByRole('progressbar');
-      expect(progressbar).toHaveAttribute('aria-valuenow', '50');
-      expect(progressbar).toHaveAttribute('role', 'progressbar');
+      expect(progressbar).toHaveAttribute('aria-valuenow', '99');
+      expect(progressbar).toHaveAttribute('aria-label', 'Free shipping progress');
     });
   });
 
-  it('SHIP-02 & SHIP-06: Free shipping progress bar displays at 100% with unlocked delivery notice', async () => {
-    const freeCart = {
+  it('SHIP-02: Subtotal exactly Rs. 2,000 displays free delivery Rs. 0', async () => {
+    const ship2000Cart = {
       items: [
         {
-          id: 3,
-          product_id: 103,
-          product_name: 'Gold Multi',
+          id: 202,
+          product_id: 202,
+          product_name: 'Formula 2000',
+          unit_price: 2000,
+          quantity: 1,
+          line_total: 2000,
+        },
+      ],
+      total_items: 1,
+      subtotal: 2000,
+      discount_amount: 0,
+      shipping_total: 0,
+      grand_total: 2000,
+      free_shipping_eligible: true,
+      free_shipping_threshold: 2000,
+      amount_needed_for_free_shipping: 0,
+    };
+    renderWithProviders(<CartPage />, '/cart', ship2000Cart);
+
+    await waitFor(() => {
+      expect(screen.getByText(/You have unlocked FREE delivery/i)).toBeInTheDocument();
+      expect(screen.getByText(/^100%$/i)).toBeInTheDocument();
+      const progressbar = screen.getByRole('progressbar');
+      expect(progressbar).toHaveAttribute('aria-valuenow', '100');
+    });
+  });
+
+  it('SHIP-03: Subtotal Rs. 2,001 and above qualifies for free shipping', async () => {
+    const ship2500Cart = {
+      items: [
+        {
+          id: 203,
+          product_id: 203,
+          product_name: 'Formula 2500',
           unit_price: 2500,
           quantity: 1,
           line_total: 2500,
@@ -206,11 +245,13 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
       total_items: 1,
       subtotal: 2500,
       discount_amount: 0,
-      shipping_fee: 0,
+      shipping_total: 0,
       grand_total: 2500,
       free_shipping_eligible: true,
+      free_shipping_threshold: 2000,
+      amount_needed_for_free_shipping: 0,
     };
-    renderWithProviders(<CartPage />, '/cart', freeCart);
+    renderWithProviders(<CartPage />, '/cart', ship2500Cart);
 
     await waitFor(() => {
       expect(screen.getByText(/You have unlocked FREE delivery/i)).toBeInTheDocument();
@@ -218,6 +259,113 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
       const progressbar = screen.getByRole('progressbar');
       expect(progressbar).toHaveAttribute('aria-valuenow', '100');
     });
+  });
+
+  it('SHIP-04: Subtotal Rs. 2,300 with coupon taking it to Rs. 1,900 applies shipping Rs. 200', async () => {
+    const couponCart = {
+      items: [
+        {
+          id: 204,
+          product_id: 204,
+          product_name: 'Formula 2300',
+          unit_price: 2300,
+          quantity: 1,
+          line_total: 2300,
+        },
+      ],
+      total_items: 1,
+      subtotal: 2300,
+      discount_total: 400,
+      shipping_total: 200,
+      grand_total: 2100,
+      free_shipping_eligible: false,
+      free_shipping_threshold: 2000,
+      amount_needed_for_free_shipping: 100,
+    };
+    renderWithProviders(<CartPage />, '/cart', couponCart);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Rs\. 200/i)).toBeInTheDocument();
+      expect(screen.getByText(/Add/i)).toBeInTheDocument();
+      expect(screen.getByText(/Rs\. 100/i)).toBeInTheDocument();
+      expect(screen.getByText(/free shipping/i)).toBeInTheDocument();
+      const progressbar = screen.getByRole('progressbar');
+      expect(progressbar).toHaveAttribute('aria-valuenow', '95');
+    });
+  });
+
+  it('SHIP-05: Threshold changed to Rs. 3,000 calculates shipping against new limit', async () => {
+    const dynCart = {
+      items: [
+        {
+          id: 205,
+          product_id: 205,
+          product_name: 'Formula 2500',
+          unit_price: 2500,
+          quantity: 1,
+          line_total: 2500,
+        },
+      ],
+      total_items: 1,
+      subtotal: 2500,
+      shipping_total: 200,
+      grand_total: 2700,
+      free_shipping_eligible: false,
+      free_shipping_threshold: 3000,
+      amount_needed_for_free_shipping: 500,
+    };
+    renderWithProviders(<CartPage />, '/cart', dynCart);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Rs\. 200/i)).toBeInTheDocument();
+      expect(screen.getByText(/Rs\. 500/i)).toBeInTheDocument();
+      expect(screen.getByText(/free shipping/i)).toBeInTheDocument();
+      const progressbar = screen.getByRole('progressbar');
+      expect(progressbar).toHaveAttribute('aria-valuenow', '83');
+    });
+  });
+
+  it('SHIP-06: FreeShippingProgressBar accurately renders states at 0%, 50%, 99% and 100%', () => {
+    // 1. 0%
+    const { unmount: unmount0, getByRole: getByRole0, getByText: getByText0, container: container0 } = render(
+      <FreeShippingProgressBar threshold={2000} subtotal={0} />
+    );
+    const pb0 = getByRole0('progressbar');
+    expect(pb0).toHaveAttribute('aria-valuenow', '0');
+    expect(pb0).toHaveAttribute('aria-label', 'Free shipping progress');
+    expect(getByText0('0%')).toBeInTheDocument();
+    expect(container0.querySelector('[style*="width: 0%"]')).toBeInTheDocument();
+    unmount0();
+
+    // 2. 50%
+    const { unmount: unmount50, getByRole: getByRole50, getByText: getByText50, container: container50 } = render(
+      <FreeShippingProgressBar threshold={2000} subtotal={1000} />
+    );
+    const pb50 = getByRole50('progressbar');
+    expect(pb50).toHaveAttribute('aria-valuenow', '50');
+    expect(getByText50('50%')).toBeInTheDocument();
+    expect(container50.querySelector('[style*="width: 50%"]')).toBeInTheDocument();
+    unmount50();
+
+    // 3. 99% (at Rs. 1,999)
+    const { unmount: unmount99, getByRole: getByRole99, getByText: getByText99, container: container99 } = render(
+      <FreeShippingProgressBar threshold={2000} subtotal={1999} />
+    );
+    const pb99 = getByRole99('progressbar');
+    expect(pb99).toHaveAttribute('aria-valuenow', '99');
+    expect(getByText99('99%')).toBeInTheDocument();
+    expect(container99.querySelector('[style*="width: 99%"]')).toBeInTheDocument();
+    unmount99();
+
+    // 4. 100% (at Rs. 2,000)
+    const { unmount: unmount100, getByRole: getByRole100, getByText: getByText100, container: container100 } = render(
+      <FreeShippingProgressBar threshold={2000} subtotal={2000} />
+    );
+    const pb100 = getByRole100('progressbar');
+    expect(pb100).toHaveAttribute('aria-valuenow', '100');
+    expect(getByText100('100%')).toBeInTheDocument();
+    expect(container100.querySelector('[style*="width: 100%"]')).toBeInTheDocument();
+    unmount100();
   });
 
   it('COUP-01 & COUP-04: Coupon form normalizes code input and applies valid token', async () => {

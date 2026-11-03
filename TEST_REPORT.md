@@ -2,7 +2,7 @@
 
 Generated: November 3, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **293** (144 Backend Pytest + 81 Frontend Vitest + 68 Playwright E2E)  
+Total Automated Tests: **297** (144 Backend Pytest + 85 Frontend Vitest + 68 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -27,7 +27,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Integration & Edge Cases** | Integration / API | Backend Pytest | 30 | Passed |
 | **Authentication & Accounts UI** | `AUTH-01` to `AUTH-10` | Frontend Vitest (React) | 10 | Passed |
 | **Catalog, Search & Filter UI** | `CAT-01` to `CAT-08` | Frontend Vitest (React) | 8 | Passed |
-| **Cart, Shipping, Coupon & COD UI** | `CART-01`, `CART-04`, `CART-05`, `SHIP-06`, `COUP`, `COD` | Frontend Vitest (React) | 12 | Passed |
+| **Cart, Shipping, Coupon & COD UI** | `CART`, `SHIP-01` to `SHIP-06`, `COUP`, `COD` | Frontend Vitest (React) | 16 | Passed |
 | **Design System UI Primitives** | `DS-01` to `DS-12` | Frontend Vitest (React) | 12 | Passed |
 | **Frontend Pages & Routes** | `PAGE-01` to `PAGE-15` | Frontend Vitest (React) | 15 | Passed |
 | **Staff Dashboard UI** | `DASH-01` to `DASH-07` | Frontend Vitest (React) | 7 | Passed |
@@ -37,7 +37,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **E2E Journeys: Firefox** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Firefox | 17 | Passed |
 | **E2E Journeys: WebKit** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Safari | 17 | Passed |
 | **E2E Journeys: Mobile Viewport** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Pixel 5 (360x740) | 17 | Passed |
-| **Total Test Suite** | | | **293** | **Passed (100%)** |
+| **Total Test Suite** | | | **297** | **Passed (100%)** |
 
 ---
 
@@ -91,12 +91,12 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 
 | Test ID | Case Description | Layer | Expected & Verified Result | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| `SHIP-01` | Subtotal Rs. 1,999 | Pytest / Vitest / Playwright | Shipping fee added: Rs. 200, progress meter indicates Rs. 1 away. | Passed |
-| `SHIP-02` | Subtotal Rs. 2,000 | Pytest / Vitest / Playwright | Free shipping qualified: Rs. 0 shipping fee. | Passed |
-| `SHIP-03` | Subtotal Rs. 2,001 | Pytest / Vitest / Playwright | Free shipping qualified: Rs. 0 shipping fee. | Passed |
-| `SHIP-04` | Coupon discount drops subtotal below Rs. 2,000 | Pytest / Vitest | Shipping fee recalculated and added: Rs. 200 applied to grand total. | Passed |
-| `SHIP-05` | Admin threshold update | Pytest / Vitest | Free shipping threshold loaded dynamically from `SiteSetting`; immediate update. | Passed |
-| `SHIP-06` | Progress bar states (0%, 50%, 100%) | Vitest / Playwright | Accessible progressbar attributes (`role="progressbar"`, `aria-valuenow`, `aria-label`). | Passed |
+| `SHIP-01` | Subtotal Rs. 1,999 | Pytest / Vitest / Playwright | Shipping Rs. 200, message "Add Rs. 1 more for free shipping", progress bar at 99%. | Passed |
+| `SHIP-02` | Subtotal exactly Rs. 2,000 | Pytest / Vitest / Playwright | Free shipping qualified: Rs. 0 shipping fee, "You have unlocked FREE delivery", progress bar at 100%. | Passed |
+| `SHIP-03` | Subtotal Rs. 2,001 and above | Pytest / Vitest / Playwright | Free shipping qualified: Rs. 0 shipping fee across subtotal ranges >= Rs. 2,001. | Passed |
+| `SHIP-04` | Coupon discount drops subtotal below Rs. 2,000 | Pytest / Vitest | Subtotal Rs. 2,300 with Rs. 400 coupon takes net to Rs. 1,900 -> Shipping fee Rs. 200 (threshold applies after discount). | Passed |
+| `SHIP-05` | Admin threshold update to Rs. 3,000 | Pytest / Vitest | Free shipping threshold loaded dynamically from `SiteSetting`; next quote and cart uses Rs. 3,000 without redeploy. | Passed |
+| `SHIP-06` | Progress bar states (0%, 50%, 99%, 100%) | Vitest / Playwright | Correct bar width, visible percentage text, and accessible attributes (`role="progressbar"`, `aria-valuenow`, `aria-label="Free shipping progress"`). | Passed |
 
 ---
 

@@ -728,6 +728,8 @@ class TestShippingSuite:
         assert res.data["subtotal"] == 1999
         assert res.data["shipping_total"] == 200
         assert res.data["free_shipping_eligible"] is False
+        assert res.data["amount_needed_for_free_shipping"] == 1
+        assert res.data["free_shipping_message"] == "Add Rs. 1 more for free shipping"
 
     def test_ship_02_subtotal_2000_free_shipping(self, api_client, test_category):
         """SHIP-02: Subtotal exactly Rs. 2,000 -> Shipping Rs. 0."""
@@ -737,15 +739,27 @@ class TestShippingSuite:
         assert res.data["subtotal"] == 2000
         assert res.data["shipping_total"] == 0
         assert res.data["free_shipping_eligible"] is True
+        assert res.data["amount_needed_for_free_shipping"] == 0
+        assert res.data["free_shipping_message"] == "You have unlocked free shipping!"
 
     def test_ship_03_subtotal_above_2000_free_shipping(self, api_client, test_category):
         """SHIP-03: Subtotal Rs. 2,001 and above -> Shipping Rs. 0."""
-        p = Product.objects.create(name="Formula 2500", slug="formula-2500", category=test_category, price=2500, sku="S-2500", stock=10, is_active=True)
-        api_client.post("/api/v1/cart/items/", {"product_id": p.id, "quantity": 1}, format="json")
-        res = api_client.get("/api/v1/cart/")
-        assert res.data["subtotal"] == 2500
-        assert res.data["shipping_total"] == 0
-        assert res.data["free_shipping_eligible"] is True
+        # 1. Exactly Rs. 2,001
+        p2001 = Product.objects.create(name="Formula 2001", slug="formula-2001", category=test_category, price=2001, sku="S-2001", stock=10, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": p2001.id, "quantity": 1}, format="json")
+        res2001 = api_client.get("/api/v1/cart/")
+        assert res2001.data["subtotal"] == 2001
+        assert res2001.data["shipping_total"] == 0
+        assert res2001.data["free_shipping_eligible"] is True
+        assert res2001.data["amount_needed_for_free_shipping"] == 0
+
+        # 2. Well above (e.g. Rs. 2,500)
+        p2500 = Product.objects.create(name="Formula 2500", slug="formula-2500", category=test_category, price=2500, sku="S-2500", stock=10, is_active=True)
+        api_client.post("/api/v1/cart/items/", {"product_id": p2500.id, "quantity": 1}, format="json")
+        res_above = api_client.get("/api/v1/cart/")
+        assert res_above.data["subtotal"] == 2001 + 2500
+        assert res_above.data["shipping_total"] == 0
+        assert res_above.data["free_shipping_eligible"] is True
 
     def test_ship_04_coupon_discount_drops_below_threshold(self, api_client, test_category):
         """SHIP-04: Subtotal Rs. 2,300, coupon takes it to Rs. 1,900 -> Shipping Rs. 200."""
@@ -761,6 +775,15 @@ class TestShippingSuite:
         assert quote_res.data["shipping_total"] == 200
         assert quote_res.data["grand_total"] == 1900 + 200
 
+        cart_res = api_client.get("/api/v1/cart/")
+        assert cart_res.data["subtotal"] == 2300
+        assert cart_res.data["discount_total"] == 400
+        assert cart_res.data["shipping_total"] == 200
+        assert cart_res.data["grand_total"] == 2100
+        assert cart_res.data["free_shipping_eligible"] is False
+        assert cart_res.data["amount_needed_for_free_shipping"] == 100
+        assert cart_res.data["free_shipping_message"] == "Add Rs. 100 more for free shipping"
+
     def test_ship_05_dynamic_admin_threshold_applied(self, api_client, test_category):
         """SHIP-05: Threshold changed to Rs. 3,000 in admin -> New value used on next quote without redeploy."""
         p = Product.objects.create(name="Formula 2500", slug="formula-dyn-2500", category=test_category, price=2500, sku="S-DYN-2500", stock=10, is_active=True)
@@ -772,6 +795,12 @@ class TestShippingSuite:
         assert quote_res.status_code == 200
         assert quote_res.data["shipping_total"] == 200
         assert quote_res.data["free_shipping_threshold"] == 3000
+
+        cart_res = api_client.get("/api/v1/cart/")
+        assert cart_res.data["shipping_total"] == 200
+        assert cart_res.data["free_shipping_threshold"] == 3000
+        assert cart_res.data["amount_needed_for_free_shipping"] == 500
+        assert cart_res.data["free_shipping_message"] == "Add Rs. 500 more for free shipping"
 
         # Reset back
         SiteSetting.objects.update_or_create(key="free_shipping_threshold", defaults={"value": "2000"})
