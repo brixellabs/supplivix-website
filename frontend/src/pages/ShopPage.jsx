@@ -452,11 +452,12 @@ export default function ShopPage() {
 
             {/* Sort Selector */}
             <div className="flex items-center gap-2 text-xs">
-              <label htmlFor="sort-select" className="text-ink-muted font-medium hidden sm:inline">
+              <label htmlFor="sort-select" className="text-ink-muted font-medium sr-only sm:not-sr-only sm:inline">
                 Sort by:
               </label>
               <select
                 id="sort-select"
+                aria-label="Sort products by"
                 value={currentOrdering}
                 onChange={(e) => updateParam('ordering', e.target.value)}
                 className="bg-surface-subtle border border-surface-border rounded-sm px-3 py-2 text-xs font-semibold text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-green cursor-pointer"
