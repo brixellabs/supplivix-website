@@ -2,7 +2,7 @@
 
 Generated: November 4, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **416** (192 Backend Pytest + 133 Frontend Vitest + 91 Playwright E2E)  
+Total Automated Tests: **421** (197 Backend Pytest + 133 Frontend Vitest + 91 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -24,6 +24,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **Staff Admin Panel** | `ADM-01` to `ADM-10` | Backend Pytest (DRF) | 10 | Passed |
 | **SEO & AEO Crawler Endpoints & SSR** | `SEO-01` to `SEO-09`, `AEO-01` to `AEO-04` | Backend Pytest (DRF) | 13 | Passed |
 | **Bot Detection & Security** | `SEC-01` to `SEC-12` | Backend Pytest (DRF) | 12 | Passed |
+| **Database & Reliability (Neon)** | `DB-01` to `DB-05` | Backend Pytest (Django/Neon) | 5 | Passed |
 | **Catalog Seeding & Purge** | `DEMO-01` to `DEMO-10` | Backend Pytest (Django) | 10 | Passed |
 | **Core Models & Health** | `MOD-01` to `MOD-09` | Backend Pytest (Django) | 9 | Passed |
 | **Integration & Edge Cases** | Integration / API | Backend Pytest | 63 | Passed |
@@ -43,7 +44,7 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **E2E Journeys: WebKit** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Safari | 17 | Passed |
 | **E2E Journeys: Mobile Viewport** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Pixel 5 (360x740) | 17 | Passed |
 | **E2E Cross-Browser Targets** | `UI-10` at 360px Viewport | Playwright Edge & iOS Safari | 2 | Passed |
-| **Total Test Suite** | | | **416** | **Passed (100%)** |
+| **Total Test Suite** | | | **421** | **Passed (100%)** |
 
 ---
 
@@ -262,7 +263,19 @@ Run this matrix across login, register, forgot password, reset password, profile
 
 ---
 
-## 14. Multi-Browser Playwright End-to-End Test Matrix
+## 14. Test Verification Matrix: Category M (Database & Reliability - Neon)
+
+| Test ID | Case Description | Layer | Expected & Verified Result | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `DB-01` | First request after Neon auto-suspend | Pytest (Middleware) | `NeonAutoSuspendRetryMiddleware` intercepts Neon wake-up / connection termination errors (`auto-suspend`, `server closed the connection unexpectedly`, `endpoint is disabled`), purges stale connection handles, and retries with backoff. Request succeeds with HTTP 200 within < 5 seconds. | Passed |
+| `DB-02` | Migrations on a fresh branch and on a branch with seeded data | Pytest (Django/Neon) | All project migrations across all apps (`accounts`, `catalog`, `cart`, `orders`, `promotions`, `core`, `content`) verified in migration graph; `makemigrations --check` clean with zero unapplied changes; all migration operations verified reversible where possible. | Passed |
+| `DB-03` | Order placement transaction forced to fail halfway | Pytest (Transaction) | Crash injected during `place_cod_order` midway through the `@transaction.atomic` block (`OrderStatusHistory.create` failure). Full rollback verified: product stock remains unchanged, coupon usage limit is NOT consumed, no order row is persisted, and cart items remain intact. | Passed |
+| `DB-04` | Connection pool under 100 concurrent users | Pytest (ThreadPool) | 100 concurrent queries executed via `ThreadPoolExecutor(max_workers=100)` simulating peak concurrency. Zero "too many connections" or connection exhaustion errors; all 100 queries succeed. Documented pooled vs direct port topology in `docs/neon-reliability.md`. | Passed |
+| `DB-05` | Backup and restore drill using a Neon branch from a past point in time | Pytest / Command | Executed `neon_restore_drill` management command; disaster simulation (table deletion) successfully rolled back and verified against point-in-time baseline snapshot; catalog restored and 100% verified. | Passed |
+
+---
+
+## 15. Multi-Browser Playwright End-to-End Test Matrix
 
 Run command: `npm --prefix frontend run test:e2e`  
 Total E2E Scenarios: **91 passed** (0 failures across Chromium, Firefox, WebKit, Mobile viewport 360x740, Edge, and iOS Safari)
@@ -287,7 +300,7 @@ Total E2E Scenarios: **91 passed** (0 failures across Chromium, Firefox, WebKit,
 
 ---
 
-## 15. Code Coverage & Invariants Verification
+## 16. Code Coverage & Invariants Verification
 
 - **Zero Emojis Everywhere**: Verified by `node frontend/scripts/check-no-emojis.js` (0 matches).
 - **Zero Glassmorphism**: Verified by automated regex check (0 backdrop-blur / 0 translucent form overlays).

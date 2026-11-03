@@ -165,7 +165,7 @@ def place_cod_order(cart, checkout_data, user=None):
     shipping_snapshot = {
         'full_name': checkout_data['full_name'],
         'phone': checkout_data['phone'],
-        'line1': checkout_data['line1'],
+        'line1': checkout_data.get('line1') or checkout_data.get('street_address', ''),
         'line2': checkout_data.get('line2', ''),
         'city': checkout_data['city'],
         'province': checkout_data['province'],
