@@ -2,7 +2,7 @@
 
 Generated: November 4, 2026  
 Status: Passed (100%)  
-Total Automated Tests: **421** (197 Backend Pytest + 133 Frontend Vitest + 91 Playwright E2E)  
+Total Automated Tests: **558** (197 Backend Pytest + 133 Frontend Vitest + 228 Playwright E2E)  
 Compliance Invariants: Zero Emojis Everywhere, Zero Glassmorphism, 100% Cash on Delivery (COD), Whole-Rupee PKR Integers
 
 ---
@@ -40,11 +40,12 @@ The entire automated test suite for the Supplivix e-commerce platform has execut
 | **UI Invariants & Viewports** | `UI-01` to `UI-11` | Frontend Vitest (React) | 11 | Passed |
 | **Design Rules & Accessibility UI** | `UI-01` to `UI-12` | Frontend Vitest (React) | 12 | Passed |
 | **E2E Journeys: Chromium** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4), `ACCESSIBILITY & UI` (21) | Playwright Desktop Chrome | 38 | Passed |
-| **E2E Journeys: Firefox** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Firefox | 17 | Passed |
-| **E2E Journeys: WebKit** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Desktop Safari | 17 | Passed |
-| **E2E Journeys: Mobile Viewport** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4) | Playwright Pixel 5 (360x740) | 17 | Passed |
-| **E2E Cross-Browser Targets** | `UI-10` at 360px Viewport | Playwright Edge & iOS Safari | 2 | Passed |
-| **Total Test Suite** | | | **421** | **Passed (100%)** |
+| **E2E Journeys: Firefox** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4), `ACCESSIBILITY & UI` (21) | Playwright Desktop Firefox | 38 | Passed |
+| **E2E Journeys: WebKit (Safari)** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4), `ACCESSIBILITY & UI` (21) | Playwright Desktop Safari | 38 | Passed |
+| **E2E Journeys: Mobile (Pixel 5)** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4), `ACCESSIBILITY & UI` (21) | Playwright Pixel 5 (360x740) | 38 | Passed |
+| **E2E Journeys: Microsoft Edge** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4), `ACCESSIBILITY & UI` (21) | Playwright Desktop Edge | 38 | Passed |
+| **E2E Journeys: Mobile Safari (iPhone 12)** | `AUTH` (6), `CAT` (7), `CHECKOUT` (4), `ACCESSIBILITY & UI` (21) | Playwright Mobile Safari | 38 | Passed |
+| **Total Test Suite** | | | **558** | **Passed (100%)** |
 
 ---
 
