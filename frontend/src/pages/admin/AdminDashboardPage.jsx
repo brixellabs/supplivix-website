@@ -138,6 +138,7 @@ export default function AdminDashboardPage() {
     store_email: 'supplivix@gmail.com',
     corporate_address: 'Kohinoor City, Jaranwala Road, Faisalabad, Punjab, Pakistan',
     instagram_url: 'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2',
+    facebook_url: 'https://facebook.com',
     site_mode: 'live',
     launch_date: '',
   });
@@ -218,6 +219,7 @@ export default function AdminDashboardPage() {
           store_email: data.store_email || 'supplivix@gmail.com',
           corporate_address: data.corporate_address || 'Kohinoor City, Jaranwala Road, Faisalabad, Punjab, Pakistan',
           instagram_url: data.instagram_url || 'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2',
+          facebook_url: data.facebook_url || 'https://facebook.com',
           site_mode: data.site_mode || 'live',
           launch_date: data.launch_date || '',
         });
@@ -643,6 +645,7 @@ export default function AdminDashboardPage() {
         store_email: settingsData.store_email.trim(),
         corporate_address: settingsData.corporate_address.trim(),
         instagram_url: (settingsData.instagram_url || '').trim(),
+        facebook_url: (settingsData.facebook_url || '').trim(),
         site_mode: settingsData.site_mode,
         launch_date: settingsData.launch_date,
       });
@@ -2026,6 +2029,14 @@ export default function AdminDashboardPage() {
                     value={settingsData.instagram_url}
                     onChange={(e) => setSettingsData({ ...settingsData, instagram_url: e.target.value })}
                     placeholder="https://www.instagram.com/supp.livix"
+                  />
+                  <Input
+                    label="Official Facebook Page URL"
+                    name="facebookUrl"
+                    type="url"
+                    value={settingsData.facebook_url}
+                    onChange={(e) => setSettingsData({ ...settingsData, facebook_url: e.target.value })}
+                    placeholder="https://facebook.com/supplivix"
                   />
                 </div>
 

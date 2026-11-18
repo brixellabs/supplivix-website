@@ -7,6 +7,7 @@ import { api } from '../../services/api';
 export default function Footer() {
   const [dealsEnabled, setDealsEnabled] = useState(true);
   const [instagramUrl, setInstagramUrl] = useState('https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2');
+  const [facebookUrl, setFacebookUrl] = useState('https://facebook.com');
 
   useEffect(() => {
     let active = true;
@@ -18,6 +19,9 @@ export default function Footer() {
         }
         if (res?.instagram_url) {
           setInstagramUrl(res.instagram_url);
+        }
+        if (res?.facebook_url) {
+          setFacebookUrl(res.facebook_url);
         }
       })
       .catch(() => {});
@@ -174,7 +178,7 @@ export default function Footer() {
             </div>
             <div className="flex items-center gap-3 text-lg text-brand-ink">
               <a
-                href="https://facebook.com"
+                href={facebookUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Supplivix on Facebook"

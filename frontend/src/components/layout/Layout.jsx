@@ -12,6 +12,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [instagramUrl, setInstagramUrl] = useState('https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2');
+  const [facebookUrl, setFacebookUrl] = useState('https://facebook.com');
 
   useEffect(() => {
     let isMounted = true;
@@ -20,6 +21,9 @@ export default function Layout() {
         if (!isMounted) return;
         if (settings?.instagram_url) {
           setInstagramUrl(settings.instagram_url);
+        }
+        if (settings?.facebook_url) {
+          setFacebookUrl(settings.facebook_url);
         }
         if (settings && settings.site_mode === 'coming_soon') {
           // Exemptions: /privacy-policy, /admin-panel, and staff users previewing
@@ -60,8 +64,20 @@ export default function Layout() {
       {/* Cookie Consent Notice */}
       <CookieNotice />
 
-      {/* Floating Action Buttons: Instagram & WhatsApp */}
+      {/* Floating Action Buttons: Facebook, Instagram & WhatsApp */}
       <div className="fixed bottom-5 right-5 z-40 flex flex-col items-center gap-3">
+        {/* Floating Facebook Quick Button */}
+        <a
+          href={facebookUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Follow Supplivix on Facebook"
+          title="Follow Supplivix on Facebook"
+          className="bg-[#1877F2] hover:bg-[#0c63d4] text-white p-3.5 rounded-full shadow-hover flex items-center justify-center transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1877F2]"
+        >
+          <Icon name="facebook" className="text-2xl text-white" />
+        </a>
+
         {/* Floating Instagram Quick Button */}
         <a
           href={instagramUrl}
