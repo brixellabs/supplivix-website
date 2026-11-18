@@ -320,7 +320,7 @@ def evaluate_risk(request, form_data: dict = None, required_challenge: bool = Fa
             ip=ip,
             user_agent=user_agent[:500],
             path=path,
-            reason='; '.join(reasons) or 'High risk score bot activity',
+            reason=('; '.join(reasons) or 'High risk score bot activity')[:100],
             score=score
         )
 
@@ -351,7 +351,7 @@ def evaluate_risk(request, form_data: dict = None, required_challenge: bool = Fa
                 ip=ip,
                 user_agent=user_agent[:500],
                 path=path,
-                reason=f"Turnstile challenge passed for score {score}",
+                reason=f"Turnstile challenge passed for score {score}"[:100],
                 score=score
             )
             return 'allow', score
@@ -360,7 +360,7 @@ def evaluate_risk(request, form_data: dict = None, required_challenge: bool = Fa
                 ip=ip,
                 user_agent=user_agent[:500],
                 path=path,
-                reason=f"Challenge required for score {score} (Turnstile token missing or invalid)",
+                reason=f"Challenge required for score {score} (Turnstile token missing or invalid)"[:100],
                 score=score
             )
             return 'challenge_required', score

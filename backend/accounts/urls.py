@@ -4,6 +4,7 @@ from .views import (
     AddressDetailView,
     AddressListCreateView,
     ChangePasswordView,
+    CsrfTokenView,
     CurrentUserView,
     LoginView,
     LogoutView,
@@ -14,6 +15,7 @@ from .views import (
 
 urlpatterns = [
     # Auth endpoints with /auth/ prefix
+    path('auth/csrf/', CsrfTokenView.as_view(), name='auth-csrf'),
     path('auth/register/', RegisterView.as_view(), name='auth-register'),
     path('auth/login/', LoginView.as_view(), name='auth-login'),
     path('auth/logout/', LogoutView.as_view(), name='auth-logout'),
@@ -25,6 +27,7 @@ urlpatterns = [
     path('auth/addresses/<int:pk>/', AddressDetailView.as_view(), name='auth-address-detail'),
 
     # Direct aliases matching Phase 2 specification
+    path('csrf/', CsrfTokenView.as_view(), name='direct-csrf'),
     path('register/', RegisterView.as_view(), name='direct-register'),
     path('login/', LoginView.as_view(), name='direct-login'),
     path('logout/', LogoutView.as_view(), name='direct-logout'),

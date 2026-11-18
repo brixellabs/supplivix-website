@@ -64,5 +64,11 @@ class CartItem(models.Model):
         return f"{self.quantity}x {self.product.name}"
 
     @property
+    def unit_price(self):
+        from promotions.services import PricingService
+        pricing = PricingService.calculate_sale_price(self.product)
+        return pricing['sale_price']
+
+    @property
     def line_total(self):
-        return self.product.price * self.quantity
+        return self.unit_price * self.quantity

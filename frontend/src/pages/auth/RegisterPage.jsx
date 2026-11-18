@@ -65,9 +65,14 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
+      const trimmedFirst = formData.firstName.trim();
+      const trimmedLast = formData.lastName.trim();
+      const fullName = `${trimmedFirst} ${trimmedLast}`.trim();
+
       await register({
-        first_name: formData.firstName.trim(),
-        last_name: formData.lastName.trim(),
+        full_name: fullName,
+        first_name: trimmedFirst,
+        last_name: trimmedLast,
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         password: formData.password,
@@ -76,19 +81,50 @@ export default function RegisterPage() {
       showToast('Registration complete! Welcome to Supplivix.');
       navigate('/account');
     } catch (err) {
-      if (err.fields) {
-        setErrors(err.fields);
-        if (err.fields.turnstile_token || err.fields.non_field_errors || err.message) {
-          setErrors({
-            ...err.fields,
-            general: err.fields.turnstile_token?.[0] || err.fields.non_field_errors?.[0] || err.message,
-          });
+      if (err.fields && Object.keys(err.fields).length > 0) {
+        const normalized = {};
+        const unmappedReasons = [];
+
+        Object.entries(err.fields).forEach(([k, v]) => {
+          const msgs = Array.isArray(v) ? v : [v];
+          if (k === 'first_name') normalized.firstName = msgs[0];
+          else if (k === 'last_name') normalized.lastName = msgs[0];
+          else if (k === 'full_name') {
+            normalized.firstName = msgs[0];
+          } else if (k === 'email') normalized.email = msgs[0];
+          else if (k === 'phone') normalized.phone = msgs[0];
+          else if (k === 'password') normalized.password = msgs[0];
+          else if (k === 'confirm_password' || k === 'confirmPassword') normalized.confirmPassword = msgs[0];
+          else if (k !== 'turnstile_token' && k !== 'non_field_errors') {
+            unmappedReasons.push(...msgs);
+          }
+        });
+
+        let generalMessage = '';
+        if (err.fields.turnstile_token) {
+          generalMessage = err.fields.turnstile_token[0];
+        } else if (err.fields.non_field_errors) {
+          generalMessage = err.fields.non_field_errors[0];
+        } else if (unmappedReasons.length > 0) {
+          generalMessage = unmappedReasons.join(' ');
+        } else if (err.message && err.message !== 'Validation failed.' && !err.message.startsWith('Validation failed:')) {
+          generalMessage = err.message;
+        } else {
+          generalMessage = 'Please resolve the highlighted field errors below.';
         }
-        const keys = Object.keys(err.fields);
-        if (keys.length > 0) {
-          const firstEl = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);
-          if (firstEl && typeof firstEl.focus === 'function') {
-            firstEl.focus();
+
+        setErrors({
+          ...normalized,
+          ...err.fields,
+          general: generalMessage,
+        });
+
+        const focusKeys = ['firstName', 'lastName', 'email', 'phone', 'password', 'confirmPassword'];
+        const firstKey = focusKeys.find((k) => normalized[k]);
+        if (firstKey) {
+          const el = document.querySelector(`[name="${firstKey}"], #${firstKey}`);
+          if (el && typeof el.focus === 'function') {
+            el.focus();
           }
         }
       } else {
@@ -132,7 +168,7 @@ export default function RegisterPage() {
               className="hidden"
               aria-hidden="true"
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 label="First Name"
                 name="firstName"

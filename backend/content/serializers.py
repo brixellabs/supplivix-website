@@ -1,6 +1,27 @@
 from rest_framework import serializers
 
-from .models import ContactMessage, WaitlistEntry
+from .models import Certificate, ContactMessage, WaitlistEntry
+
+
+class CertificateSerializer(serializers.ModelSerializer):
+    image_url = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Certificate
+        fields = [
+            'id',
+            'name',
+            'badge_code',
+            'subtitle',
+            'issuer',
+            'image',
+            'image_url',
+            'description',
+            'sort_order',
+            'is_active',
+            'created_at',
+            'updated_at',
+        ]
 
 
 class WaitlistSerializer(serializers.ModelSerializer):

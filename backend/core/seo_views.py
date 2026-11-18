@@ -100,9 +100,9 @@ These statements have not been evaluated by a regulator. This product is not int
 ## Core Catalog Formulations
 {products_block}
 
-## Official Policies
+## Official Policies & Knowledge Base
+- [Frequently Asked Questions]({base_url}/faq)
 - [Shipping & COD Policy]({base_url}/shipping-policy)
-- [7-Day Return Policy]({base_url}/returns-policy)
 - [Privacy Policy]({base_url}/privacy-policy)
 - [Terms of Service]({base_url}/terms)
 """
@@ -120,8 +120,8 @@ def sitemap_xml(request):
         ('/shop', '0.9', 'daily'),
         ('/about', '0.6', 'monthly'),
         ('/contact', '0.6', 'monthly'),
+        ('/faq', '0.6', 'monthly'),
         ('/shipping-policy', '0.5', 'monthly'),
-        ('/returns-policy', '0.5', 'monthly'),
         ('/privacy-policy', '0.5', 'monthly'),
         ('/terms', '0.5', 'monthly'),
     ]
@@ -186,6 +186,10 @@ def structured_data_meta(request):
         'url': base_url,
         'logo': f'{base_url}/assets/logo.png',
         'description': 'Pakistan premier multivitamins and skincare brand with Cash on Delivery nationwide.',
+        'sameAs': [
+            'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2',
+            'https://wa.me/923025222405',
+        ],
         'contactPoint': {
             '@type': 'ContactPoint',
             'telephone': '+92-300-0000000',
@@ -533,12 +537,12 @@ def spa_shell_view(request, path=""):
           <div style="padding:24px;max-width:800px;margin:0 auto;font-family:sans-serif;">
             <h1>Contact Supplivix Care</h1>
             <p>Customer support team in Karachi, Pakistan. Reach us for order assistance, shipping queries, or bulk inquiries.</p>
-            <p>Phone: 0300-0000000 | Email: care@supplivix.com | Hours: Mon-Sat 9am-6pm</p>
+            <p>Phone: 0302-5222405 | Email: supplivix@gmail.com | Hours: Mon-Sat 9am-6pm</p>
           </div>
         </noscript>"""
 
     # 5. Policies
-    elif clean_path in ['privacy-policy', 'terms', 'shipping-policy', 'returns-policy']:
+    elif clean_path in ['privacy-policy', 'terms', 'shipping-policy']:
         policy_meta = {
             'privacy-policy': {
                 'title': 'Privacy Policy | Supplivix Pakistan',
@@ -555,11 +559,6 @@ def spa_shell_view(request, path=""):
                 'desc': 'Supplivix shipping policy: Free delivery on orders over Rs. 2,000, Rs. 200 fee below. Nationwide Cash on Delivery across Pakistan in 2 to 4 business days.',
                 'h1': 'Shipping & Delivery Policy',
             },
-            'returns-policy': {
-                'title': '7-Day Return Policy & Guarantee | Supplivix',
-                'desc': 'Supplivix 7-day hassle-free return policy for Cash on Delivery orders across Pakistan. Simple verification and direct support for damaged or sealed items.',
-                'h1': '7-Day Return Policy & Guarantee',
-            },
         }
         meta = policy_meta.get(clean_path, {})
         title = meta.get('title', 'Policy | Supplivix')
@@ -569,6 +568,188 @@ def spa_shell_view(request, path=""):
           <div style="padding:24px;max-width:800px;margin:0 auto;font-family:sans-serif;">
             <h1>{meta.get('h1', 'Policy')}</h1>
             <p>{description}</p>
+          </div>
+        </noscript>"""
+
+    # 5b. FAQs
+    elif clean_path in ['faq', 'faqs']:
+        title = 'Frequently Asked Questions (FAQs) | Supplivix Beauty Wellness'
+        description = (
+            'Find answers to common questions about Supplivix nutritional supplements, multivitamins, '
+            'skincare, quality standards, customer trust, pricing value, and nationwide delivery across Pakistan.'
+        )
+        canonical = f"{base_url}/faq/"
+        schema_graph.append({
+            '@type': 'FAQPage',
+            'name': 'Supplivix Beauty Wellness FAQs',
+            'url': canonical,
+            'mainEntity': [
+                {
+                    '@type': 'Question',
+                    'name': 'What is SUPPLIVIX Beauty Wellness?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'SUPPLIVIX is a premium beauty and wellness brand dedicated to bringing together quality nutritional supplements, multivitamins, and skincare products. Our goal is to support everyday wellness and beauty through carefully selected products.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'What types of products does SUPPLIVIX offer?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'We focus on two main categories: nutritional supplements and multivitamins for everyday wellness, and skincare products designed to complement your beauty routine. Our product range is developed with a focus on quality and value.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'How does SUPPLIVIX ensure product quality?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'We prioritize product quality, ingredient specifications, and manufacturing standards. We work with qualified manufacturing partners and emphasize appropriate quality checks and product documentation to maintain consistency and reliability.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'Are the ingredients used in SUPPLIVIX products carefully selected?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'Yes. Ingredient selection is an important part of our product development approach. We prioritize suitable ingredient quality, specifications, and quantities according to the intended product formulation.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'Are SUPPLIVIX products suitable for all skin types and age groups?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': "Product suitability depends on the individual product, its ingredients, and the customer's needs. Please read the product description and usage instructions before purchasing. If you have sensitive skin or specific concerns, consult a qualified professional.",
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'How should I use SUPPLIVIX supplements?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'Every supplement comes with its own recommended serving instructions. Always follow the dosage mentioned on the product label. Do not exceed the recommended daily intake, and consult a healthcare professional if you are pregnant, breastfeeding, taking medication, or have a medical condition.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'Does SUPPLIVIX deliver products across Pakistan?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'Our aim is to make SUPPLIVIX products accessible to customers throughout Pakistan. Delivery availability, charges, and estimated delivery times will be communicated during the ordering process.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'What payment methods are available?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'We aim to provide convenient and secure payment options for our customers. Available payment methods, including Cash on Delivery where offered, will be displayed at checkout.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'What if I receive a damaged or incorrect product?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'Customer satisfaction matters to us. If you receive a damaged, leaking, or incorrect product, please reach out directly to our customer support team via WhatsApp or email with your order details and photos so we can assist you promptly.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'How can I contact SUPPLIVIX for product information or assistance?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'We are here to help! For product information, orders, or general inquiries, you can contact our customer support team through our official website, WhatsApp, or available social media channels.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'Why should I choose SUPPLIVIX over other beauty and wellness brands?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'At SUPPLIVIX, we believe quality should never be compromised. We focus on carefully selected ingredients, thoughtful product formulations, and quality standards to bring our customers products that offer confidence, value, and a premium experience.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'Are SUPPLIVIX products worth their price?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'We believe customers deserve quality for every rupee they spend. Our focus is not simply on offering the lowest price, but on providing products where quality, formulation, and value go hand in hand.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'How do I know which SUPPLIVIX product is right for me?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'Every customer has different needs. We provide product descriptions, ingredient information, and usage instructions to help you make an informed choice. You can also contact our customer support team for assistance.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'Are your supplements manufactured under proper quality standards?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'We aim to work with qualified manufacturing partners who follow applicable manufacturing and quality requirements. Product quality documentation and relevant testing are important parts of our sourcing and quality approach.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'Will I see results immediately after using SUPPLIVIX products?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'Results may vary from person to person depending on individual needs, lifestyle, consistency, and product type. Supplements and skincare products may require regular use according to their instructions. We encourage realistic expectations rather than overnight-result promises.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'Are SUPPLIVIX products original and properly sealed?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'We prioritize product authenticity, appropriate packaging, and product integrity. Customers should check the packaging seal, batch details, expiry date, and product information when receiving their order.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'Why does SUPPLIVIX focus on both beauty and wellness?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'We believe beauty and wellness complement each other. That is why SUPPLIVIX brings together nutritional supplements, multivitamins, and skincare products under one brand, making it easier for customers to explore both categories.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'Can I trust SUPPLIVIX if I am purchasing for the first time?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'We understand that trust is earned. We aim to build long-term customer relationships through transparent product information, consistent quality, responsive customer support, and a reliable shopping experience.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'What if I have a problem with my order?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'Your satisfaction matters to us. If you receive a damaged, incorrect, or defective product, please contact our customer support team. We will review your concern and assist according to our official customer return and exchange policy.',
+                    },
+                },
+                {
+                    '@type': 'Question',
+                    'name': 'What makes SUPPLIVIX committed to long-term customer satisfaction?',
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': 'Our philosophy is simple: quality first, customer trust always. We aim to continuously improve our products, maintain responsible quality practices, and provide a premium experience that customers can feel confident returning to.',
+                    },
+                },
+            ],
+        })
+        noscript_content = """<noscript>
+          <div style="padding:24px;max-width:800px;margin:0 auto;font-family:sans-serif;">
+            <h1>Supplivix Frequently Asked Questions (FAQs)</h1>
+            <p>Trust • Quality • Customer Confidence. Answers to common questions about Supplivix Beauty Wellness supplements, multivitamins, skincare, and customer satisfaction.</p>
           </div>
         </noscript>"""
 

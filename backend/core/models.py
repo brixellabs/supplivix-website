@@ -24,6 +24,11 @@ class BotEvent(models.Model):
     def __str__(self):
         return f"BotEvent({self.ip}, {self.reason}, score={self.score})"
 
+    def save(self, *args, **kwargs):
+        if self.reason and len(self.reason) > 100:
+            self.reason = self.reason[:100]
+        super().save(*args, **kwargs)
+
 
 class BlockedIP(models.Model):
     """Blocked IP address registry managed by automated security or admin."""
@@ -71,6 +76,15 @@ class AdminAuditLog(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.action} on {self.target_model}:{self.target_id} at {self.created_at}"
+
+    def save(self, *args, **kwargs):
+        if self.action and len(self.action) > 120:
+            self.action = self.action[:120]
+        if self.target_model and len(self.target_model) > 100:
+            self.target_model = self.target_model[:100]
+        if self.target_id and len(self.target_id) > 100:
+            self.target_id = self.target_id[:100]
+        super().save(*args, **kwargs)
 
 
 class FailedLoginLog(models.Model):

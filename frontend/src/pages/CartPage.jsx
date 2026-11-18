@@ -14,11 +14,8 @@ import { useToast } from '../components/ui/Toast';
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { cart, updateQuantity, removeItem, applyCoupon, removeCoupon, loading } = useCart();
+  const { cart, updateQuantity, removeItem, loading } = useCart();
   const { showToast } = useToast();
-
-  const [couponCode, setCouponCode] = useState('');
-  const [couponLoading, setCouponLoading] = useState(false);
 
   const items = cart?.items || [];
   const subtotal = cart?.subtotal || 0;
@@ -35,29 +32,6 @@ export default function CartPage() {
   const hasInactiveItems = items.some(
     (item) => item.is_active === false || item.flagged_inactive || (item.product && item.product.is_active === false)
   );
-
-  const handleApplyCoupon = async (e) => {
-    e.preventDefault();
-    if (!couponCode.trim()) return;
-
-    setCouponLoading(true);
-    const res = await applyCoupon(couponCode.trim().toUpperCase());
-    setCouponLoading(false);
-
-    if (res.success) {
-      showToast('Coupon applied successfully!');
-      setCouponCode('');
-    } else {
-      showToast(res.message || 'Invalid or expired coupon', 'error');
-    }
-  };
-
-  const handleRemoveCoupon = async () => {
-    setCouponLoading(true);
-    await removeCoupon();
-    setCouponLoading(false);
-    showToast('Coupon removed');
-  };
 
   if (!loading && items.length === 0) {
     return (
@@ -157,7 +131,7 @@ export default function CartPage() {
                           {item.product_name || item.product?.name || 'Product'}
                         </Link>
                         <div className="text-xs text-ink-muted mt-1">
-                          Rs. {Number(item.unit_price).toLocaleString()} each
+                          Rs. {Number(item.unit_price || item.product?.price || item.price_when_added || 0).toLocaleString()} each
                         </div>
                         {(item.is_active === false || item.flagged_inactive || (item.product && item.product.is_active === false)) && (
                           <div className="inline-block text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded mt-1">
@@ -182,7 +156,7 @@ export default function CartPage() {
 
                       <div className="text-right">
                         <span className="block text-sm font-bold text-brand-ink">
-                          Rs. {Number(item.line_total || item.unit_price * item.quantity).toLocaleString()}
+                          Rs. {Number(item.line_total || (item.unit_price || item.product?.price || item.price_when_added || 0) * item.quantity).toLocaleString()}
                         </span>
                       </div>
 
@@ -198,51 +172,6 @@ export default function CartPage() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Coupon Application Box */}
-            <div className="bg-surface-subtle border border-surface-border rounded-lg p-5 shadow-card">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-brand-ink mb-3">
-                Discount Coupon
-              </h3>
-              {cart?.coupon_code ? (
-                <div className="flex items-center justify-between bg-white border border-brand-green px-4 py-2.5 rounded-md">
-                  <div className="flex items-center gap-2">
-                    <Icon name="tag" className="text-brand-green text-sm" />
-                    <span className="text-xs font-bold text-brand-green">
-                      {cart.coupon_code} Applied (-Rs. {discountAmount.toLocaleString()})
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRemoveCoupon}
-                    disabled={couponLoading}
-                    className="text-xs text-red-600 hover:underline font-semibold"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                  <Input
-                    name="coupon"
-                    placeholder="Enter code (e.g. WELCOME10)"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    className="text-xs py-2 uppercase"
-                    aria-label="Coupon code"
-                  />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    size="sm"
-                    loading={couponLoading}
-                    className="text-xs px-5 whitespace-nowrap"
-                  >
-                    Apply
-                  </Button>
-                </form>
-              )}
             </div>
           </div>
 
@@ -263,7 +192,7 @@ export default function CartPage() {
 
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-brand-green font-semibold">
-                    <span>Coupon Discount</span>
+                    <span>Discount</span>
                     <span>-Rs. {Number(discountAmount).toLocaleString()}</span>
                   </div>
                 )}

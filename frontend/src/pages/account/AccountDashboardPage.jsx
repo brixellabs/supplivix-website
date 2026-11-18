@@ -23,7 +23,7 @@ const STATUS_VARIANTS = {
 
 export default function AccountDashboardPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, logout, fetchUser } = useAuth();
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState('orders');
@@ -36,7 +36,6 @@ export default function AccountDashboardPage() {
   const [cancelling, setCancelling] = useState(false);
 
   // Change password form
-  const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
@@ -45,8 +44,10 @@ export default function AccountDashboardPage() {
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate('/login', { state: { from: { pathname: '/account' } } });
+    } else if (!authLoading && isAuthenticated && (user?.is_staff || user?.is_superuser)) {
+      navigate('/admin-panel', { replace: true });
     }
-  }, [authLoading, isAuthenticated, navigate]);
+  }, [authLoading, isAuthenticated, user, navigate]);
 
   const loadOrders = async () => {
     setOrdersLoading(true);
@@ -56,9 +57,15 @@ export default function AccountDashboardPage() {
         setOrders(data);
       } else if (data && data.results) {
         setOrders(data.results);
+      } else {
+        setOrders([]);
       }
-    } catch {
-      // User may have no orders yet
+    } catch (err) {
+      if (err?.status === 401 || err?.status === 403) {
+        if (typeof fetchUser === 'function') {
+          await fetchUser();
+        }
+      }
       setOrders([]);
     } finally {
       setOrdersLoading(false);
@@ -75,8 +82,8 @@ export default function AccountDashboardPage() {
     if (!selectedOrderToCancel) return;
     setCancelling(true);
     try {
-      await api.cancelOrder(selectedOrderToCancel.order_number);
-      showToast(`Order ${selectedOrderToCancel.order_number} has been cancelled.`);
+      await api.cancelOrder(selectedOrderToCancel.order_number || selectedOrderToCancel.number);
+      showToast(`Order ${selectedOrderToCancel.order_number || selectedOrderToCancel.number} has been cancelled.`);
       setCancelModalOpen(false);
       setSelectedOrderToCancel(null);
       loadOrders();
@@ -91,8 +98,8 @@ export default function AccountDashboardPage() {
     e.preventDefault();
     setPwError('');
 
-    if (!oldPassword || !newPassword) {
-      setPwError('Please fill in all password fields.');
+    if (!newPassword) {
+      setPwError('Please enter your new password.');
       return;
     }
     if (newPassword.length < 8) {
@@ -106,9 +113,8 @@ export default function AccountDashboardPage() {
 
     setPwLoading(true);
     try {
-      await api.changePassword({ old_password: oldPassword, new_password: newPassword });
+      await api.changePassword({ new_password: newPassword });
       showToast('Password changed successfully.');
-      setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
@@ -145,7 +151,7 @@ export default function AccountDashboardPage() {
               Account Overview
             </span>
             <h1 className="text-xl sm:text-2xl font-bold uppercase tracking-tight text-brand-ink">
-              Welcome, {user.first_name || 'Valued Customer'}
+              Welcome, {user.first_name || user.full_name || 'Valued Customer'}
             </h1>
             <p className="text-xs text-ink-muted mt-0.5">
               {user.email} • {user.phone || 'No phone registered'}
@@ -166,11 +172,11 @@ export default function AccountDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Navigation Sidebar */}
           <aside className="lg:col-span-3">
-            <div className="bg-surface-subtle border border-surface-border rounded-lg p-3 space-y-1 shadow-card">
+            <div className="bg-surface-subtle border border-surface-border rounded-lg p-2 sm:p-3 flex flex-row lg:flex-col gap-2 overflow-x-auto shadow-card">
               <button
                 type="button"
                 onClick={() => setActiveTab('orders')}
-                className={`w-full text-left px-4 py-2.5 rounded-sm text-xs font-semibold flex items-center gap-3 transition-colors ${
+                className={`whitespace-nowrap px-4 py-2.5 rounded-sm text-xs font-semibold flex items-center gap-2.5 transition-colors flex-1 lg:w-full ${
                   activeTab === 'orders'
                     ? 'bg-brand-ink text-white'
                     : 'text-ink-muted hover:bg-white hover:text-brand-ink'
@@ -183,7 +189,7 @@ export default function AccountDashboardPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('security')}
-                className={`w-full text-left px-4 py-2.5 rounded-sm text-xs font-semibold flex items-center gap-3 transition-colors ${
+                className={`whitespace-nowrap px-4 py-2.5 rounded-sm text-xs font-semibold flex items-center gap-2.5 transition-colors flex-1 lg:w-full ${
                   activeTab === 'security'
                     ? 'bg-brand-ink text-white'
                     : 'text-ink-muted hover:bg-white hover:text-brand-ink'
@@ -228,7 +234,7 @@ export default function AccountDashboardPage() {
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-surface-border gap-2">
                             <div>
                               <span className="font-bold text-sm text-brand-ink block">
-                                Order #{order.order_number}
+                                Order #{order.order_number || order.number}
                               </span>
                               <span className="text-[11px] text-ink-muted">
                                 Placed on {new Date(order.created_at).toLocaleDateString()}
@@ -247,12 +253,17 @@ export default function AccountDashboardPage() {
 
                           <div className="py-3 text-xs text-ink-muted leading-relaxed">
                             <span className="font-semibold text-brand-ink">Delivery To: </span>
-                            {order.recipient_name}, {order.street_address}, {order.city} ({order.phone})
+                            {[
+                              order.recipient_name || order.shipping_address_snapshot?.full_name,
+                              order.street_address || order.shipping_address_snapshot?.line1,
+                              order.city || order.shipping_address_snapshot?.city
+                            ].filter(Boolean).join(', ') || 'Standard Nationwide Delivery'}
+                            {order.phone || order.shipping_address_snapshot?.phone ? ` (${order.phone || order.shipping_address_snapshot?.phone})` : ''}
                           </div>
 
                           <div className="pt-3 border-t border-surface-border flex items-center justify-between gap-3 flex-wrap">
                             <Link
-                              to={`/track?number=${order.order_number}&phone=${encodeURIComponent(order.phone)}`}
+                              to={`/track?number=${encodeURIComponent(order.order_number || order.number || '')}&phone=${encodeURIComponent(order.phone || order.shipping_address_snapshot?.phone || '')}`}
                               className="text-xs font-semibold text-brand-green hover:underline flex items-center gap-1"
                             >
                               <Icon name="truck" className="text-xs" />
@@ -298,15 +309,6 @@ export default function AccountDashboardPage() {
 
                 <form onSubmit={handleChangePassword} className="space-y-4" noValidate>
                   <Input
-                    label="Current Password"
-                    name="oldPassword"
-                    type="password"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    required
-                  />
-
-                  <Input
                     label="New Password (min 8 chars)"
                     name="newPassword"
                     type="password"
@@ -348,7 +350,7 @@ export default function AccountDashboardPage() {
       >
         <div className="space-y-4 text-xs text-brand-ink">
           <p>
-            Are you sure you want to cancel order <strong>#{selectedOrderToCancel?.order_number}</strong>?
+            Are you sure you want to cancel order <strong>#{selectedOrderToCancel?.order_number || selectedOrderToCancel?.number}</strong>?
           </p>
           <p className="text-ink-muted">
             Reserved inventory items will be restored to our stock and any applied discount coupons will be released.

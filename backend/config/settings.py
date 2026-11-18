@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import dj_database_url
+from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -94,7 +95,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database Configuration
 # Neon Serverless PostgreSQL support with pooled and direct connection strings.
 # Migrations use DIRECT_DATABASE_URL if specified, avoiding PgBouncer transaction/DDL limits.
-is_migration = any(cmd in sys.argv for cmd in ['migrate', 'makemigrations'])
+is_migration = any(cmd in sys.argv for cmd in ['migrate', 'makemigrations', 'showmigrations'])
 direct_url = os.environ.get('DIRECT_DATABASE_URL')
 db_url = os.environ.get('DATABASE_URL')
 
@@ -103,11 +104,21 @@ selected_db_url = direct_url if (is_migration and direct_url) else (db_url or 's
 DATABASES = {
     'default': dj_database_url.config(
         default=selected_db_url,
-        conn_max_age=0 if '-pooler' in selected_db_url else 600,
+        conn_max_age=0,
         conn_health_checks=True,
         ssl_require=True if 'postgresql' in selected_db_url else False,
     )
 }
+
+if 'postgresql' in selected_db_url:
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
+    try:
+        import socket
+        db_host = DATABASES['default'].get('HOST')
+        if db_host and not db_host.startswith('127.') and db_host != 'localhost':
+            DATABASES['default'].setdefault('OPTIONS', {})['hostaddr'] = socket.gethostbyname(db_host)
+    except Exception:
+        pass
 
 if 'sqlite' in selected_db_url:
     DATABASES['default'].setdefault('OPTIONS', {})['timeout'] = 30
@@ -178,7 +189,15 @@ CORS_ALLOWED_ORIGINS = [
     for origin in os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
     if origin.strip()
 ]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
+]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-session-key',
+    'x-time-token',
+    'x-turnstile-token',
+]
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()

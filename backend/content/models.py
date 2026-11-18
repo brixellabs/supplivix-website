@@ -85,3 +85,37 @@ class ContactMessage(models.Model):
 
     def __str__(self):
         return f"Message from {self.name} ({self.email})"
+
+
+class Certificate(models.Model):
+    """Accreditation and compliance certificates (GMP, ISO, DRAP, Halal, FDA, etc.)."""
+
+    name = models.CharField(max_length=150)
+    badge_code = models.CharField(max_length=50, blank=True, help_text="Short key e.g. gmp, iso, drap, halal")
+    subtitle = models.CharField(max_length=200, blank=True)
+    issuer = models.CharField(max_length=150, blank=True)
+    image = models.ImageField(upload_to='certificates/', blank=True, null=True)
+    description = models.TextField(blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Certificate'
+        verbose_name_plural = 'Certificates'
+        ordering = ['sort_order', 'id']
+        indexes = [
+            models.Index(fields=['is_active', 'sort_order']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def image_url(self):
+        if self.image:
+            return self.image.url
+        if self.badge_code:
+            return f"/media/certificates/{self.badge_code}.png"
+        return ""

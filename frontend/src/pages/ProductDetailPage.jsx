@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import Breadcrumbs from '../components/layout/Breadcrumbs';
+import SaleCountdownTimer from '../components/common/SaleCountdownTimer';
 import ProductIllustration from '../components/ui/ProductIllustration';
 import Icon from '../components/ui/Icon';
 import Button from '../components/ui/Button';
@@ -25,26 +26,72 @@ const SAMPLE_PRODUCT = {
   inventory_count: 50,
   rating: 4.9,
   reviews_count: 52,
+  thumbnail: '/media/products/supplivix-multivitamin.jpg',
+  images: [
+    { id: 1, image: '/media/products/supplivix-multivitamin.jpg', alt_text: 'Supplivix Complete Daily Multivitamin 60s' },
+  ],
   description:
     'A high-potency daily micronutrient formulation engineered for modern adult nutritional demands. Delivers 24 bioavailable vitamins and chelated minerals to support metabolic energy, natural immunity, and daily cellular vitality.',
+  description_ur:
+    'جدید دور کے بالغ افراد کی غذائی ضروریات کو پورا کرنے کے لیے تیار کردہ اعلیٰ طاقت کا یومیہ مائیکرو نیوٹرینٹ فارمولا۔ اس میں 24 حیاتیاتی طور پر دستیاب وٹامنز اور چیلیٹڈ معدنیات شامل ہیں جو میٹابولک توانائی، قدرتی مدافعت اور روزمرہ کی سیلولر زندگی کو سہارا دیتے ہیں۔',
   serving_size: '1 Tablet Daily with a meal',
   directions: 'Take one (1) tablet daily with food, preferably in the morning with breakfast. Swallow with a full glass of water. Do not exceed the recommended daily dose.',
+  directions_ur:
+    'روزانہ ایک (1) گولی کھانے کے ساتھ لیں، ترجیحاً صبح کے ناشتے کے ساتھ۔ ایک گلاس پانی کے ساتھ نگل لیں۔ تجویز کردہ یومیہ خوراک سے تجاوز نہ کریں۔',
   ingredients: 'Vitamin A (Retinyl Palmitate), Vitamin C (Ascorbic Acid), Vitamin D3 (Cholecalciferol), Vitamin E (d-Alpha Tocopherol), Thiamin, Riboflavin, Niacin, Vitamin B6, Folate (L-Methylfolate), Vitamin B12 (Methylcobalamin), Biotin, Pantothenic Acid, Calcium, Iron (Ferrous Bisglycinate), Iodine, Magnesium (Magnesium Glycinate), Zinc (Zinc Picolinate), Selenium, Copper, Manganese, Chromium.',
+  ingredients_ur:
+    'وٹامن اے (ریٹینائل پالمیٹیٹ)، وٹامن سی (ایسکوربک ایسڈ)، وٹامن ڈی۳، وٹامن ای، تھامین، رائبوفلاوین، نیاسین، وٹامن بی۶، فولیٹ (ایل-میتھائل فولیٹ)، وٹامن بی۱۲، بایوٹین، زنک پِکولینیٹ، میگنیشیم گلائسینیٹ، سیلینیم، کاپر، کرومیم۔',
   storage: 'Store in a cool, dry place away from direct sunlight and moisture. Keep bottle tightly closed. Keep out of reach of children.',
 };
 
 export default function ProductDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { addToCart } = useCart();
   const { showToast } = useToast();
 
+  const isUrduPath = location.pathname.startsWith('/ur/');
+  const isUrduQuery = searchParams.get('lang') === 'ur';
+  const isUrdu = isUrduPath || isUrduQuery;
+
   const [product, setProduct] = useState(SAMPLE_PRODUCT);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [notFound, setNotFound] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('overview');
   const [reviews, setReviews] = useState([]);
   const [adding, setAdding] = useState(false);
+
+  const hasUrduContent = Boolean(
+    (product?.description_ur && product.description_ur.trim()) ||
+    (product?.directions_ur && product.directions_ur.trim()) ||
+    (product?.ingredients_ur && product.ingredients_ur.trim())
+  );
+
+  const toggleLanguage = () => {
+    if (isUrdu) {
+      try {
+        localStorage.setItem('supplivix_product_lang', 'en');
+      } catch (_) {}
+      navigate(`/products/${slug}`, { replace: true });
+    } else {
+      try {
+        localStorage.setItem('supplivix_product_lang', 'ur');
+      } catch (_) {}
+      navigate(`/ur/products/${slug}`, { replace: true });
+    }
+  };
+
+  useEffect(() => {
+    try {
+      const savedLang = localStorage.getItem('supplivix_product_lang');
+      if (savedLang === 'ur' && !isUrduPath) {
+        navigate(`/ur/products/${slug}`, { replace: true });
+      }
+    } catch (_) {}
+  }, [slug, isUrduPath, navigate]);
 
   // Review Form states
   const [reviewRating, setReviewRating] = useState(5);
@@ -53,9 +100,23 @@ export default function ProductDetailPage() {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
   const [reviewErrors, setReviewErrors] = useState({});
+  const [shippingThreshold, setShippingThreshold] = useState(2000);
+
+  useEffect(() => {
+    let active = true;
+    api.getPublicSettings?.()
+      .then((res) => {
+        if (!active) return;
+        const val = Number(res?.free_shipping_threshold || res?.data?.free_shipping_threshold);
+        if (val > 0) setShippingThreshold(val);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     setNotFound(false);
+    setSelectedImageIndex(0);
     // Attempt to load product from API
     api.getProduct(slug)
       .then((data) => {
@@ -78,9 +139,11 @@ export default function ProductDetailPage() {
       .catch(() => { });
   }, [slug]);
 
+  const originalPrice = product.original_price || product.compare_at_price;
+  const isOnSale = Boolean(product.is_on_sale || (originalPrice && originalPrice > product.price));
   const discountPercent =
-    product.compare_at_price && product.compare_at_price > product.price
-      ? Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)
+    originalPrice && originalPrice > product.price
+      ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
       : 0;
 
   const handleAddToCart = async () => {
@@ -272,9 +335,13 @@ export default function ProductDetailPage() {
   return (
     <div className="bg-white min-h-screen pb-16">
       <SEOHead
-        title={product.name}
-        description={product.short_description || product.description}
-        canonical={`/products/${product.slug}`}
+        title={isUrdu ? `${product.name} (اردو)` : product.name}
+        description={isUrdu && product.description_ur ? product.description_ur.slice(0, 155) : (product.short_description || product.description)}
+        canonical={isUrdu ? `/ur/products/${product.slug || slug}` : `/products/${product.slug || slug}`}
+        alternateLanguages={[
+          { hreflang: 'en', href: `/products/${product.slug || slug}` },
+          { hreflang: 'ur', href: `/ur/products/${product.slug || slug}` },
+        ]}
         ogType="product"
         schema={fullSchema}
       />
@@ -284,22 +351,47 @@ export default function ProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Left Column: Product Image / Illustration */}
           <div className="lg:col-span-6">
-            <div className="bg-surface-subtle border border-surface-border rounded-lg p-8 sm:p-12 flex items-center justify-center shadow-card sticky top-24">
-              {product.images && product.images.length > 0 ? (
-                <img
-                  src={product.images[0].image}
-                  alt={product.name}
-                  width="600"
-                  height="380"
-                  className="w-full max-h-[380px] object-contain"
-                />
-              ) : (
-                <ProductIllustration
-                  type={product.product_type === 'skincare' ? 'serum' : 'bottle'}
-                  accentColor={product.product_type === 'multivitamin' ? '#016a38' : '#7a2fd0'}
-                  label={product.serving_size ? 'Daily' : 'Supplivix'}
-                  size="lg"
-                />
+            <div className="bg-surface-subtle border border-surface-border rounded-lg p-6 sm:p-10 flex flex-col items-center justify-center shadow-card sticky top-24">
+              <div className="w-full flex items-center justify-center min-h-[300px]">
+                {product.images && product.images.length > 0 ? (
+                  <img
+                    src={product.images[selectedImageIndex]?.image || product.images[0].image}
+                    alt={product.images[selectedImageIndex]?.alt_text || product.name}
+                    width="600"
+                    height="380"
+                    className="w-full max-h-[380px] object-contain transition-all duration-300"
+                  />
+                ) : (
+                  <ProductIllustration
+                    type={product.product_type === 'skincare' ? 'serum' : 'bottle'}
+                    accentColor={product.product_type === 'multivitamin' ? '#016a38' : '#7a2fd0'}
+                    label={product.serving_size ? 'Daily' : 'Supplivix'}
+                    size="lg"
+                  />
+                )}
+              </div>
+              {product.images && product.images.length > 1 && (
+                <div className="flex items-center gap-3 mt-4 pt-4 border-t border-surface-border w-full justify-center">
+                  {product.images.map((img, idx) => (
+                    <button
+                      key={img.id || idx}
+                      type="button"
+                      onClick={() => setSelectedImageIndex(idx)}
+                      className={`w-14 h-14 rounded border p-1 bg-white transition-all ${
+                        selectedImageIndex === idx
+                          ? 'border-brand-green ring-2 ring-brand-green/30'
+                          : 'border-surface-border hover:border-brand-ink/50 opacity-70 hover:opacity-100'
+                      }`}
+                      aria-label={`View photo ${idx + 1}`}
+                    >
+                      <img
+                        src={img.image}
+                        alt={img.alt_text || `${product.name} view ${idx + 1}`}
+                        className="w-full h-full object-contain"
+                      />
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -308,13 +400,17 @@ export default function ProductDetailPage() {
           <div className="lg:col-span-6 flex flex-col justify-between">
             <div>
               {/* Category & Badge */}
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="text-xs font-bold text-brand-green uppercase tracking-wider">
                   {product.category_name || 'Supplivix Formulations'}
                 </span>
-                {discountPercent > 0 && (
+                {product.is_on_sale && product.sale_badge ? (
+                  <span className="bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded shadow-sm">
+                    {product.sale_badge}
+                  </span>
+                ) : discountPercent > 0 ? (
                   <Badge variant="sale">Save {discountPercent}%</Badge>
-                )}
+                ) : null}
                 {!isOutOfStock ? (
                   <Badge variant="pill">In Stock</Badge>
                 ) : (
@@ -357,33 +453,58 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Pricing Display */}
-              <div className="flex items-baseline gap-3 mb-6 p-4 bg-surface-subtle border border-surface-border rounded-md">
-                <span className="text-2xl sm:text-3xl font-bold text-brand-ink">
-                  Rs. {Number(product.price).toLocaleString()}
-                </span>
-                {product.compare_at_price && product.compare_at_price > product.price && (
-                  <span className="text-sm text-ink-muted line-through font-medium">
-                    Rs. {Number(product.compare_at_price).toLocaleString()}
+              <div className="mb-6 p-4 bg-surface-subtle border border-surface-border rounded-md">
+                <div className="flex items-baseline gap-3 mb-2">
+                  <span className="text-2xl sm:text-3xl font-bold text-brand-ink">
+                    Rs. {Number(product.price).toLocaleString()}
                   </span>
+                  {originalPrice && originalPrice > product.price && (
+                    <span className="text-sm text-ink-muted line-through font-medium">
+                      Rs. {Number(originalPrice).toLocaleString()}
+                    </span>
+                  )}
+                  {isOnSale && (
+                    <span className="text-xs text-red-600 font-bold bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                      Save Rs. {Number(originalPrice - product.price).toLocaleString()} ({discountPercent}%)
+                    </span>
+                  )}
+                  <span className="text-xs text-brand-green font-semibold ml-auto hidden sm:inline">
+                    Cash on Delivery (COD)
+                  </span>
+                </div>
+                {product.is_on_sale && product.show_countdown && product.sale_end_at && (
+                  <div className="pt-3 mt-3 border-t border-surface-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <SaleCountdownTimer
+                      targetDate={product.sale_end_at}
+                      compact
+                      badgeText={product.sale_badge || 'Sale Ends In'}
+                    />
+                    <span className="text-[11px] text-ink-muted">
+                      Prices automatically revert when timer expires.
+                    </span>
+                  </div>
                 )}
-                <span className="text-xs text-brand-green font-semibold ml-auto">
-                  Cash on Delivery (COD)
-                </span>
               </div>
 
               {/* Description Snippet */}
-              <p className="text-xs sm:text-sm text-ink-muted leading-relaxed mb-6">
-                {product.description}
-              </p>
+              {isUrdu && product.description_ur ? (
+                <div dir="rtl" lang="ur" className="urdu-text-block text-sm text-brand-ink mb-6 bg-[#faf9f6] p-3 rounded-md border border-surface-border whitespace-pre-line">
+                  {product.description_ur}
+                </div>
+              ) : (
+                <p className="text-xs sm:text-sm text-ink-muted leading-relaxed mb-6 whitespace-pre-line">
+                  {product.description?.trim() || 'Not specified'}
+                </p>
+              )}
 
               {/* Free Shipping Dynamic Progress */}
               <div className="mb-6 p-3 bg-white border border-surface-border rounded-md text-xs">
                 <div className="flex items-center gap-2 font-semibold text-brand-ink mb-1">
                   <Icon name="truck" className="text-brand-green" />
                   <span>
-                    {product.price >= 2000
+                    {product.price >= shippingThreshold
                       ? 'This order qualifies for FREE nationwide delivery!'
-                      : `Add Rs. ${(2000 - product.price).toLocaleString()} more to unlock FREE shipping.`}
+                      : `Add Rs. ${(shippingThreshold - product.price).toLocaleString()} more to unlock FREE shipping.`}
                   </span>
                 </div>
               </div>
@@ -425,18 +546,18 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Trust Strip */}
-              <div className="mt-8 pt-6 border-t border-surface-border grid grid-cols-3 gap-2 text-center text-[11px] text-ink-muted font-semibold">
-                <div className="p-2 border border-surface-border rounded-sm bg-surface-subtle">
-                  <Icon name="cod" className="text-brand-green text-sm block mx-auto mb-1" />
-                  <span>Pay Cash on Delivery</span>
+              <div className="mt-8 pt-6 border-t border-surface-border grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 text-xs sm:text-[11px] text-ink-muted font-semibold">
+                <div className="p-3 sm:p-2.5 border border-surface-border rounded-sm bg-surface-subtle flex items-center sm:flex-col sm:justify-center gap-2.5 sm:gap-1.5 text-left sm:text-center min-h-[48px] sm:min-h-[72px]">
+                  <Icon name="cod" className="text-brand-green text-base shrink-0" />
+                  <span className="leading-snug">Pay Cash on Delivery</span>
                 </div>
-                <div className="p-2 border border-surface-border rounded-sm bg-surface-subtle">
-                  <Icon name="shield" className="text-brand-green text-sm block mx-auto mb-1" />
-                  <span>Authentic Formula</span>
+                <div className="p-3 sm:p-2.5 border border-surface-border rounded-sm bg-surface-subtle flex items-center sm:flex-col sm:justify-center gap-2.5 sm:gap-1.5 text-left sm:text-center min-h-[48px] sm:min-h-[72px]">
+                  <Icon name="shield" className="text-brand-green text-base shrink-0" />
+                  <span className="leading-snug">Authentic Formula</span>
                 </div>
-                <div className="p-2 border border-surface-border rounded-sm bg-surface-subtle">
-                  <Icon name="returns" className="text-brand-green text-sm block mx-auto mb-1" />
-                  <span>7-Day Return Policy</span>
+                <div className="p-3 sm:p-2.5 border border-surface-border rounded-sm bg-surface-subtle flex items-center sm:flex-col sm:justify-center gap-2.5 sm:gap-1.5 text-left sm:text-center min-h-[48px] sm:min-h-[72px]">
+                  <Icon name="truck" className="text-brand-green text-base shrink-0" />
+                  <span className="leading-snug">Fast Nationwide Shipping</span>
                 </div>
               </div>
             </div>
@@ -492,37 +613,57 @@ export default function ProductDetailPage() {
             {activeTab === 'overview' && (
               <div className="space-y-6 max-w-3xl text-xs sm:text-sm text-ink-muted leading-relaxed">
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-brand-ink mb-2">
-                    Product Description
+                  <h3 className={`text-sm font-bold uppercase tracking-wide text-brand-ink mb-2 ${isUrdu ? 'text-right font-urdu text-base' : ''}`}>
+                    {isUrdu ? 'مصنوعات کی تفصیل (Product Description)' : 'Product Description'}
                   </h3>
-                  <p>{product.description}</p>
+                  {isUrdu && product.description_ur ? (
+                    <div dir="rtl" lang="ur" className="urdu-text-block text-sm sm:text-base text-brand-ink bg-[#faf9f6] p-4 rounded-md border border-surface-border whitespace-pre-line">
+                      {product.description_ur}
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-line">{product.description?.trim() || 'Not specified'}</p>
+                  )}
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-brand-ink mb-2">
-                    Suggested Daily Use
+                  <h3 className={`text-sm font-bold uppercase tracking-wide text-brand-ink mb-2 ${isUrdu ? 'text-right font-urdu text-base' : ''}`}>
+                    {isUrdu ? 'استعمال کی ہدایات (Suggested Daily Use)' : 'Suggested Daily Use'}
                   </h3>
-                  <p>{product.directions}</p>
+                  {isUrdu && product.directions_ur ? (
+                    <div dir="rtl" lang="ur" className="urdu-text-block text-sm sm:text-base text-brand-ink bg-[#faf9f6] p-4 rounded-md border border-surface-border whitespace-pre-line">
+                      {product.directions_ur}
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-line">{product.directions?.trim() || 'Not specified'}</p>
+                  )}
                 </div>
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wide text-brand-ink mb-2">
                     Storage Guidelines
                   </h3>
-                  <p>{product.storage}</p>
+                  <p>{product.storage?.trim() || 'Not specified'}</p>
                 </div>
               </div>
             )}
 
             {activeTab === 'supplement-facts' && (
               <div className="max-w-2xl bg-surface-subtle border border-surface-border rounded-lg p-6 shadow-card">
-                <h3 className="text-base font-bold uppercase tracking-wide text-brand-ink border-b-2 border-brand-ink pb-2 mb-3">
-                  Supplement Facts
+                <h3 className={`text-base font-bold uppercase tracking-wide text-brand-ink border-b-2 border-brand-ink pb-2 mb-3 ${isUrdu ? 'text-right font-urdu' : ''}`}>
+                  {isUrdu ? 'اجزاء اور غذائی حقائق (Supplement Facts)' : 'Supplement Facts'}
                 </h3>
                 <div className="text-xs text-ink-muted mb-4">
-                  Serving Size: {product.serving_size}
+                  Serving Size: {product.serving_size?.trim() || 'Not specified'}
                 </div>
                 <div className="text-xs text-ink-muted leading-relaxed border-t border-surface-border pt-3">
-                  <span className="font-bold text-brand-ink block mb-1">Active Nutritional Matrix:</span>
-                  {product.ingredients}
+                  <span className={`font-bold text-brand-ink block mb-2 ${isUrdu ? 'text-right font-urdu text-sm' : ''}`}>
+                    {isUrdu ? 'فعال غذائی اجزاء (Active Ingredients):' : 'Active Nutritional Matrix:'}
+                  </span>
+                  {isUrdu && product.ingredients_ur ? (
+                    <div dir="rtl" lang="ur" className="urdu-text-block text-sm sm:text-base text-brand-ink bg-white p-4 rounded border border-surface-border whitespace-pre-line">
+                      {product.ingredients_ur}
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-line">{product.ingredients?.trim() || 'Not specified'}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -690,7 +831,12 @@ export default function ProductDetailPage() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-surface-border p-3 z-30 shadow-hover flex items-center justify-between gap-3">
         <div>
           <span className="text-[11px] text-ink-muted block">Cash on Delivery</span>
-          <span className="text-base font-bold text-brand-ink">Rs. {Number(product.price).toLocaleString()}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-base font-bold text-brand-ink">Rs. {Number(product.price).toLocaleString()}</span>
+            {originalPrice && originalPrice > product.price && (
+              <span className="text-xs text-ink-muted line-through">Rs. {Number(originalPrice).toLocaleString()}</span>
+            )}
+          </div>
         </div>
         <Button
           variant="primary"
@@ -702,6 +848,22 @@ export default function ProductDetailPage() {
           <Icon name="cart" className="mr-1.5" />
           Add to Cart
         </Button>
+      </div>
+
+      {/* Floating Nutrifactor-Style Language Switcher Pill (Fixed Bottom Left) */}
+      <div className="fixed bottom-16 lg:bottom-6 left-4 lg:left-6 z-40">
+        <button
+          type="button"
+          onClick={toggleLanguage}
+          className="bg-[#1f2937] hover:bg-black text-white px-5 py-3 rounded-full shadow-hover flex items-center gap-2.5 text-xs sm:text-sm font-semibold transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-green border border-gray-700 cursor-pointer"
+          aria-label={isUrdu ? 'Read in English' : 'اردو میں پڑھیں (Read in Urdu)'}
+          title={isUrdu ? 'Switch to English' : 'اردو میں تفصیل پڑھیں'}
+        >
+          <Icon name="language" className="text-sm sm:text-base text-brand-green" />
+          <span className={isUrdu ? 'font-sans font-medium' : 'font-urdu tracking-wide text-xs sm:text-sm'}>
+            {isUrdu ? 'Read in English' : 'اردو میں پڑھیں'}
+          </span>
+        </button>
       </div>
     </div>
   );

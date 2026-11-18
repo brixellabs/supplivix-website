@@ -16,6 +16,7 @@ export function CartProvider({ children }) {
     total_items: 0,
   });
   const [loading, setLoading] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
 
   const fetchCart = useCallback(async () => {
     try {
@@ -23,6 +24,8 @@ export function CartProvider({ children }) {
       setCart(data);
     } catch {
       // Graceful fallback if backend is offline or empty cart
+    } finally {
+      setInitialLoaded(true);
     }
   }, []);
 
@@ -102,6 +105,7 @@ export function CartProvider({ children }) {
       value={{
         cart,
         loading,
+        initialLoaded,
         totalCount,
         fetchCart,
         addToCart,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Breadcrumbs from '../components/layout/Breadcrumbs';
 import Input from '../components/ui/Input';
@@ -44,7 +44,7 @@ function generateIdempotencyKey() {
 }
 
 export default function CheckoutPage() {
-  const { cart, fetchCart } = useCart();
+  const { cart, fetchCart, initialLoaded = true } = useCart();
   const { user } = useAuth();
   const { showToast } = useToast();
 
@@ -53,7 +53,9 @@ export default function CheckoutPage() {
   const [completedOrder, setCompletedOrder] = useState(null);
 
   // Form State
-  const [fullName, setFullName] = useState(user ? `${user.first_name} ${user.last_name}`.trim() : '');
+  const [fullName, setFullName] = useState(
+    user?.full_name || (user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : '')
+  );
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [streetAddress, setStreetAddress] = useState('');
@@ -63,6 +65,21 @@ export default function CheckoutPage() {
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [honeypot, setHoneypot] = useState('');
 
+  // Sync authenticated user info when loaded
+  useEffect(() => {
+    if (user) {
+      if (!fullName) {
+        setFullName(user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim());
+      }
+      if (!email && user.email) {
+        setEmail(user.email);
+      }
+      if (!phone && user.phone) {
+        setPhone(user.phone);
+      }
+    }
+  }, [user]);
+
   // Validation Errors
   const [errors, setErrors] = useState({});
 
@@ -70,7 +87,8 @@ export default function CheckoutPage() {
   const subtotal = cart?.subtotal || 0;
   const discountAmount = cart?.discount_amount || 0;
   const netSubtotal = Math.max(0, subtotal - discountAmount);
-  const shippingFee = cart?.shipping_fee !== undefined ? cart.shipping_fee : (netSubtotal >= 2000 ? 0 : 200);
+  const shippingThreshold = Number(cart?.free_shipping_threshold) || 2000;
+  const shippingFee = cart?.shipping_fee !== undefined ? cart.shipping_fee : (netSubtotal >= shippingThreshold ? 0 : 200);
   const grandTotal = cart?.grand_total || (netSubtotal + shippingFee);
 
   // Validate form matching server validation rules exactly
@@ -79,8 +97,8 @@ export default function CheckoutPage() {
     if (!fullName.trim() || fullName.trim().length < 2) {
       errs.fullName = 'Please enter your full name (at least 2 characters).';
     }
-    if (!email.trim() || !email.includes('@')) {
-      errs.email = 'Please provide a valid email address for order confirmation.';
+    if (email.trim() && !email.includes('@')) {
+      errs.email = 'Please provide a valid email address.';
     }
     // Pakistani Phone Normalization rule
     const cleanPhone = phone.replace(/[\s-]/g, '');
@@ -122,15 +140,18 @@ export default function CheckoutPage() {
     setLoading(true);
     try {
       const payload = {
+        full_name: fullName.trim(),
         recipient_name: fullName.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        line1: streetAddress.trim(),
         street_address: streetAddress.trim(),
         city: city.trim(),
         province: province.trim(),
         postal_code: postalCode.trim(),
+        notes: deliveryNotes.trim(),
         delivery_notes: deliveryNotes.trim(),
-        payment_method: 'cod', // COD only
+        payment_method: 'COD', // COD only
         idempotency_key: idempotencyKey,
         website: honeypot, // Honeypot trap
       };
@@ -142,7 +163,22 @@ export default function CheckoutPage() {
       showToast('Order placed successfully! Cash on Delivery confirmed.');
     } catch (err) {
       if (err.fields) {
-        setErrors(err.fields);
+        const mapped = {};
+        if (err.fields.full_name || err.fields.recipient_name) {
+          mapped.fullName = (err.fields.full_name || err.fields.recipient_name)[0];
+        }
+        if (err.fields.line1 || err.fields.street_address) {
+          mapped.streetAddress = (err.fields.line1 || err.fields.street_address)[0];
+        }
+        if (err.fields.phone) mapped.phone = err.fields.phone[0];
+        if (err.fields.email) mapped.email = err.fields.email[0];
+        if (err.fields.city) mapped.city = err.fields.city[0];
+        if (err.fields.province) mapped.province = err.fields.province[0];
+        if (err.fields.payment_method) mapped.general = err.fields.payment_method[0];
+        if (err.fields.cart) mapped.general = err.fields.cart[0];
+        if (err.fields.turnstile_token) mapped.general = err.fields.turnstile_token[0];
+
+        setErrors({ ...err.fields, ...mapped });
       }
       showToast(err.message || 'Unable to place order. Please try again.', 'error');
     } finally {
@@ -172,29 +208,29 @@ export default function CheckoutPage() {
 
             {/* Order Details Card */}
             <div className="bg-white border border-surface-border rounded-md p-6 text-left text-xs space-y-3 mb-6 shadow-sm">
-              <div className="flex justify-between border-b border-surface-border pb-2">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 border-b border-surface-border pb-2">
                 <span className="text-ink-muted">Order Number:</span>
                 <span className="font-bold text-brand-ink">{completedOrder.number || completedOrder.order_number}</span>
               </div>
-              <div className="flex justify-between border-b border-surface-border pb-2">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 border-b border-surface-border pb-2">
                 <span className="text-ink-muted">Payment Method:</span>
                 <span className="font-bold text-brand-green">Cash on Delivery (COD)</span>
               </div>
-              <div className="flex justify-between border-b border-surface-border pb-2">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 border-b border-surface-border pb-2">
                 <span className="text-ink-muted">Total Payable to Rider:</span>
                 <span className="font-bold text-brand-ink text-sm">
                   Rs. {Number(completedOrder.grand_total || completedOrder.total || 0).toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between border-b border-surface-border pb-2">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 border-b border-surface-border pb-2">
                 <span className="text-ink-muted">Recipient Name:</span>
                 <span className="font-semibold text-brand-ink">
                   {completedOrder.recipient_name || completedOrder.full_name || completedOrder.shipping_address_snapshot?.full_name}
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                 <span className="text-ink-muted">Delivery Address:</span>
-                <span className="font-medium text-brand-ink text-right">
+                <span className="font-medium text-brand-ink sm:text-right">
                   {completedOrder.street_address || completedOrder.line1 || completedOrder.shipping_address_snapshot?.line1},{' '}
                   {completedOrder.city || completedOrder.shipping_address_snapshot?.city}
                 </span>
@@ -257,6 +293,12 @@ export default function CheckoutPage() {
           Cash on Delivery Checkout
         </h1>
 
+        {errors.general && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-300 text-xs text-red-800 rounded-sm font-medium" role="alert">
+            {errors.general}
+          </div>
+        )}
+
         <form onSubmit={handleSubmitOrder} noValidate>
           {/* Honeypot traps */}
           <input
@@ -307,14 +349,13 @@ export default function CheckoutPage() {
 
                   <div>
                     <Input
-                      label="Email Address"
+                      label="Email Address (Optional)"
                       name="email"
                       type="email"
-                      placeholder="e.g. usman@example.com"
+                      placeholder="e.g. usman@example.com (optional)"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       error={errors.email}
-                      required
                     />
                   </div>
 
@@ -459,11 +500,11 @@ export default function CheckoutPage() {
                   {items.map((item) => (
                     <div key={item.id} className="py-2.5 flex items-center justify-between text-xs">
                       <div className="flex-1 pr-3">
-                        <span className="font-bold text-brand-ink block truncate">{item.product_name}</span>
-                        <span className="text-ink-muted">Qty: {item.quantity} × Rs. {Number(item.unit_price).toLocaleString()}</span>
+                        <span className="font-bold text-brand-ink block truncate">{item.product_name || item.product?.name || 'Product'}</span>
+                        <span className="text-ink-muted">Qty: {item.quantity} × Rs. {Number(item.unit_price || item.product?.price || item.price_when_added || 0).toLocaleString()}</span>
                       </div>
                       <span className="font-bold text-brand-ink">
-                        Rs. {Number(item.line_total || item.unit_price * item.quantity).toLocaleString()}
+                        Rs. {Number(item.line_total || (item.unit_price || item.product?.price || item.price_when_added || 0) * item.quantity).toLocaleString()}
                       </span>
                     </div>
                   ))}

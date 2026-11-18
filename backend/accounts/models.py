@@ -39,12 +39,36 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=30, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    staff_role = models.CharField(max_length=100, default='General Staff', blank=True)
+    staff_permissions = models.JSONField(default=list, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
 
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['full_name']
+
+    def get_staff_permissions(self):
+        """Return list of allowed permission strings."""
+        if self.is_superuser:
+            return ['all']
+        if not self.is_staff:
+            return []
+        if isinstance(self.staff_permissions, list) and len(self.staff_permissions) > 0:
+            return self.staff_permissions
+        # Default operational permissions for staff members without explicit list
+        return ['all']
+
+    def has_staff_perm(self, perm_key):
+        """Check if user has a specific staff permission."""
+        if not self.is_authenticated or not self.is_staff or not self.is_active:
+            return False
+        if self.is_superuser:
+            return True
+        if perm_key == 'staff':
+            return isinstance(self.staff_permissions, list) and 'staff' in self.staff_permissions
+        perms = self.get_staff_permissions()
+        return '*' in perms or 'all' in perms or perm_key in perms
 
     class Meta:
         verbose_name = 'User'

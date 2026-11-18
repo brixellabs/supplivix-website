@@ -368,46 +368,24 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
     unmount100();
   });
 
-  it('COUP-01 & COUP-04: Coupon form normalizes code input and applies valid token', async () => {
+  it('COUP-01 & COUP-04: Coupon form is removed from CartPage', async () => {
     renderWithProviders(<CartPage />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Enter code/i)).toBeInTheDocument();
-    });
-
-    const couponInput = screen.getByPlaceholderText(/Enter code/i);
-    const applyBtn = screen.getByRole('button', { name: /Apply/i });
-
-    fireEvent.change(couponInput, { target: { value: '  valid10  ' } });
-    fireEvent.click(applyBtn);
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.stringMatching(/\/cart\/coupon\//),
-        expect.objectContaining({ method: 'POST', body: JSON.stringify({ code: 'VALID10' }) })
-      );
+      expect(screen.queryByPlaceholderText(/Enter code/i)).not.toBeInTheDocument();
     });
   });
 
-  it('COUP-05: Coupon form displays error toast on invalid or unknown code', async () => {
+  it('COUP-05: CartPage renders clean order summary without coupon form', async () => {
     renderWithProviders(<CartPage />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Enter code/i)).toBeInTheDocument();
-    });
-
-    const couponInput = screen.getByPlaceholderText(/Enter code/i);
-    const applyBtn = screen.getByRole('button', { name: /Apply/i });
-
-    fireEvent.change(couponInput, { target: { value: 'WRONGCODE' } });
-    fireEvent.click(applyBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText(/This code is not valid/i)).toBeInTheDocument();
+      expect(screen.getByText(/Order Summary/i)).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText(/Enter code/i)).not.toBeInTheDocument();
     });
   });
 
-  it('COUP-13: CartPage renders applied coupon token and allows removing it', async () => {
+  it('COUP-13: CartPage renders order summary with discount line if present', async () => {
     const appliedCouponCart = {
       items: [
         {
@@ -421,26 +399,13 @@ describe('Phase 9: Cart, Shipping, Coupon & COD Component Suite', () => {
       ],
       total_items: 1,
       subtotal: 2200,
-      coupon_code: 'SAVE10',
       discount_total: 220,
       grand_total: 1980,
     };
     renderWithProviders(<CartPage />, '/cart', appliedCouponCart);
 
     await waitFor(() => {
-      expect(screen.getByText(/SAVE10/i)).toBeInTheDocument();
       expect(screen.getAllByText(/-Rs\. 220/i).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByRole('button', { name: /^Remove$/i })).toBeInTheDocument();
-    });
-
-    const removeBtn = screen.getByRole('button', { name: /^Remove$/i });
-    fireEvent.click(removeBtn);
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.stringMatching(/\/cart\/coupon\//),
-        expect.objectContaining({ method: 'DELETE' })
-      );
     });
   });
 

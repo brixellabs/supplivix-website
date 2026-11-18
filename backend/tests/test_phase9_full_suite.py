@@ -1474,12 +1474,12 @@ class TestModeSuite:
 @pytest.mark.django_db
 class TestPolicySuite:
     def test_pol_01_privacy_terms_shipping_returns_pages_render(self, client):
-        """POL-01: Privacy policy, terms, shipping and returns pages -> Render, linked in footer, anchors work, last-updated date shown."""
+        """POL-01: Privacy policy, terms, shipping pages -> Render, linked in footer, anchors work, last-updated date shown."""
+        SiteSetting.objects.update_or_create(key="site_mode", defaults={"value": "live"})
         for path, title in [
             ("/privacy-policy/", "Privacy Policy"),
             ("/terms/", "Terms of Service"),
             ("/shipping-policy/", "Shipping"),
-            ("/returns-policy/", "Return Policy"),
         ]:
             res = client.get(path)
             assert res.status_code == 200
@@ -2030,6 +2030,23 @@ class TestAdminSuite:
         assert pub_res.data["free_shipping_threshold"] == 3000
         assert pub_res.data["flat_shipping_fee"] == 250
 
+        # ADM-07b: Customize Top Announcement Bar text
+        patch_announcement = admin_client.patch(
+            "/api/v1/admin/settings/",
+            {
+                "announcement_bar_enabled": "true",
+                "announcement_text_primary": "Special Independence Day Offer: Free Delivery Over Rs. 3,000",
+                "announcement_text_secondary": "Official Authentic Formulations",
+            },
+            format="json",
+        )
+        assert patch_announcement.status_code == 200
+        pub_res2 = api_client.get("/api/v1/settings/public/")
+        assert pub_res2.status_code == 200
+        assert pub_res2.data["announcement_bar_enabled"] is True
+        assert pub_res2.data["announcement_text_primary"] == "Special Independence Day Offer: Free Delivery Over Rs. 3,000"
+        assert pub_res2.data["announcement_text_secondary"] == "Official Authentic Formulations"
+
     def test_adm_08_bulk_update_and_csv_import_with_bad_row(self, admin_client, test_category):
         """ADM-08: Bulk update and CSV import with a bad row -> Valid rows applied or all rolled back, error report shown."""
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -2142,7 +2159,6 @@ class TestSeoAndAeoSuite:
             "/privacy-policy/",
             "/terms/",
             "/shipping-policy/",
-            "/returns-policy/",
         ]
         for path in pages:
             res = api_client.get(path)
@@ -2181,7 +2197,6 @@ class TestSeoAndAeoSuite:
             "/privacy-policy/",
             "/terms/",
             "/shipping-policy/",
-            "/returns-policy/",
         ]
         titles = set()
         descriptions = set()
@@ -2418,7 +2433,6 @@ class TestSeoAndAeoSuite:
             "/privacy-policy/",
             "/terms/",
             "/shipping-policy/",
-            "/returns-policy/",
         ]
 
         all_urls = set(locs + standard_routes)
@@ -2431,7 +2445,10 @@ class TestSeoAndAeoSuite:
     def test_seo_09_every_image_has_alt_text_dimensions_and_lazy_loading(self):
         """SEO-09: Every image -> Has alt text, dimensions and lazy loading except the first screen."""
         from pathlib import Path
+        from django.conf import settings
         frontend_src = Path("frontend/src")
+        if not frontend_src.exists():
+            frontend_src = Path(settings.BASE_DIR).parent / "frontend" / "src"
         jsx_files = list(frontend_src.rglob("*.jsx"))
         assert len(jsx_files) > 0
 
@@ -2536,7 +2553,6 @@ class TestSeoAndAeoSuite:
         assert test_product.name in body
         assert f"/products/{test_product.slug}/" in body
         assert "/shipping-policy" in body
-        assert "/returns-policy" in body
         assert "/privacy-policy" in body
         assert "/terms" in body
 

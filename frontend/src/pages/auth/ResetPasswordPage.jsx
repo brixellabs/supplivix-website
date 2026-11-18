@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate, Link } from 'react-router-dom';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import { useToast } from '../../components/ui/Toast';
@@ -7,11 +7,12 @@ import { api } from '../../services/api';
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
+  const routeParams = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  const uid = searchParams.get('uid') || '';
-  const token = searchParams.get('token') || '';
+  const uid = searchParams.get('uid') || routeParams.uid || '';
+  const token = searchParams.get('token') || routeParams.token || '';
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,6 +44,11 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError('');
     if (!validate()) return;
+
+    if (!uid || !token) {
+      setError('Invalid or expired password reset link.');
+      return;
+    }
 
     setLoading(true);
     try {

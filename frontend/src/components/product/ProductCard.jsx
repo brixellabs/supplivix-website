@@ -13,9 +13,11 @@ export default function ProductCard({ product }) {
 
   if (!product) return null;
 
+  const originalPrice = product.original_price || product.compare_at_price;
+  const isOnSale = Boolean(product.is_on_sale || (originalPrice && originalPrice > product.price));
   const discountPercent =
-    product.compare_at_price && product.compare_at_price > product.price
-      ? Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)
+    originalPrice && originalPrice > product.price
+      ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
       : 0;
 
   const stockCount =
@@ -49,13 +51,20 @@ export default function ProductCard({ product }) {
       ? (product.slug?.includes('serum') ? 'serum' : product.slug?.includes('cream') ? 'jar' : 'tube')
       : 'bottle';
 
+  const hasMultipleImages = Boolean(product.images && product.images.length >= 2);
+  const secondaryImage = hasMultipleImages ? product.images[1]?.image : null;
+
   return (
     <div className="group bg-surface-card border border-surface-border rounded-md shadow-card hover:shadow-hover transition-all duration-200 flex flex-col justify-between overflow-hidden relative">
       {/* Top Badges */}
       <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
-        {discountPercent > 0 && (
+        {product.is_on_sale && product.sale_badge ? (
+          <span className="bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow-sm">
+            {product.sale_badge}
+          </span>
+        ) : discountPercent > 0 ? (
           <Badge variant="sale">-{discountPercent}%</Badge>
-        )}
+        ) : null}
         {product.is_featured && (
           <Badge variant="pill">Top Rated</Badge>
         )}
@@ -82,15 +91,32 @@ export default function ProductCard({ product }) {
         tabIndex="-1"
         aria-hidden="true"
       >
-        {product.thumbnail ? (
-          <img
-            src={product.thumbnail}
-            alt={product.name}
-            width="300"
-            height="176"
-            className="w-full h-44 object-contain transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-          />
+        {product.thumbnail || (product.images && product.images.length > 0 && product.images[0].image) ? (
+          <div className="w-full h-44 flex items-center justify-center relative">
+            <img
+              loading="lazy"
+              src={product.thumbnail || product.images[0].image}
+              alt={product.name}
+              width="300"
+              height="176"
+              className={hasMultipleImages ? 'w-full h-44 object-contain transition-all duration-300 group-hover:opacity-0 group-hover:scale-105' : 'w-full h-44 object-contain transition-all duration-300 group-hover:scale-105'}
+            />
+            {secondaryImage && (
+              <img
+                loading="lazy"
+                src={secondaryImage}
+                alt={`${product.name} alternate view`}
+                width="300"
+                height="176"
+                className="w-full h-44 object-contain transition-all duration-300 absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105"
+              />
+            )}
+            {hasMultipleImages && (
+              <span className="absolute bottom-1 right-1 text-[9px] font-mono text-ink-muted bg-white/90 px-1.5 py-0.5 rounded border border-surface-border pointer-events-none">
+                {product.images.length} photos
+              </span>
+            )}
+          </div>
         ) : (
           <div className="h-44 w-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
             <ProductIllustration
@@ -141,9 +167,9 @@ export default function ProductCard({ product }) {
             <div className="text-base font-bold text-brand-ink">
               Rs. {Number(product.price).toLocaleString()}
             </div>
-            {product.compare_at_price && product.compare_at_price > product.price && (
+            {originalPrice && originalPrice > product.price && (
               <div className="text-[11px] text-ink-muted line-through">
-                Rs. {Number(product.compare_at_price).toLocaleString()}
+                Rs. {Number(originalPrice).toLocaleString()}
               </div>
             )}
           </div>

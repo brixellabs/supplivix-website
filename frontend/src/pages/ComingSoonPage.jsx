@@ -220,13 +220,16 @@ export default function ComingSoonPage() {
           <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Supplivix Facebook">
             <Icon name="facebook" className="hover:text-brand-green transition-colors" />
           </a>
-          <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Supplivix Instagram">
+          <a
+            href="https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Supplivix on Instagram (@supp.livix)"
+            title="Follow Supplivix on Instagram (@supp.livix)"
+          >
             <Icon name="instagram" className="hover:text-brand-green transition-colors" />
           </a>
-          <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" aria-label="Supplivix TikTok">
-            <Icon name="tiktok" className="hover:text-brand-green transition-colors" />
-          </a>
-          <a href="https://wa.me/923000000000" target="_blank" rel="noopener noreferrer" aria-label="Supplivix WhatsApp Support">
+          <a href="https://wa.me/923025222405" target="_blank" rel="noopener noreferrer" aria-label="Supplivix WhatsApp Support (0302-5222405)">
             <Icon name="whatsapp" className="hover:text-brand-green transition-colors" />
           </a>
         </div>

@@ -1,4 +1,20 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+export function getApiBaseUrl() {
+  const envUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+  if (typeof window !== 'undefined' && window.location) {
+    try {
+      const parsed = new URL(envUrl, window.location.origin);
+      const currentHost = window.location.hostname;
+      if ((currentHost === '127.0.0.1' || currentHost === 'localhost') && (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost')) {
+        parsed.hostname = currentHost;
+        return parsed.toString().replace(/\/$/, '');
+      }
+      return envUrl.replace(/\/$/, '');
+    } catch {
+      return envUrl;
+    }
+  }
+  return envUrl;
+}
 
 function getSessionKey() {
   let key = localStorage.getItem('splv_session_key');
@@ -9,16 +25,33 @@ function getSessionKey() {
   return key;
 }
 
+function getCookie(name) {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+  return match ? decodeURIComponent(match[3]) : null;
+}
+
 export async function apiRequest(endpoint, options = {}) {
-  const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const csrfToken = getCookie('csrftoken');
   const headers = {
     'Content-Type': 'application/json',
     'X-Session-Key': getSessionKey(),
+    ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
     ...(options.headers || {}),
   };
 
-  if (options.body && options.body.constructor && options.body.constructor.name === 'FormData') {
+  const isFormData =
+    Boolean(options.body) &&
+    ((typeof FormData !== 'undefined' && options.body instanceof FormData) ||
+      (typeof window !== 'undefined' && window.FormData && options.body instanceof window.FormData) ||
+      Object.prototype.toString.call(options.body) === '[object FormData]' ||
+      options.body?.constructor?.name === 'FormData');
+
+  if (isFormData) {
     delete headers['Content-Type'];
+    delete headers['content-type'];
   }
 
   const config = {
@@ -134,6 +167,12 @@ export const api = {
       body: JSON.stringify({ order_number: orderNumber, phone }),
     }),
 
+  // Certificates
+  getCertificates: () => apiRequest('/certificates/'),
+
+  // Promotional Offers & Deals
+  getOffers: () => apiRequest('/offers/'),
+
   // Auth
   register: (payload) =>
     apiRequest('/auth/register/', {
@@ -197,9 +236,19 @@ export const api = {
       method: 'POST',
       body: formData,
     }),
+  translateProductToUrdu: (payload) =>
+    apiRequest('/admin/products/translate-urdu/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   uploadProductImage: (productId, formData) =>
     apiRequest(`/admin/products/${productId}/images/`, {
       method: 'POST',
+      body: formData,
+    }),
+  updateProductImage: (productId, imageId, formData) =>
+    apiRequest(`/admin/products/${productId}/images/${imageId}/`, {
+      method: 'PATCH',
       body: formData,
     }),
   deleteProductImage: (productId, imageId) =>
@@ -283,6 +332,123 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  // Certificates
+  getAdminCertificates: () => apiRequest('/admin/certificates/'),
+  createAdminCertificate: (formDataOrPayload) => {
+    const isForm =
+      Boolean(formDataOrPayload) &&
+      ((typeof FormData !== 'undefined' && formDataOrPayload instanceof FormData) ||
+        (typeof window !== 'undefined' && window.FormData && formDataOrPayload instanceof window.FormData) ||
+        Object.prototype.toString.call(formDataOrPayload) === '[object FormData]');
+    return apiRequest('/admin/certificates/', {
+      method: 'POST',
+      body: isForm ? formDataOrPayload : JSON.stringify(formDataOrPayload),
+    });
+  },
+  updateAdminCertificate: (id, formDataOrPayload) => {
+    const isForm =
+      Boolean(formDataOrPayload) &&
+      ((typeof FormData !== 'undefined' && formDataOrPayload instanceof FormData) ||
+        (typeof window !== 'undefined' && window.FormData && formDataOrPayload instanceof window.FormData) ||
+        Object.prototype.toString.call(formDataOrPayload) === '[object FormData]');
+    return apiRequest(`/admin/certificates/${id}/`, {
+      method: 'PATCH',
+      body: isForm ? formDataOrPayload : JSON.stringify(formDataOrPayload),
+    });
+  },
+  deleteAdminCertificate: (id) =>
+    apiRequest(`/admin/certificates/${id}/`, {
+      method: 'DELETE',
+    }),
+
+  // Offers & Deals Management
+  getAdminOffers: () => apiRequest('/admin/offers/'),
+  createAdminOffer: (formDataOrPayload) => {
+    const isForm =
+      Boolean(formDataOrPayload) &&
+      ((typeof FormData !== 'undefined' && formDataOrPayload instanceof FormData) ||
+        (typeof window !== 'undefined' && window.FormData && formDataOrPayload instanceof window.FormData) ||
+        Object.prototype.toString.call(formDataOrPayload) === '[object FormData]');
+    return apiRequest('/admin/offers/', {
+      method: 'POST',
+      body: isForm ? formDataOrPayload : JSON.stringify(formDataOrPayload),
+    });
+  },
+  updateAdminOffer: (id, formDataOrPayload) => {
+    const isForm =
+      Boolean(formDataOrPayload) &&
+      ((typeof FormData !== 'undefined' && formDataOrPayload instanceof FormData) ||
+        (typeof window !== 'undefined' && window.FormData && formDataOrPayload instanceof window.FormData) ||
+        Object.prototype.toString.call(formDataOrPayload) === '[object FormData]');
+    return apiRequest(`/admin/offers/${id}/`, {
+      method: 'PATCH',
+      body: isForm ? formDataOrPayload : JSON.stringify(formDataOrPayload),
+    });
+  },
+  deleteAdminOffer: (id) =>
+    apiRequest(`/admin/offers/${id}/`, {
+      method: 'DELETE',
+    }),
+
+  // Sale Events & Campaigns (Seasonal & Occasion Engine)
+  getActiveSaleEvent: () => apiRequest('/sale-events/active/'),
+  getSaleEventDetail: (slug) => apiRequest(`/sale-events/${slug}/`),
+  getAdminSaleEvents: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiRequest(`/admin/sale-events/${q ? `?${q}` : ''}`);
+  },
+  getAdminSaleEventDetail: (id) => apiRequest(`/admin/sale-events/${id}/`),
+  createAdminSaleEvent: (formDataOrPayload) => {
+    const isForm =
+      Boolean(formDataOrPayload) &&
+      ((typeof FormData !== 'undefined' && formDataOrPayload instanceof FormData) ||
+        (typeof window !== 'undefined' && window.FormData && formDataOrPayload instanceof window.FormData) ||
+        Object.prototype.toString.call(formDataOrPayload) === '[object FormData]');
+    return apiRequest('/admin/sale-events/', {
+      method: 'POST',
+      body: isForm ? formDataOrPayload : JSON.stringify(formDataOrPayload),
+    });
+  },
+  updateAdminSaleEvent: (id, formDataOrPayload) => {
+    const isForm =
+      Boolean(formDataOrPayload) &&
+      ((typeof FormData !== 'undefined' && formDataOrPayload instanceof FormData) ||
+        (typeof window !== 'undefined' && window.FormData && formDataOrPayload instanceof window.FormData) ||
+        Object.prototype.toString.call(formDataOrPayload) === '[object FormData]');
+    return apiRequest(`/admin/sale-events/${id}/`, {
+      method: 'PATCH',
+      body: isForm ? formDataOrPayload : JSON.stringify(formDataOrPayload),
+    });
+  },
+  deleteAdminSaleEvent: (id) =>
+    apiRequest(`/admin/sale-events/${id}/`, {
+      method: 'DELETE',
+    }),
+  toggleAdminSaleEvent: (id) =>
+    apiRequest(`/admin/sale-events/${id}/toggle/`, {
+      method: 'POST',
+    }),
+  duplicateAdminSaleEvent: (id) =>
+    apiRequest(`/admin/sale-events/${id}/duplicate/`, {
+      method: 'POST',
+    }),
+  extendAdminSaleEvent: (id, payload = {}) =>
+    apiRequest(`/admin/sale-events/${id}/extend/`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  endNowAdminSaleEvent: (id) =>
+    apiRequest(`/admin/sale-events/${id}/end-now/`, {
+      method: 'POST',
+    }),
+  previewAdminSaleEvent: (payload) =>
+    apiRequest('/admin/sale-events/preview/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getAdminSaleEventReport: (id) =>
+    apiRequest(`/admin/sale-events/${id}/report/`),
+
   // Customers
   getAdminCustomers: (params = {}) => {
     const q = new URLSearchParams(params).toString();
@@ -344,4 +510,21 @@ export const api = {
     const q = new URLSearchParams(params).toString();
     return apiRequest(`/admin/audit-logs/${q ? `?${q}` : ''}`);
   },
+
+  // Staff Management
+  getAdminStaff: () => apiRequest('/admin/staff/'),
+  createAdminStaff: (payload) =>
+    apiRequest('/admin/staff/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAdminStaff: (id, payload) =>
+    apiRequest(`/admin/staff/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteAdminStaff: (id) =>
+    apiRequest(`/admin/staff/${id}/`, {
+      method: 'DELETE',
+    }),
 };

@@ -5,6 +5,18 @@ from .admin_views import (
     AdminCategoryDetailView,
     AdminCategoryListView,
     AdminCategoryReorderView,
+    AdminCertificateDetailView,
+    AdminCertificateListView,
+    AdminOfferDetailView,
+    AdminOfferListView,
+    AdminSaleEventDetailView,
+    AdminSaleEventDuplicateView,
+    AdminSaleEventEndNowView,
+    AdminSaleEventExtendView,
+    AdminSaleEventListView,
+    AdminSaleEventPreviewView,
+    AdminSaleEventReportView,
+    AdminSaleEventToggleView,
     AdminCouponDetailView,
     AdminCouponGenerateCodeView,
     AdminCouponListView,
@@ -28,6 +40,7 @@ from .admin_views import (
     AdminProductFAQView,
     AdminProductImageUploadView,
     AdminProductListView,
+    AdminProductTranslateUrduView,
     AdminReviewDeleteView,
     AdminReviewListView,
     AdminReviewModerateView,
@@ -35,6 +48,8 @@ from .admin_views import (
     AdminSecurityLogsView,
     AdminSecurityUnblockIPView,
     AdminSettingsView,
+    AdminStaffDetailView,
+    AdminStaffListView,
     AdminWaitlistCSVExportView,
     AdminWaitlistListView,
 )
@@ -53,6 +68,7 @@ urlpatterns = [
     path('products/bulk-status/', AdminProductBulkStatusView.as_view(), name='admin-products-bulk-status'),
     path('products/export-csv/', AdminProductCSVExportView.as_view(), name='admin-products-export-csv'),
     path('products/import-csv/', AdminProductCSVImportView.as_view(), name='admin-products-import-csv'),
+    path('products/translate-urdu/', AdminProductTranslateUrduView.as_view(), name='admin-products-translate-urdu'),
 
     # 3. Categories
     path('categories/', AdminCategoryListView.as_view(), name='admin-categories'),
@@ -71,6 +87,24 @@ urlpatterns = [
     path('coupons/<int:pk>/', AdminCouponDetailView.as_view(), name='admin-coupon-detail'),
     path('coupons/generate-code/', AdminCouponGenerateCodeView.as_view(), name='admin-coupon-generate-code'),
     path('coupons/<int:pk>/redemptions/', AdminCouponRedemptionsView.as_view(), name='admin-coupon-redemptions'),
+
+    # 5b. Certificates
+    path('certificates/', AdminCertificateListView.as_view(), name='admin-certificates'),
+    path('certificates/<int:pk>/', AdminCertificateDetailView.as_view(), name='admin-certificate-detail'),
+
+    # 5c. Promotional Offers & Deals
+    path('offers/', AdminOfferListView.as_view(), name='admin-offers'),
+    path('offers/<int:pk>/', AdminOfferDetailView.as_view(), name='admin-offer-detail'),
+
+    # 5d. Sale Events & Campaigns
+    path('sale-events/', AdminSaleEventListView.as_view(), name='admin-sale-events'),
+    path('sale-events/preview/', AdminSaleEventPreviewView.as_view(), name='admin-sale-events-preview'),
+    path('sale-events/<int:pk>/', AdminSaleEventDetailView.as_view(), name='admin-sale-event-detail'),
+    path('sale-events/<int:pk>/toggle/', AdminSaleEventToggleView.as_view(), name='admin-sale-event-toggle'),
+    path('sale-events/<int:pk>/duplicate/', AdminSaleEventDuplicateView.as_view(), name='admin-sale-event-duplicate'),
+    path('sale-events/<int:pk>/extend/', AdminSaleEventExtendView.as_view(), name='admin-sale-event-extend'),
+    path('sale-events/<int:pk>/end-now/', AdminSaleEventEndNowView.as_view(), name='admin-sale-event-end-now'),
+    path('sale-events/<int:pk>/report/', AdminSaleEventReportView.as_view(), name='admin-sale-event-report'),
 
     # 6. Settings
     path('settings/', AdminSettingsView.as_view(), name='admin-settings'),
@@ -98,4 +132,8 @@ urlpatterns = [
     path('security/block-ip/', AdminSecurityBlockIPView.as_view(), name='admin-security-block-ip'),
     path('security/unblock-ip/', AdminSecurityUnblockIPView.as_view(), name='admin-security-unblock'),
     path('audit-logs/', AdminAuditLogsView.as_view(), name='admin-audit-logs'),
+
+    # 11. Staff Management
+    path('staff/', AdminStaffListView.as_view(), name='admin-staff-list'),
+    path('staff/<int:pk>/', AdminStaffDetailView.as_view(), name='admin-staff-detail'),
 ]

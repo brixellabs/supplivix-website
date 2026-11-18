@@ -143,7 +143,7 @@ export default function TrackOrderPage() {
                   Order Reference
                 </span>
                 <span className="text-xl font-bold text-brand-ink">
-                  #{order.order_number}
+                  #{order.order_number || order.number}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -193,24 +193,30 @@ export default function TrackOrderPage() {
 
             {/* Order Info Grid */}
             <div className="bg-surface-subtle border border-surface-border rounded-md p-4 text-xs space-y-2">
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                 <span className="text-ink-muted">Payment Type:</span>
                 <span className="font-bold text-brand-green">Cash on Delivery (COD)</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                 <span className="text-ink-muted">Total Payable Amount:</span>
                 <span className="font-bold text-brand-ink text-sm">
                   Rs. {Number(order.grand_total).toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                 <span className="text-ink-muted">Recipient Name:</span>
-                <span className="font-semibold text-brand-ink">{order.recipient_name}</span>
+                <span className="font-semibold text-brand-ink">
+                  {order.recipient_name || order.shipping_address_snapshot?.full_name || order.shipping_address_snapshot?.recipient_name || 'Valued Customer'}
+                </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                 <span className="text-ink-muted">Delivery Address:</span>
-                <span className="font-medium text-brand-ink text-right">
-                  {order.street_address}, {order.city}
+                <span className="font-medium text-brand-ink sm:text-right">
+                  {[
+                    order.street_address || order.shipping_address_snapshot?.line1 || order.shipping_address_snapshot?.street_address,
+                    order.city || order.shipping_address_snapshot?.city,
+                    order.province || order.shipping_address_snapshot?.province
+                  ].filter(Boolean).join(', ') || 'Standard Nationwide Delivery'}
                 </span>
               </div>
             </div>
@@ -219,13 +225,13 @@ export default function TrackOrderPage() {
             <div className="pt-2 text-center text-xs text-ink-muted">
               Have questions regarding delivery timing?{' '}
               <a
-                href="https://wa.me/923000000000"
+                href="https://wa.me/923025222405"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-green font-bold hover:underline inline-flex items-center gap-1"
               >
                 <Icon name="whatsapp" />
-                <span>Chat with WhatsApp Support</span>
+                <span>Chat with WhatsApp Support (0302-5222405)</span>
               </a>
             </div>
           </div>

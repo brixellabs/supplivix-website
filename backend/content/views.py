@@ -1,13 +1,14 @@
 from django.conf import settings
 from django.core.cache import cache
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.security import evaluate_risk, generate_time_token
 
-from .models import SiteSetting, WaitlistEntry
-from .serializers import ContactMessageSerializer, WaitlistSerializer
+from .models import Certificate, SiteSetting, WaitlistEntry
+from .serializers import CertificateSerializer, ContactMessageSerializer, WaitlistSerializer
 
 
 class WaitlistView(APIView):
@@ -126,7 +127,7 @@ class SecurityTokenView(APIView):
 
 
 class PublicSettingsView(APIView):
-    """Retrieve public configuration (shipping rules, site mode, contact details)."""
+    """Retrieve public configuration (shipping rules, site mode, contact details, returns policy)."""
 
     permission_classes = [permissions.AllowAny]
 
@@ -140,8 +141,97 @@ class PublicSettingsView(APIView):
             'launch_date': SiteSetting.get_setting('launch_date', '2026-12-01T00:00:00Z'),
             'free_shipping_threshold': SiteSetting.get_int('free_shipping_threshold', 2000),
             'flat_shipping_fee': SiteSetting.get_int('flat_shipping_fee', 200),
-            'store_phone': SiteSetting.get_setting('store_phone', '0300-0000000'),
-            'store_email': SiteSetting.get_setting('store_email', 'info@supplivix.com'),
+            'announcement_bar_enabled': SiteSetting.get_setting('announcement_bar_enabled', 'true').strip().lower() in ['true', '1', 'yes'],
+            'announcement_text_primary': SiteSetting.get_setting('announcement_text_primary', 'Free delivery on orders above Rs. 2,000'),
+            'announcement_text_secondary': SiteSetting.get_setting('announcement_text_secondary', 'Cash on Delivery (COD) Across Pakistan'),
+            'store_phone': SiteSetting.get_setting('store_phone', '0302-5222405'),
+            'store_email': SiteSetting.get_setting('store_email', 'supplivix@gmail.com'),
+            'instagram_url': SiteSetting.get_setting('instagram_url', 'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2'),
+            'deals_enabled': SiteSetting.get_setting('deals_enabled', 'true').strip().lower() in ['true', '1', 'yes'],
+            'deal_banner_1_badge': SiteSetting.get_setting('deal_banner_1_badge', 'Special Bundle'),
+            'deal_banner_1_title': SiteSetting.get_setting('deal_banner_1_title', 'Complete Daily Glow Duo'),
+            'deal_banner_1_desc': SiteSetting.get_setting(
+                'deal_banner_1_desc',
+                'Pair our daily multivitamin with pure clarifying serum for comprehensive internal nutrition and external skin radiance.'
+            ),
+            'deal_banner_1_price': SiteSetting.get_setting('deal_banner_1_price', '3499'),
+            'deal_banner_1_original_price': SiteSetting.get_setting('deal_banner_1_original_price', '4350'),
+            'deal_banner_1_button_text': SiteSetting.get_setting('deal_banner_1_button_text', 'Shop The Duo'),
+            'deal_banner_1_link': SiteSetting.get_setting('deal_banner_1_link', '/shop?bundle=glow-duo'),
+            'deal_banner_2_badge': SiteSetting.get_setting('deal_banner_2_badge', 'Family Pack'),
+            'deal_banner_2_title': SiteSetting.get_setting('deal_banner_2_title', '3-Month Wellness Supply'),
+            'deal_banner_2_desc': SiteSetting.get_setting(
+                'deal_banner_2_desc',
+                'Ensure daily vitamin consistency with our bulk family package. Includes free nationwide COD shipping.'
+            ),
+            'deal_banner_2_highlight': SiteSetting.get_setting('deal_banner_2_highlight', 'Free Nationwide Delivery'),
+            'deal_banner_2_button_text': SiteSetting.get_setting('deal_banner_2_button_text', 'View Family Pack'),
+            'deal_banner_2_link': SiteSetting.get_setting('deal_banner_2_link', '/multivitamins'),
         }
         cache.set("public_settings_cache", settings_dict, timeout=300)
         return Response(settings_dict, status=status.HTTP_200_OK)
+
+
+class CertificateListView(APIView):
+    """Public endpoint to list verified active certificates."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        certs = Certificate.objects.filter(is_active=True).order_by('sort_order', 'id')
+        serializer = CertificateSerializer(certs, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PublicOfferView(APIView):
+    """Public endpoint to list active admin-configured offers."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        from promotions.models import Offer
+        offers = Offer.objects.filter(is_active=True).select_related('product', 'product__category')
+        results = [o.to_dict(request) for o in offers]
+        return Response({'count': len(results), 'results': results}, status=status.HTTP_200_OK)
+
+
+class PublicActiveSaleEventView(APIView):
+    """Public endpoint returning the highest-priority active sale event for the homepage banner and countdown."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        from promotions.services import PricingService
+        now = timezone.now()
+        events = PricingService.get_active_events(now=now)
+        if not events:
+            return Response({'has_active_event': False, 'event': None})
+        top_event = events[0]
+        return Response({'has_active_event': True, 'event': top_event.to_dict(request)})
+
+
+class PublicSaleEventDetailView(APIView):
+    """Public endpoint returning a specific sale event by slug and its eligible products."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, slug):
+        from promotions.models import SaleEvent
+        from promotions.services import PricingService
+        from catalog.models import Product
+        from catalog.serializers import ProductListSerializer
+
+        event = SaleEvent.objects.filter(slug=slug, deleted_at__isnull=True).prefetch_related('items').first()
+        if not event:
+            return Response({'code': 'not_found', 'message': 'Sale event not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        products = list(Product.objects.filter(is_active=True).select_related('category').prefetch_related('images'))
+        eligible = [p for p in products if PricingService.is_product_eligible(event, p)]
+        PricingService.batch_annotate_products(eligible)
+        serializer = ProductListSerializer(eligible, many=True, context={'request': request})
+
+        return Response({
+            'event': event.to_dict(request),
+            'count': len(eligible),
+            'products': serializer.data,
+        })

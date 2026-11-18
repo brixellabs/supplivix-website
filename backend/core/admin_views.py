@@ -5,7 +5,9 @@ Enforces IsAdminUser permissions on all actions and logs mutating operations to 
 
 import csv
 import io
+import mimetypes
 import random
+import re
 import string
 import uuid
 from datetime import timedelta
@@ -14,12 +16,15 @@ from django.db.models import Count, Q, Sum
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status, views
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from accounts.models import User
-from catalog.models import Category, Product, ProductFAQ, ProductImage, Review
-from content.models import ContactMessage, SiteSetting, WaitlistEntry
+from accounts.serializers import StaffMemberSerializer, StaffRegisterSerializer
+from catalog.models import Category, Product, ProductAttribute, ProductFAQ, ProductImage, Review
+from content.models import Certificate, ContactMessage, SiteSetting, WaitlistEntry
+from content.serializers import CertificateSerializer
 from core.models import AdminAuditLog, BlockedIP, BotEvent, FailedLoginLog
 from orders.models import Order
 from promotions.models import Coupon
@@ -36,6 +41,24 @@ def log_admin_action(request, action, target_model, target_id='', details=''):
         target_id=str(target_id),
         details=str(details)[:1000],
         ip_address=ip or '127.0.0.1',
+    )
+
+
+def check_staff_perm(request, perm_key):
+    """
+    Check if the authenticated staff user has permission for a specific module.
+    Returns None if permitted, or Response(403) if denied.
+    """
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated or not user.is_staff:
+        return Response({'code': 'permission_denied', 'message': 'Staff authentication required.'}, status=status.HTTP_403_FORBIDDEN)
+    if user.is_superuser:
+        return None
+    if user.has_staff_perm(perm_key):
+        return None
+    return Response(
+        {'code': 'permission_denied', 'message': f'Access denied: You do not have permission to access {perm_key}.'},
+        status=status.HTTP_403_FORBIDDEN
     )
 
 
@@ -200,6 +223,8 @@ class AdminOverviewView(views.APIView):
             'recent_orders': recent_orders,
             'top_products': top_products,
             'sales_timeline': sales_timeline,
+            'free_shipping_threshold': SiteSetting.get_int('free_shipping_threshold', 2000),
+            'flat_shipping_fee': SiteSetting.get_int('flat_shipping_fee', 200),
         })
 
 
@@ -211,7 +236,7 @@ class AdminProductListView(views.APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
-        queryset = Product.objects.select_related('category').prefetch_related('images').order_by('-id')
+        queryset = Product.objects.select_related('category').prefetch_related('images', 'attributes').order_by('-id')
 
         # Filters
         search = request.query_params.get('search')
@@ -249,8 +274,10 @@ class AdminProductListView(views.APIView):
             queryset = queryset.order_by(ordering)
 
         paginated = paginate_queryset(queryset, request)
-        results = [
-            {
+        results = []
+        for p in paginated['results']:
+            attrs_map = {a.key.lower(): a.value for a in p.attributes.all()}
+            results.append({
                 'id': p.id,
                 'name': p.name,
                 'slug': p.slug,
@@ -265,10 +292,22 @@ class AdminProductListView(views.APIView):
                 'is_featured': p.is_featured,
                 'seo_title': p.seo_title,
                 'seo_description': p.seo_description,
-                'primary_image': p.images.first().image.url if p.images.exists() else None,
-            }
-            for p in paginated['results']
-        ]
+                'description': p.description,
+                'short_description': p.short_description,
+                'serving_size': attrs_map.get('serving size', ''),
+                'directions': attrs_map.get('directions', attrs_map.get('suggested daily use', attrs_map.get('suggested use', ''))),
+                'ingredients': attrs_map.get('active nutritional matrix', attrs_map.get('ingredients', attrs_map.get('key actives', ''))),
+                'storage': attrs_map.get('storage', attrs_map.get('storage guidelines', '')),
+                'description_ur': p.description_ur or '',
+                'directions_ur': p.directions_ur or '',
+                'ingredients_ur': p.ingredients_ur or '',
+                'primary_image': p.images.all()[0].image.url if p.images.all() else None,
+                'images_count': len(p.images.all()),
+                'images': [
+                    {'id': img.id, 'image': img.image.url, 'alt_text': img.alt_text, 'sort_order': img.sort_order}
+                    for img in p.images.all()
+                ],
+            })
         return Response({
             'count': paginated['count'],
             'page': paginated['page'],
@@ -305,6 +344,32 @@ class AdminProductListView(views.APIView):
             category = Category.objects.filter(is_active=True).first()
             category_id = category.id if category else None
 
+        desc = data.get('description', '')
+        desc_ur = (data.get('description_ur') or '').strip()
+        dir_ur = (data.get('directions_ur') or '').strip()
+        ing_ur = (data.get('ingredients_ur') or '').strip()
+
+        # Automatic Urdu translation fallback if admin left Urdu fields blank
+        if not desc_ur and desc:
+            try:
+                desc_ur = translate_text_to_urdu(desc)
+            except Exception:
+                desc_ur = ''
+
+        directions_input = data.get('directions', '')
+        if not dir_ur and directions_input:
+            try:
+                dir_ur = translate_text_to_urdu(directions_input)
+            except Exception:
+                dir_ur = ''
+
+        ingredients_input = data.get('ingredients', '')
+        if not ing_ur and ingredients_input:
+            try:
+                ing_ur = translate_text_to_urdu(ingredients_input)
+            except Exception:
+                ing_ur = ''
+
         product = Product.objects.create(
             name=name,
             slug=slug,
@@ -315,12 +380,41 @@ class AdminProductListView(views.APIView):
             compare_at_price=compare_price,
             stock=stock,
             short_description=data.get('short_description', ''),
-            description=data.get('description', ''),
+            description=desc,
+            description_ur=desc_ur,
+            directions_ur=dir_ur,
+            ingredients_ur=ing_ur,
             seo_title=data.get('seo_title', '')[:70],
             seo_description=data.get('seo_description', '')[:170],
             is_active=bool(data.get('is_active', True)),
             is_featured=bool(data.get('is_featured', False)),
         )
+
+        # Custom product attributes / supplement facts
+        if data.get('serving_size'):
+            ProductAttribute.objects.update_or_create(
+                product=product,
+                key='Serving Size',
+                defaults={'value': str(data['serving_size']).strip()}
+            )
+        if data.get('directions'):
+            ProductAttribute.objects.update_or_create(
+                product=product,
+                key='Directions',
+                defaults={'value': str(data['directions']).strip()}
+            )
+        if data.get('ingredients'):
+            ProductAttribute.objects.update_or_create(
+                product=product,
+                key='Active Nutritional Matrix',
+                defaults={'value': str(data['ingredients']).strip()}
+            )
+        if data.get('storage'):
+            ProductAttribute.objects.update_or_create(
+                product=product,
+                key='Storage',
+                defaults={'value': str(data['storage']).strip()}
+            )
 
         log_admin_action(request, 'create_product', 'Product', product.id, f"Created {product.name} (SKU: {product.sku})")
         return Response({'message': 'Product created successfully.', 'id': product.id}, status=status.HTTP_201_CREATED)
@@ -331,7 +425,7 @@ class AdminProductDetailView(views.APIView):
 
     def get(self, request, pk):
         try:
-            product = Product.objects.select_related('category').prefetch_related('images', 'faqs').get(pk=pk)
+            product = Product.objects.select_related('category').prefetch_related('images', 'faqs', 'attributes').get(pk=pk)
         except Product.DoesNotExist:
             return Response({'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -343,6 +437,12 @@ class AdminProductDetailView(views.APIView):
             {'id': f.id, 'question': f.question, 'answer': f.answer, 'sort_order': f.sort_order}
             for f in product.faqs.all()
         ]
+
+        attrs_map = {a.key.lower(): a.value for a in product.attributes.all()}
+        serving_size = attrs_map.get('serving size', '')
+        directions = attrs_map.get('directions', attrs_map.get('suggested daily use', attrs_map.get('suggested use', '')))
+        ingredients = attrs_map.get('active nutritional matrix', attrs_map.get('ingredients', attrs_map.get('key actives', '')))
+        storage = attrs_map.get('storage', attrs_map.get('storage guidelines', ''))
 
         return Response({
             'id': product.id,
@@ -357,6 +457,13 @@ class AdminProductDetailView(views.APIView):
             'stock': product.stock,
             'short_description': product.short_description,
             'description': product.description,
+            'serving_size': serving_size,
+            'directions': directions,
+            'ingredients': ingredients,
+            'storage': storage,
+            'description_ur': product.description_ur or '',
+            'directions_ur': product.directions_ur or '',
+            'ingredients_ur': product.ingredients_ur or '',
             'seo_title': product.seo_title,
             'seo_description': product.seo_description,
             'is_active': product.is_active,
@@ -400,6 +507,65 @@ class AdminProductDetailView(views.APIView):
             product.category_id = data['category_id']
         if 'product_type' in data:
             product.product_type = data['product_type']
+        if 'description_ur' in data:
+            product.description_ur = data['description_ur']
+        elif 'description' in data and not product.description_ur:
+            try:
+                product.description_ur = translate_text_to_urdu(data['description'])
+            except Exception:
+                pass
+
+        if 'directions_ur' in data:
+            product.directions_ur = data['directions_ur']
+        elif 'directions' in data and not product.directions_ur:
+            try:
+                product.directions_ur = translate_text_to_urdu(data['directions'])
+            except Exception:
+                pass
+
+        if 'ingredients_ur' in data:
+            product.ingredients_ur = data['ingredients_ur']
+        elif 'ingredients' in data and not product.ingredients_ur:
+            try:
+                product.ingredients_ur = translate_text_to_urdu(data['ingredients'])
+            except Exception:
+                pass
+
+        if 'serving_size' in data:
+            val = str(data['serving_size']).strip()
+            if val:
+                ProductAttribute.objects.update_or_create(
+                    product=product, key='Serving Size', defaults={'value': val}
+                )
+            else:
+                product.attributes.filter(key__iexact='Serving Size').delete()
+
+        if 'directions' in data:
+            val = str(data['directions']).strip()
+            if val:
+                ProductAttribute.objects.update_or_create(
+                    product=product, key='Directions', defaults={'value': val}
+                )
+            else:
+                product.attributes.filter(key__in=['Directions', 'Suggested Daily Use', 'Suggested Use']).delete()
+
+        if 'ingredients' in data:
+            val = str(data['ingredients']).strip()
+            if val:
+                ProductAttribute.objects.update_or_create(
+                    product=product, key='Active Nutritional Matrix', defaults={'value': val}
+                )
+            else:
+                product.attributes.filter(key__in=['Active Nutritional Matrix', 'Ingredients', 'Key Actives']).delete()
+
+        if 'storage' in data:
+            val = str(data['storage']).strip()
+            if val:
+                ProductAttribute.objects.update_or_create(
+                    product=product, key='Storage', defaults={'value': val}
+                )
+            else:
+                product.attributes.filter(key__in=['Storage', 'Storage Guidelines']).delete()
 
         product.save()
         log_admin_action(request, 'update_product', 'Product', product.id, f"Updated fields on {product.name}")
@@ -412,6 +578,11 @@ class AdminProductDetailView(views.APIView):
                 'price': product.price,
                 'stock': product.stock,
                 'is_active': product.is_active,
+                'description': product.description,
+                'serving_size': str(data.get('serving_size', '')),
+                'directions': str(data.get('directions', '')),
+                'ingredients': str(data.get('ingredients', '')),
+                'storage': str(data.get('storage', '')),
             }
         })
 
@@ -449,26 +620,28 @@ class AdminProductBulkStatusView(views.APIView):
 
 
 class AdminProductImageUploadView(views.APIView):
-    """Upload product image with alt text (accepts JPEG, PNG, WebP, SVG; max 2 MB)."""
+    """Upload or update product image with alt text (accepts JPEG, PNG, WebP, SVG, JFIF, AVIF; max 2 MB)."""
     permission_classes = [IsAdminUser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
-    ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
+    ALLOWED_MIME_TYPES = [
+        'image/jpeg',
+        'image/jpg',
+        'image/pjpeg',
+        'image/png',
+        'image/x-png',
+        'image/webp',
+        'image/svg+xml',
+        'image/jfif',
+        'image/pipeg',
+        'image/avif',
+    ]
     MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
 
-    def post(self, request, pk):
-        try:
-            product = Product.objects.get(pk=pk)
-        except Product.DoesNotExist:
-            return Response({'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        image_file = request.FILES.get('image')
-        if not image_file:
-            return Response({'message': 'No image file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
-
+    def _validate_image(self, image_file):
         if image_file.size > self.MAX_FILE_SIZE:
             return Response({'message': 'Image exceeds maximum allowed size of 2 MB.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Inspect binary magic bytes to reject executables and non-image binaries
         initial_bytes = image_file.read(16)
         image_file.seek(0)
         file_name = getattr(image_file, 'name', '').lower()
@@ -483,15 +656,16 @@ class AdminProductImageUploadView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        content_type = getattr(image_file, 'content_type', '')
-        if content_type not in self.ALLOWED_MIME_TYPES:
-            return Response(
-                {'message': f'Unsupported format {content_type}. Accepted formats: JPEG, PNG, WebP, SVG.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        content_type = getattr(image_file, 'content_type', '').lower()
+        if not content_type or content_type == 'application/octet-stream':
+            guessed, _ = mimetypes.guess_type(file_name)
+            if guessed:
+                content_type = guessed.lower()
 
-        # Deep format verification using PIL for raster formats
-        if content_type != 'image/svg+xml':
+        is_allowed_mime = content_type in self.ALLOWED_MIME_TYPES
+        is_svg = content_type == 'image/svg+xml' or file_name.endswith('.svg')
+
+        if not is_svg:
             try:
                 from PIL import Image as PILImage
                 image_file.seek(0)
@@ -499,28 +673,104 @@ class AdminProductImageUploadView(views.APIView):
                 img_verify.verify()
                 image_file.seek(0)
             except Exception:
+                if not is_allowed_mime:
+                    return Response(
+                        {'message': f'Unsupported format {content_type}. Accepted formats: JPEG, PNG, WebP, SVG.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
                 return Response(
                     {'message': 'Invalid image format or corrupted file.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+        return None
+
+    def post(self, request, pk):
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return Response({'message': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        replace_id = request.data.get('replace_image_id')
+        replace_img = None
+        if replace_id:
+            try:
+                replace_img = ProductImage.objects.filter(pk=int(replace_id), product=product).first()
+            except (ValueError, TypeError):
+                pass
+
+        if not replace_img and product.images.count() >= 3:
+            return Response(
+                {'message': 'A maximum of 3 images can be uploaded per product. Delete an existing image to upload a new one.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return Response({'message': 'No image file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        val_err = self._validate_image(image_file)
+        if val_err:
+            return val_err
 
         alt_text = request.data.get('alt_text', '').strip() or product.name
         sort_order = int(request.data.get('sort_order', product.images.count()))
 
-        img = ProductImage.objects.create(
-            product=product,
-            image=image_file,
-            alt_text=alt_text,
-            sort_order=sort_order,
-        )
+        if replace_img:
+            replace_img.image = image_file
+            if alt_text:
+                replace_img.alt_text = alt_text
+            replace_img.save()
+            img = replace_img
+            log_admin_action(request, 'replace_product_image', 'ProductImage', img.id, f"Replaced image for {product.name}")
+        else:
+            img = ProductImage.objects.create(
+                product=product,
+                image=image_file,
+                alt_text=alt_text,
+                sort_order=sort_order,
+            )
+            log_admin_action(request, 'upload_product_image', 'ProductImage', img.id, f"Uploaded image for {product.name}")
 
-        log_admin_action(request, 'upload_product_image', 'ProductImage', img.id, f"Uploaded image for {product.name}")
         return Response({
             'message': 'Image uploaded successfully.',
             'id': img.id,
             'image_url': img.image.url,
             'alt_text': img.alt_text,
+            'sort_order': img.sort_order,
         }, status=status.HTTP_201_CREATED)
+
+    def patch(self, request, pk, image_id):
+        try:
+            img = ProductImage.objects.get(pk=image_id, product_id=pk)
+        except ProductImage.DoesNotExist:
+            return Response({'message': 'Image not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        image_file = request.FILES.get('image')
+        if image_file:
+            val_err = self._validate_image(image_file)
+            if val_err:
+                return val_err
+            img.image = image_file
+
+        if 'alt_text' in request.data:
+            alt = request.data.get('alt_text', '').strip()
+            if alt:
+                img.alt_text = alt
+        if 'sort_order' in request.data:
+            try:
+                img.sort_order = int(request.data['sort_order'])
+            except (ValueError, TypeError):
+                pass
+
+        img.save()
+        log_admin_action(request, 'update_product_image', 'ProductImage', img.id, f"Updated image {img.id} for {img.product.name}")
+        return Response({
+            'message': 'Image updated successfully.',
+            'id': img.id,
+            'image_url': img.image.url,
+            'alt_text': img.alt_text,
+            'sort_order': img.sort_order,
+        })
 
     def delete(self, request, pk, image_id):
         try:
@@ -702,6 +952,50 @@ class AdminProductCSVImportView(views.APIView):
         return Response({'message': msg, 'created': created_count, 'updated': updated_count, 'errors': []})
 
 
+def translate_text_to_urdu(text):
+    """Translate English text to Urdu using Google Translate endpoint with graceful fallback."""
+    if not text or not str(text).strip():
+        return ''
+    clean_text = str(text).strip()
+    try:
+        import urllib.request
+        import urllib.parse
+        import json
+        q = urllib.parse.quote(clean_text)
+        url = f'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ur&dt=t&q={q}'
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, timeout=6) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            translated_pieces = [part[0] for part in data[0] if part and len(part) > 0 and part[0]]
+            return ''.join(translated_pieces)
+    except Exception:
+        return clean_text
+
+
+class AdminProductTranslateUrduView(views.APIView):
+    """Generates AI/NLP draft Urdu translations for description, directions, and ingredients."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        perm_error = check_staff_perm(request, 'products')
+        if perm_error:
+            return perm_error
+
+        description = request.data.get('description', '')
+        directions = request.data.get('directions', '')
+        ingredients = request.data.get('ingredients', '')
+
+        description_ur = translate_text_to_urdu(description) if description else ''
+        directions_ur = translate_text_to_urdu(directions) if directions else ''
+        ingredients_ur = translate_text_to_urdu(ingredients) if ingredients else ''
+
+        return Response({
+            'description_ur': description_ur,
+            'directions_ur': directions_ur,
+            'ingredients_ur': ingredients_ur,
+        })
+
+
 # ==============================================================================
 # 3. CATEGORIES MODULE
 # ==============================================================================
@@ -730,7 +1024,15 @@ class AdminCategoryListView(views.APIView):
     def post(self, request):
         data = request.data
         name = data.get('name', '').strip()
-        slug = data.get('slug', '').strip().lower() or name.lower().replace(' ', '-')
+        if not name:
+            return Response({'message': 'Category name is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        raw_slug = data.get('slug', '').strip().lower() or name.lower().replace(' ', '-')
+        clean_slug = re.sub(r'[^\w\-]', '', raw_slug).strip('-')
+        slug = clean_slug or f"cat-{uuid.uuid4().hex[:6]}"
+        if Category.objects.filter(slug=slug).exists():
+            slug = f"{slug}-{uuid.uuid4().hex[:4]}"
+
         parent_id = data.get('parent_id') or None
         sort_order = int(data.get('sort_order', 0))
 
@@ -1179,21 +1481,142 @@ class AdminCouponRedemptionsView(views.APIView):
 
 
 # ==============================================================================
+# 5b. CERTIFICATES MODULE
+# ==============================================================================
+
+class AdminCertificateListView(views.APIView):
+    """List and create brand compliance certificates."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        certificates = Certificate.objects.all().order_by('sort_order', 'id')
+        serializer = CertificateSerializer(certificates, many=True, context={'request': request})
+        return Response({'count': certificates.count(), 'results': serializer.data})
+
+    def post(self, request):
+        name = request.data.get('name', '').strip()
+        if not name:
+            return Response(
+                {'code': 'validation_error', 'message': 'Certificate name is required.', 'fields': {'name': ['This field is required.']}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        badge_code = request.data.get('badge_code', '').strip().lower()
+        if not badge_code:
+            badge_code = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+
+        cert = Certificate.objects.create(
+            name=name,
+            badge_code=badge_code,
+            subtitle=request.data.get('subtitle', '').strip(),
+            issuer=request.data.get('issuer', '').strip(),
+            description=request.data.get('description', '').strip(),
+            sort_order=int(request.data.get('sort_order', 0) or 0),
+            is_active=str(request.data.get('is_active', 'true')).lower() in ['true', '1', 'yes'],
+        )
+        if 'image' in request.FILES:
+            cert.image = request.FILES['image']
+            cert.save()
+
+        log_admin_action(request, 'create_certificate', 'Certificate', cert.id, f"Created certificate: {cert.name}")
+        serializer = CertificateSerializer(cert, context={'request': request})
+        return Response({'message': 'Certificate created successfully.', 'certificate': serializer.data}, status=status.HTTP_201_CREATED)
+
+
+class AdminCertificateDetailView(views.APIView):
+    """Retrieve, update, and delete individual certificates."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, pk):
+        try:
+            cert = Certificate.objects.get(pk=pk)
+        except Certificate.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Certificate not found.', 'fields': {}}, status=status.HTTP_404_NOT_FOUND)
+        serializer = CertificateSerializer(cert, context={'request': request})
+        return Response(serializer.data)
+
+    def patch(self, request, pk):
+        try:
+            cert = Certificate.objects.get(pk=pk)
+        except Certificate.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Certificate not found.', 'fields': {}}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'name' in request.data:
+            val = request.data.get('name', '').strip()
+            if val:
+                cert.name = val
+        if 'subtitle' in request.data:
+            cert.subtitle = request.data.get('subtitle', '').strip()
+        if 'issuer' in request.data:
+            cert.issuer = request.data.get('issuer', '').strip()
+        if 'badge_code' in request.data:
+            val = request.data.get('badge_code', '').strip()
+            if val:
+                cert.badge_code = val
+        if 'description' in request.data:
+            cert.description = request.data.get('description', '').strip()
+        if 'sort_order' in request.data:
+            try:
+                cert.sort_order = int(request.data.get('sort_order', cert.sort_order))
+            except (ValueError, TypeError):
+                pass
+        if 'is_active' in request.data:
+            val = request.data.get('is_active')
+            cert.is_active = val in [True, 'true', 'True', '1', 1]
+        if 'image' in request.FILES:
+            cert.image = request.FILES['image']
+
+        cert.save()
+        log_admin_action(request, 'update_certificate', 'Certificate', cert.id, f"Updated certificate: {cert.name}")
+        serializer = CertificateSerializer(cert, context={'request': request})
+        return Response({'message': 'Certificate updated successfully.', 'certificate': serializer.data})
+
+    def delete(self, request, pk):
+        try:
+            cert = Certificate.objects.get(pk=pk)
+        except Certificate.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Certificate not found.', 'fields': {}}, status=status.HTTP_404_NOT_FOUND)
+
+        name = cert.name
+        cert.delete()
+        log_admin_action(request, 'delete_certificate', 'Certificate', pk, f"Deleted certificate: {name}")
+        return Response({'message': f'Certificate "{name}" deleted successfully.'})
+
+
+# ==============================================================================
 # 6. SHIPPING & SETTINGS MODULE
 # ==============================================================================
 
 class AdminSettingsView(views.APIView):
-    """View and update site settings (free shipping threshold, flat fee, store contact, site mode, launch date)."""
+    """View and update site settings (free shipping threshold, flat fee, store contact, site mode, launch date, deals)."""
     permission_classes = [IsAdminUser]
 
     KEYS = [
         'free_shipping_threshold',
         'flat_shipping_fee',
+        'announcement_bar_enabled',
+        'announcement_text_primary',
+        'announcement_text_secondary',
         'store_phone',
         'store_email',
         'corporate_address',
+        'instagram_url',
         'site_mode',
         'launch_date',
+        'deals_enabled',
+        'deal_banner_1_badge',
+        'deal_banner_1_title',
+        'deal_banner_1_desc',
+        'deal_banner_1_price',
+        'deal_banner_1_original_price',
+        'deal_banner_1_button_text',
+        'deal_banner_1_link',
+        'deal_banner_2_badge',
+        'deal_banner_2_title',
+        'deal_banner_2_desc',
+        'deal_banner_2_highlight',
+        'deal_banner_2_button_text',
+        'deal_banner_2_link',
     ]
 
     def get(self, request):
@@ -1202,6 +1625,58 @@ class AdminSettingsView(views.APIView):
             settings_data[k] = SiteSetting.get_setting(k, '')
         settings_data['free_shipping_threshold'] = SiteSetting.get_int('free_shipping_threshold', 2000)
         settings_data['flat_shipping_fee'] = SiteSetting.get_int('flat_shipping_fee', 200)
+        if not settings_data.get('announcement_bar_enabled'):
+            settings_data['announcement_bar_enabled'] = SiteSetting.get_setting('announcement_bar_enabled', 'true')
+        if not settings_data.get('announcement_text_primary'):
+            settings_data['announcement_text_primary'] = SiteSetting.get_setting(
+                'announcement_text_primary',
+                f"Free delivery on orders above Rs. {settings_data['free_shipping_threshold']:,}"
+            )
+        if not settings_data.get('announcement_text_secondary'):
+            settings_data['announcement_text_secondary'] = SiteSetting.get_setting(
+                'announcement_text_secondary',
+                'Cash on Delivery (COD) Across Pakistan'
+            )
+        if not settings_data.get('deals_enabled'):
+            settings_data['deals_enabled'] = SiteSetting.get_setting('deals_enabled', 'true')
+        if not settings_data.get('deal_banner_1_badge'):
+            settings_data['deal_banner_1_badge'] = SiteSetting.get_setting('deal_banner_1_badge', 'Special Bundle')
+        if not settings_data.get('deal_banner_1_title'):
+            settings_data['deal_banner_1_title'] = SiteSetting.get_setting('deal_banner_1_title', 'Complete Daily Glow Duo')
+        if not settings_data.get('deal_banner_1_desc'):
+            settings_data['deal_banner_1_desc'] = SiteSetting.get_setting(
+                'deal_banner_1_desc',
+                'Pair our daily multivitamin with pure clarifying serum for comprehensive internal nutrition and external skin radiance.'
+            )
+        if not settings_data.get('deal_banner_1_price'):
+            settings_data['deal_banner_1_price'] = SiteSetting.get_setting('deal_banner_1_price', '3499')
+        if not settings_data.get('deal_banner_1_original_price'):
+            settings_data['deal_banner_1_original_price'] = SiteSetting.get_setting('deal_banner_1_original_price', '4350')
+        if not settings_data.get('deal_banner_1_button_text'):
+            settings_data['deal_banner_1_button_text'] = SiteSetting.get_setting('deal_banner_1_button_text', 'Shop The Duo')
+        if not settings_data.get('deal_banner_1_link'):
+            settings_data['deal_banner_1_link'] = SiteSetting.get_setting('deal_banner_1_link', '/shop?bundle=glow-duo')
+        if not settings_data.get('deal_banner_2_badge'):
+            settings_data['deal_banner_2_badge'] = SiteSetting.get_setting('deal_banner_2_badge', 'Family Pack')
+        if not settings_data.get('deal_banner_2_title'):
+            settings_data['deal_banner_2_title'] = SiteSetting.get_setting('deal_banner_2_title', '3-Month Wellness Supply')
+        if not settings_data.get('deal_banner_2_desc'):
+            settings_data['deal_banner_2_desc'] = SiteSetting.get_setting(
+                'deal_banner_2_desc',
+                'Ensure daily vitamin consistency with our bulk family package. Includes free nationwide COD shipping.'
+            )
+        if not settings_data.get('deal_banner_2_highlight'):
+            settings_data['deal_banner_2_highlight'] = SiteSetting.get_setting('deal_banner_2_highlight', 'Free Nationwide Delivery')
+        if not settings_data.get('deal_banner_2_button_text'):
+            settings_data['deal_banner_2_button_text'] = SiteSetting.get_setting('deal_banner_2_button_text', 'View Family Pack')
+        if not settings_data.get('deal_banner_2_link'):
+            settings_data['deal_banner_2_link'] = SiteSetting.get_setting('deal_banner_2_link', '/multivitamins')
+        if not settings_data.get('instagram_url'):
+            settings_data['instagram_url'] = SiteSetting.get_setting(
+                'instagram_url',
+                'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2'
+            )
+
         return Response(settings_data)
 
     def patch(self, request):
@@ -1213,6 +1688,9 @@ class AdminSettingsView(views.APIView):
                     defaults={'value': str(val)}
                 )
                 updated[key] = obj.value
+
+        from django.core.cache import cache
+        cache.delete("public_settings_cache")
 
         log_admin_action(request, 'update_site_settings', 'SiteSetting', '', f"Updated settings: {list(updated.keys())}")
         return Response({'message': 'Settings updated successfully.', 'settings': updated})
@@ -1597,3 +2075,985 @@ class AdminAuditLogsView(views.APIView):
             'total_pages': paginated['total_pages'],
             'results': logs,
         })
+
+
+# ==============================================================================
+# 11. STAFF MANAGEMENT MODULE
+# ==============================================================================
+
+class AdminStaffListView(views.APIView):
+    """List all staff accounts and register new staff members with assigned roles/permissions."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        perm_err = check_staff_perm(request, 'staff')
+        if perm_err:
+            return perm_err
+
+        staff_qs = User.objects.filter(is_staff=True).order_by('-date_joined')
+        serializer = StaffMemberSerializer(staff_qs, many=True)
+        return Response({'count': staff_qs.count(), 'results': serializer.data})
+
+    def post(self, request):
+        perm_err = check_staff_perm(request, 'staff')
+        if perm_err:
+            return perm_err
+
+        serializer = StaffRegisterSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'code': 'validation_error', 'message': 'Invalid staff registration data.', 'fields': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = serializer.validated_data
+        staff_role = data.get('staff_role', 'General Staff')
+        staff_permissions = data.get('staff_permissions', [])
+        if not staff_permissions:
+            staff_permissions = ['overview', 'orders', 'products', 'categories', 'reviews', 'messages', 'certificates']
+
+        new_staff = User.objects.create_user(
+            email=data['email'],
+            password=data['password'],
+            full_name=data['full_name'],
+            phone=data.get('phone', ''),
+            is_staff=True,
+            is_active=data.get('is_active', True),
+            staff_role=staff_role,
+            staff_permissions=staff_permissions,
+        )
+
+        log_admin_action(
+            request,
+            'create_staff',
+            'User',
+            new_staff.id,
+            f"Registered staff member: {new_staff.email} ({new_staff.full_name}) - Role: {staff_role} - Permissions: {','.join(staff_permissions)}"
+        )
+
+        return Response(
+            {
+                'message': f'Staff member "{new_staff.full_name}" registered successfully.',
+                'staff': StaffMemberSerializer(new_staff).data,
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+class AdminStaffDetailView(views.APIView):
+    """Retrieve, update, and remove individual staff members."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, pk):
+        perm_err = check_staff_perm(request, 'staff')
+        if perm_err:
+            return perm_err
+
+        try:
+            staff_user = User.objects.get(pk=pk, is_staff=True)
+        except User.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Staff member not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(StaffMemberSerializer(staff_user).data)
+
+    def patch(self, request, pk):
+        perm_err = check_staff_perm(request, 'staff')
+        if perm_err:
+            return perm_err
+
+        try:
+            staff_user = User.objects.get(pk=pk, is_staff=True)
+        except User.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Staff member not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        if 'full_name' in data:
+            val = str(data['full_name']).strip()
+            if val:
+                staff_user.full_name = val
+        if 'phone' in data:
+            staff_user.phone = str(data['phone']).strip()
+        if 'staff_role' in data:
+            staff_user.staff_role = str(data['staff_role']).strip() or 'General Staff'
+        if 'staff_permissions' in data:
+            perms = data['staff_permissions']
+            if isinstance(perms, list):
+                staff_user.staff_permissions = perms
+        if 'is_active' in data:
+            if staff_user.id == request.user.id and not data['is_active']:
+                return Response(
+                    {'message': 'You cannot deactivate your own account.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            staff_user.is_active = bool(data['is_active'])
+        if 'password' in data and data['password']:
+            pwd = str(data['password']).strip()
+            if len(pwd) < 8:
+                return Response(
+                    {'message': 'Password must be at least 8 characters long.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            staff_user.set_password(pwd)
+
+        staff_user.save()
+        log_admin_action(
+            request,
+            'update_staff',
+            'User',
+            staff_user.id,
+            f"Updated staff member: {staff_user.email} (Role: {staff_user.staff_role})"
+        )
+
+        return Response({
+            'message': f'Staff member "{staff_user.full_name}" updated successfully.',
+            'staff': StaffMemberSerializer(staff_user).data,
+        })
+
+    def delete(self, request, pk):
+        perm_err = check_staff_perm(request, 'staff')
+        if perm_err:
+            return perm_err
+
+        try:
+            staff_user = User.objects.get(pk=pk, is_staff=True)
+        except User.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Staff member not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if staff_user.id == request.user.id:
+            return Response(
+                {'message': 'You cannot delete your own account.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if staff_user.is_superuser and not request.user.is_superuser:
+            return Response(
+                {'message': 'You do not have permission to delete a superuser.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        name = staff_user.full_name
+        email = staff_user.email
+        staff_user.delete()
+
+        log_admin_action(request, 'delete_staff', 'User', pk, f"Deleted staff member: {email} ({name})")
+        return Response({'message': f'Staff member "{name}" deleted successfully.'})
+
+
+# ==============================================================================
+# PROMOTIONAL OFFERS MANAGEMENT
+# ==============================================================================
+
+class AdminOfferListView(views.APIView):
+    """List and create promotional offers (Admin only)."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+
+        from promotions.models import Offer
+        offers = Offer.objects.all().select_related('product', 'product__category').order_by('sort_order', '-created_at')
+        results = [o.to_dict(request) for o in offers]
+        total_count = len(results)
+        active_count = sum(1 for o in results if o['is_active'])
+        return Response({
+            'count': total_count,
+            'active_count': active_count,
+            'inactive_count': total_count - active_count,
+            'results': results,
+        })
+
+    def post(self, request):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+
+        from promotions.models import Offer
+        from catalog.models import Product
+
+        title = request.data.get('title', '').strip()
+        price = request.data.get('price')
+        if not title:
+            return Response(
+                {'code': 'validation_error', 'message': 'Offer title is required.', 'fields': {'title': ['Title is required.']}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if price is None or str(price).strip() == '':
+            if request.data.get('highlight'):
+                price = 0
+            else:
+                return Response(
+                    {'code': 'validation_error', 'message': 'Offer price or highlight perk is required.', 'fields': {'price': ['Price is required.']}},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        product_id = request.data.get('product_id')
+        product = None
+        if product_id:
+            try:
+                product = Product.objects.get(pk=int(product_id))
+            except (Product.DoesNotExist, ValueError):
+                pass
+
+        original_price = request.data.get('original_price')
+        if original_price:
+            try:
+                original_price = int(original_price)
+            except (ValueError, TypeError):
+                original_price = None
+
+        discount_percentage = request.data.get('discount_percentage')
+        if discount_percentage:
+            try:
+                discount_percentage = int(discount_percentage)
+            except (ValueError, TypeError):
+                discount_percentage = 0
+
+        offer = Offer.objects.create(
+            title=title,
+            badge=request.data.get('badge', 'Special Offer').strip(),
+            description=request.data.get('description', '').strip(),
+            product=product,
+            price=int(price),
+            original_price=original_price,
+            discount_percentage=discount_percentage or 0,
+            highlight=request.data.get('highlight', '').strip(),
+            button_text=request.data.get('button_text', 'Shop Offer').strip(),
+            link=request.data.get('link', '').strip(),
+            sort_order=int(request.data.get('sort_order', 0) or 0),
+            is_active=str(request.data.get('is_active', 'true')).lower() in ['true', '1', 'yes'],
+        )
+
+        if 'image' in request.FILES:
+            offer.image = request.FILES['image']
+            offer.save(update_fields=['image'])
+
+        log_admin_action(request, 'create_offer', 'Offer', offer.id, f"Created offer: {offer.title} (Rs. {offer.price})")
+        return Response(offer.to_dict(request), status=status.HTTP_201_CREATED)
+
+
+class AdminOfferDetailView(views.APIView):
+    """Retrieve, update, and delete individual promotional offers."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+        from promotions.models import Offer
+        try:
+            offer = Offer.objects.select_related('product', 'product__category').get(pk=pk)
+        except Offer.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Offer not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(offer.to_dict(request))
+
+    def patch(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+        from promotions.models import Offer
+        from catalog.models import Product
+
+        try:
+            offer = Offer.objects.select_related('product', 'product__category').get(pk=pk)
+        except Offer.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Offer not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'title' in request.data:
+            val = request.data.get('title', '').strip()
+            if val:
+                offer.title = val
+        if 'badge' in request.data:
+            offer.badge = request.data.get('badge', '').strip()
+        if 'description' in request.data:
+            offer.description = request.data.get('description', '').strip()
+        if 'price' in request.data:
+            val = request.data.get('price')
+            if val is not None and str(val).strip() != '':
+                offer.price = int(val)
+        if 'original_price' in request.data:
+            val = request.data.get('original_price')
+            offer.original_price = int(val) if val not in [None, '', 'null'] else None
+        if 'discount_percentage' in request.data:
+            val = request.data.get('discount_percentage')
+            offer.discount_percentage = int(val) if val not in [None, '', 'null'] else 0
+        if 'highlight' in request.data:
+            offer.highlight = request.data.get('highlight', '').strip()
+        if 'button_text' in request.data:
+            offer.button_text = request.data.get('button_text', '').strip()
+        if 'link' in request.data:
+            offer.link = request.data.get('link', '').strip()
+        if 'is_active' in request.data:
+            offer.is_active = str(request.data.get('is_active')).lower() in ['true', '1', 'yes']
+        if 'sort_order' in request.data:
+            offer.sort_order = int(request.data.get('sort_order', 0) or 0)
+        if 'product_id' in request.data:
+            pid = request.data.get('product_id')
+            if pid in [None, '', 'null', 0, '0']:
+                offer.product = None
+            else:
+                try:
+                    offer.product = Product.objects.get(pk=int(pid))
+                except (Product.DoesNotExist, ValueError):
+                    pass
+        if 'image' in request.FILES:
+            offer.image = request.FILES['image']
+
+        offer.save()
+        log_admin_action(request, 'update_offer', 'Offer', offer.id, f"Updated offer: {offer.title}")
+        return Response(offer.to_dict(request))
+
+    def delete(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+        from promotions.models import Offer
+        try:
+            offer = Offer.objects.get(pk=pk)
+        except Offer.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Offer not found.'}, status=status.HTTP_404_NOT_FOUND)
+        title = offer.title
+        offer.delete()
+        log_admin_action(request, 'delete_offer', 'Offer', pk, f"Deleted offer: {title}")
+        return Response({'message': f'Offer "{title}" deleted successfully.'}, status=status.HTTP_200_OK)
+
+
+# ==============================================================================
+# 5d. Sale Events & Campaigns (Seasonal/Occasion-based Discount Engine)
+# ==============================================================================
+
+def _parse_admin_datetime(dt_val):
+    """Parse datetime from admin input (ISO string, datetime-local, etc.) into an aware datetime."""
+    if not dt_val:
+        return None
+    if isinstance(dt_val, (timezone.datetime,)):
+        return dt_val
+    from django.utils.dateparse import parse_datetime
+    dt = parse_datetime(str(dt_val))
+    if dt is None:
+        try:
+            from datetime import datetime
+            dt = datetime.fromisoformat(str(dt_val))
+        except Exception:
+            return None
+    if timezone.is_naive(dt):
+        try:
+            import zoneinfo
+            karachi_tz = zoneinfo.ZoneInfo('Asia/Karachi')
+            dt = timezone.make_aware(dt, karachi_tz)
+        except Exception:
+            dt = timezone.make_aware(dt, timezone.utc)
+    return dt
+
+
+class AdminSaleEventListView(views.APIView):
+    """
+    List, filter, and create seasonal/occasion Sale Events.
+    Protected by staff permissions for 'promotions'.
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+
+        from promotions.models import SaleEvent
+        now = timezone.now()
+        status_filter = request.GET.get('status', 'all').lower().strip()
+        search = request.GET.get('search', '').strip()
+
+        base_qs = SaleEvent.objects.filter(deleted_at__isnull=True)
+        all_events = list(base_qs)
+
+        kpis = {
+            'total': len(all_events),
+            'active': sum(1 for e in all_events if e.is_enabled and e.start_at <= now < e.end_at),
+            'scheduled': sum(1 for e in all_events if e.is_enabled and e.start_at > now),
+            'expired': sum(1 for e in all_events if e.end_at <= now),
+            'disabled': sum(1 for e in all_events if not e.is_enabled),
+        }
+
+        qs = base_qs.prefetch_related('items')
+        if search:
+            qs = qs.filter(Q(name__icontains=search) | Q(slug__icontains=search))
+
+        if status_filter == 'active':
+            qs = qs.filter(is_enabled=True, start_at__lte=now, end_at__gt=now)
+        elif status_filter == 'scheduled':
+            qs = qs.filter(is_enabled=True, start_at__gt=now)
+        elif status_filter == 'expired':
+            qs = qs.filter(end_at__lte=now)
+        elif status_filter == 'disabled':
+            qs = qs.filter(is_enabled=False)
+        elif status_filter == 'draft':
+            qs = qs.filter(status=SaleEvent.STATUS_DRAFT)
+
+        events_data = [e.to_dict(request) for e in qs]
+        return Response({
+            'kpis': kpis,
+            'events': events_data,
+        })
+
+    def post(self, request):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+
+        from decimal import Decimal, InvalidOperation
+        from promotions.models import SaleEvent, SaleEventItem
+        from promotions.services import PricingService
+        from django.db import transaction
+
+        name = request.data.get('name', '').strip()
+        if not name:
+            return Response({'code': 'invalid_name', 'message': 'Event name is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        discount_type = request.data.get('discount_type', 'percent')
+        if discount_type not in ['percent', 'flat']:
+            return Response({'code': 'invalid_type', 'message': 'Discount type must be percent or flat.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            discount_value = Decimal(str(request.data.get('discount_value', '0')))
+        except (InvalidOperation, TypeError, ValueError):
+            return Response({'code': 'invalid_value', 'message': 'Invalid discount value.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if discount_value <= 0:
+            return Response({'code': 'invalid_value', 'message': 'Discount value must be greater than zero.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Guard rails
+        confirm_high = str(request.data.get('confirm_high_discount', '')).lower() in ['true', '1', 'yes']
+        guardrail_warning = None
+        if discount_type == 'percent':
+            if discount_value > 100:
+                return Response({'code': 'invalid_percent', 'message': 'Percentage discount cannot exceed 100%.'}, status=status.HTTP_400_BAD_REQUEST)
+            if discount_value > 90 and not confirm_high:
+                return Response({
+                    'code': 'high_discount_confirmation_required',
+                    'message': f'Discount is {discount_value}%, which exceeds 90%. Please confirm before proceeding.',
+                    'requires_confirmation': True
+                }, status=status.HTTP_400_BAD_REQUEST)
+            elif discount_value > 70:
+                guardrail_warning = f'Warning: A high discount rate of {discount_value}% will be applied.'
+
+        start_at = _parse_admin_datetime(request.data.get('start_at'))
+        end_at = _parse_admin_datetime(request.data.get('end_at'))
+        if not start_at or not end_at:
+            return Response({'code': 'invalid_dates', 'message': 'Both start and end dates/times are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if end_at <= start_at:
+            return Response({'code': 'invalid_dates', 'message': 'End date & time must be strictly after Start date & time.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        apply_on = request.data.get('apply_on', 'all')
+        if apply_on not in ['all', 'categories', 'products']:
+            return Response({'code': 'invalid_apply_on', 'message': 'Invalid apply_on value.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        category_ids = request.data.get('category_ids') or []
+        product_ids = request.data.get('product_ids') or []
+        excluded_product_ids = request.data.get('excluded_product_ids') or []
+
+        # Convert strings / comma-separated lists if needed
+        def _clean_ids(ids_raw):
+            if isinstance(ids_raw, str):
+                import json
+                try:
+                    parsed = json.loads(ids_raw)
+                    if isinstance(parsed, list):
+                        return [int(x) for x in parsed if str(x).isdigit()]
+                except Exception:
+                    return [int(x.strip()) for x in ids_raw.split(',') if x.strip().isdigit()]
+            elif isinstance(ids_raw, list):
+                return [int(x) for x in ids_raw if str(x).isdigit()]
+            return []
+
+        category_ids = _clean_ids(category_ids)
+        product_ids = _clean_ids(product_ids)
+        excluded_product_ids = _clean_ids(excluded_product_ids)
+
+        if apply_on == 'categories' and not category_ids:
+            return Response({'code': 'missing_categories', 'message': 'Please select at least one category.'}, status=status.HTTP_400_BAD_REQUEST)
+        if apply_on == 'products' and not product_ids:
+            return Response({'code': 'missing_products', 'message': 'Please select at least one product.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        max_disc = request.data.get('max_discount_amount')
+        max_discount_amount = int(max_disc) if max_disc not in [None, '', 'null'] else None
+        priority = int(request.data.get('priority', 0) or 0)
+        allow_coupon_stacking = str(request.data.get('allow_coupon_stacking', '')).lower() in ['true', '1', 'yes']
+        show_countdown = str(request.data.get('show_countdown', 'true')).lower() in ['true', '1', 'yes']
+        badge_text = request.data.get('badge_text', '').strip() or (f"{int(discount_value)}% OFF" if discount_type == 'percent' else f"Rs. {int(discount_value)} OFF")
+        description = request.data.get('description', '').strip()
+        is_enabled = str(request.data.get('is_enabled', 'true')).lower() in ['true', '1', 'yes']
+
+        # Overlap detection
+        overlapping = SaleEvent.objects.filter(
+            deleted_at__isnull=True,
+            is_enabled=True,
+            start_at__lt=end_at,
+            end_at__gt=start_at
+        )
+        overlap_warnings = []
+        for other in overlapping:
+            winner = 'This event (higher priority)' if priority > other.priority else (
+                f'{other.name} (higher priority)' if other.priority > priority else 'Tie (lowest sale price will win)'
+            )
+            overlap_warnings.append({
+                'id': other.id,
+                'name': other.name,
+                'priority': other.priority,
+                'resolution': winner,
+            })
+
+        with transaction.atomic():
+            event = SaleEvent(
+                name=name,
+                description=description,
+                discount_type=discount_type,
+                discount_value=discount_value,
+                max_discount_amount=max_discount_amount,
+                apply_on=apply_on,
+                start_at=start_at,
+                end_at=end_at,
+                priority=priority,
+                allow_coupon_stacking=allow_coupon_stacking,
+                show_countdown=show_countdown,
+                badge_text=badge_text,
+                is_enabled=is_enabled,
+                created_by=request.user,
+            )
+            if 'banner_image' in request.FILES:
+                event.banner_image = request.FILES['banner_image']
+            event.save()
+
+            # Create items
+            items_to_create = []
+            if apply_on == 'categories':
+                for cid in set(category_ids):
+                    items_to_create.append(SaleEventItem(sale_event=event, target_type='category', target_id=cid, is_excluded=False))
+            elif apply_on == 'products':
+                for pid in set(product_ids):
+                    items_to_create.append(SaleEventItem(sale_event=event, target_type='product', target_id=pid, is_excluded=False))
+
+            for ex_pid in set(excluded_product_ids):
+                items_to_create.append(SaleEventItem(sale_event=event, target_type='product', target_id=ex_pid, is_excluded=True))
+
+            if items_to_create:
+                SaleEventItem.objects.bulk_create(items_to_create)
+
+        PricingService.invalidate_cache()
+        log_admin_action(request, 'create_sale_event', 'SaleEvent', event.id, f"Created sale event: {event.name}")
+
+        res_data = event.to_dict(request)
+        return Response({
+            'event': res_data,
+            'overlap_warnings': overlap_warnings,
+            'guardrail_warning': guardrail_warning,
+            'message': f'Sale Event "{event.name}" created successfully.',
+        }, status=status.HTTP_201_CREATED)
+
+
+class AdminSaleEventDetailView(views.APIView):
+    """View, update, or soft-delete a Sale Event."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+        from promotions.models import SaleEvent
+        try:
+            event = SaleEvent.objects.get(pk=pk, deleted_at__isnull=True)
+        except SaleEvent.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Sale event not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(event.to_dict(request))
+
+    def patch(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+
+        from decimal import Decimal, InvalidOperation
+        from promotions.models import SaleEvent, SaleEventItem
+        from promotions.services import PricingService
+        from django.db import transaction
+
+        try:
+            event = SaleEvent.objects.get(pk=pk, deleted_at__isnull=True)
+        except SaleEvent.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Sale event not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'name' in request.data:
+            name = request.data.get('name', '').strip()
+            if not name:
+                return Response({'code': 'invalid_name', 'message': 'Name cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
+            event.name = name
+
+        if 'description' in request.data:
+            event.description = request.data.get('description', '').strip()
+
+        if 'discount_type' in request.data:
+            dtype = request.data.get('discount_type')
+            if dtype in ['percent', 'flat']:
+                event.discount_type = dtype
+
+        if 'discount_value' in request.data:
+            try:
+                val = Decimal(str(request.data.get('discount_value', '0')))
+                if val <= 0:
+                    return Response({'code': 'invalid_value', 'message': 'Discount must be greater than zero.'}, status=status.HTTP_400_BAD_REQUEST)
+                if event.discount_type == 'percent' and val > 100:
+                    return Response({'code': 'invalid_percent', 'message': 'Percentage cannot exceed 100%.'}, status=status.HTTP_400_BAD_REQUEST)
+                event.discount_value = val
+            except (InvalidOperation, TypeError, ValueError):
+                return Response({'code': 'invalid_value', 'message': 'Invalid discount value.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if 'max_discount_amount' in request.data:
+            max_disc = request.data.get('max_discount_amount')
+            event.max_discount_amount = int(max_disc) if max_disc not in [None, '', 'null'] else None
+
+        if 'start_at' in request.data:
+            st = _parse_admin_datetime(request.data.get('start_at'))
+            if st:
+                event.start_at = st
+        if 'end_at' in request.data:
+            en = _parse_admin_datetime(request.data.get('end_at'))
+            if en:
+                event.end_at = en
+
+        if event.end_at <= event.start_at:
+            return Response({'code': 'invalid_dates', 'message': 'End date & time must be strictly after Start date & time.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if 'priority' in request.data:
+            event.priority = int(request.data.get('priority', 0) or 0)
+
+        if 'allow_coupon_stacking' in request.data:
+            event.allow_coupon_stacking = str(request.data.get('allow_coupon_stacking')).lower() in ['true', '1', 'yes']
+
+        if 'show_countdown' in request.data:
+            event.show_countdown = str(request.data.get('show_countdown')).lower() in ['true', '1', 'yes']
+
+        if 'badge_text' in request.data:
+            event.badge_text = request.data.get('badge_text', '').strip()
+
+        if 'is_enabled' in request.data:
+            event.is_enabled = str(request.data.get('is_enabled')).lower() in ['true', '1', 'yes']
+
+        if 'apply_on' in request.data:
+            app_on = request.data.get('apply_on')
+            if app_on in ['all', 'categories', 'products']:
+                event.apply_on = app_on
+
+        if 'banner_image' in request.FILES:
+            event.banner_image = request.FILES['banner_image']
+
+        with transaction.atomic():
+            event.save()
+
+            # Optional update items if passed
+            def _clean_ids(ids_raw):
+                if isinstance(ids_raw, str):
+                    import json
+                    try:
+                        parsed = json.loads(ids_raw)
+                        if isinstance(parsed, list):
+                            return [int(x) for x in parsed if str(x).isdigit()]
+                    except Exception:
+                        return [int(x.strip()) for x in ids_raw.split(',') if x.strip().isdigit()]
+                elif isinstance(ids_raw, list):
+                    return [int(x) for x in ids_raw if str(x).isdigit()]
+                return None
+
+            cat_ids = _clean_ids(request.data.get('category_ids'))
+            prod_ids = _clean_ids(request.data.get('product_ids'))
+            ex_ids = _clean_ids(request.data.get('excluded_product_ids'))
+
+            if cat_ids is not None or prod_ids is not None or ex_ids is not None:
+                event.items.all().delete()
+                items_to_create = []
+                if event.apply_on == 'categories' and cat_ids:
+                    for cid in set(cat_ids):
+                        items_to_create.append(SaleEventItem(sale_event=event, target_type='category', target_id=cid, is_excluded=False))
+                elif event.apply_on == 'products' and prod_ids:
+                    for pid in set(prod_ids):
+                        items_to_create.append(SaleEventItem(sale_event=event, target_type='product', target_id=pid, is_excluded=False))
+                if ex_ids:
+                    for pid in set(ex_ids):
+                        items_to_create.append(SaleEventItem(sale_event=event, target_type='product', target_id=pid, is_excluded=True))
+                if items_to_create:
+                    SaleEventItem.objects.bulk_create(items_to_create)
+
+        PricingService.invalidate_cache()
+        log_admin_action(request, 'update_sale_event', 'SaleEvent', event.id, f"Updated sale event: {event.name}")
+        return Response(event.to_dict(request))
+
+    def delete(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+        from promotions.models import SaleEvent
+        from promotions.services import PricingService
+        try:
+            event = SaleEvent.objects.get(pk=pk, deleted_at__isnull=True)
+        except SaleEvent.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Sale event not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        title = event.name
+        event.delete(soft=True)
+        PricingService.invalidate_cache()
+        log_admin_action(request, 'delete_sale_event', 'SaleEvent', pk, f"Deleted sale event: {title}")
+        return Response({'message': f'Sale event "{title}" deleted successfully.'}, status=status.HTTP_200_OK)
+
+
+class AdminSaleEventToggleView(views.APIView):
+    """Quickly toggle is_enabled state of an event."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+        from promotions.models import SaleEvent
+        from promotions.services import PricingService
+        try:
+            event = SaleEvent.objects.get(pk=pk, deleted_at__isnull=True)
+        except SaleEvent.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Sale event not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        event.is_enabled = not event.is_enabled
+        event.status = event.get_effective_status()
+        event.save(update_fields=['is_enabled', 'status'])
+        PricingService.invalidate_cache()
+        log_admin_action(request, 'toggle_sale_event', 'SaleEvent', event.id, f"Toggled sale event: {event.name} enabled={event.is_enabled}")
+        return Response(event.to_dict(request))
+
+
+class AdminSaleEventDuplicateView(views.APIView):
+    """Duplicate an existing Sale Event for convenient reuse."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+        from promotions.models import SaleEvent, SaleEventItem
+        from promotions.services import PricingService
+        from django.db import transaction
+
+        try:
+            event = SaleEvent.objects.prefetch_related('items').get(pk=pk, deleted_at__isnull=True)
+        except SaleEvent.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Sale event not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        with transaction.atomic():
+            clone = SaleEvent.objects.create(
+                name=f"{event.name} (Copy)",
+                description=event.description,
+                discount_type=event.discount_type,
+                discount_value=event.discount_value,
+                max_discount_amount=event.max_discount_amount,
+                apply_on=event.apply_on,
+                start_at=timezone.now() + timedelta(days=1),
+                end_at=timezone.now() + timedelta(days=8),
+                priority=event.priority,
+                allow_coupon_stacking=event.allow_coupon_stacking,
+                show_countdown=event.show_countdown,
+                badge_text=event.badge_text,
+                status=SaleEvent.STATUS_DRAFT,
+                is_enabled=False,
+                created_by=request.user,
+            )
+            items_to_copy = [
+                SaleEventItem(
+                    sale_event=clone,
+                    target_type=it.target_type,
+                    target_id=it.target_id,
+                    custom_discount_value=it.custom_discount_value,
+                    is_excluded=it.is_excluded,
+                )
+                for it in event.items.all()
+            ]
+            if items_to_copy:
+                SaleEventItem.objects.bulk_create(items_to_copy)
+
+        PricingService.invalidate_cache()
+        log_admin_action(request, 'duplicate_sale_event', 'SaleEvent', clone.id, f"Duplicated sale event #{pk} to #{clone.id}")
+        return Response(clone.to_dict(request), status=status.HTTP_201_CREATED)
+
+
+class AdminSaleEventExtendView(views.APIView):
+    """Quickly extend an active or scheduled event by hours or to a new datetime."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+        from promotions.models import SaleEvent
+        from promotions.services import PricingService
+        try:
+            event = SaleEvent.objects.get(pk=pk, deleted_at__isnull=True)
+        except SaleEvent.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Sale event not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        new_end_at = _parse_admin_datetime(request.data.get('new_end_at'))
+        if new_end_at:
+            event.end_at = new_end_at
+        else:
+            hours = int(request.data.get('extend_hours', 24) or 24)
+            event.end_at = event.end_at + timedelta(hours=hours)
+
+        event.status = event.get_effective_status()
+        event.save(update_fields=['end_at', 'status'])
+        PricingService.invalidate_cache()
+        log_admin_action(request, 'extend_sale_event', 'SaleEvent', event.id, f"Extended sale event #{pk} end_at to {event.end_at}")
+        return Response(event.to_dict(request))
+
+
+class AdminSaleEventEndNowView(views.APIView):
+    """Immediately expire an active event."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+        from promotions.models import SaleEvent
+        from promotions.services import PricingService
+        try:
+            event = SaleEvent.objects.get(pk=pk, deleted_at__isnull=True)
+        except SaleEvent.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Sale event not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        event.end_at = timezone.now()
+        event.status = SaleEvent.STATUS_EXPIRED
+        event.save(update_fields=['end_at', 'status'])
+        PricingService.invalidate_cache()
+        log_admin_action(request, 'end_now_sale_event', 'SaleEvent', event.id, f"Manually ended sale event: {event.name}")
+        return Response(event.to_dict(request))
+
+
+class AdminSaleEventPreviewView(views.APIView):
+    """Live preview up to 10 products affected by the given or saved sale discount settings."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+
+        from decimal import Decimal, InvalidOperation
+        from catalog.models import Product
+        from promotions.services import PricingService
+
+        discount_type = request.data.get('discount_type', 'percent')
+        try:
+            discount_value = Decimal(str(request.data.get('discount_value', '0')))
+        except (InvalidOperation, TypeError, ValueError):
+            discount_value = Decimal('0')
+
+        max_disc = request.data.get('max_discount_amount')
+        max_discount_amount = int(max_disc) if max_disc not in [None, '', 'null'] else None
+        apply_on = request.data.get('apply_on', 'all')
+
+        def _clean_ids(ids_raw):
+            if isinstance(ids_raw, str):
+                import json
+                try:
+                    parsed = json.loads(ids_raw)
+                    if isinstance(parsed, list):
+                        return [int(x) for x in parsed if str(x).isdigit()]
+                except Exception:
+                    return [int(x.strip()) for x in ids_raw.split(',') if x.strip().isdigit()]
+            elif isinstance(ids_raw, list):
+                return [int(x) for x in ids_raw if str(x).isdigit()]
+            return []
+
+        category_ids = _clean_ids(request.data.get('category_ids'))
+        product_ids = _clean_ids(request.data.get('product_ids'))
+        excluded_product_ids = _clean_ids(request.data.get('excluded_product_ids'))
+
+        qs = Product.objects.filter(is_active=True).select_related('category').prefetch_related('images')
+        if apply_on == 'products' and product_ids:
+            qs = qs.filter(id__in=product_ids)
+        elif apply_on == 'categories' and category_ids:
+            qs = qs.filter(category_id__in=category_ids)
+
+        if excluded_product_ids:
+            qs = qs.exclude(id__in=excluded_product_ids)
+
+        preview_products = []
+        for p in qs[:25]:
+            orig = int(p.price)
+            if discount_value > 0:
+                sale = PricingService.compute_event_discount(orig, discount_type, discount_value, max_discount_amount)
+                disc_amt = orig - sale
+                disc_pct = round((disc_amt / orig) * 100) if orig > 0 else 0
+            else:
+                sale = orig
+                disc_amt = 0
+                disc_pct = 0
+
+            img_url = None
+            prim = p.images.order_by('sort_order', 'id').first()
+            if prim and prim.image:
+                img_url = request.build_absolute_uri(prim.image.url) if request else prim.image.url
+
+            preview_products.append({
+                'id': p.id,
+                'name': p.name,
+                'category_name': p.category.name if p.category else '',
+                'original_price': orig,
+                'sale_price': sale,
+                'discount_amount': disc_amt,
+                'discount_percent': disc_pct,
+                'image': img_url,
+            })
+
+        return Response({'preview_products': preview_products})
+
+
+class AdminSaleEventReportView(views.APIView):
+    """Sales report for a specific sale event aggregated from order item price snapshots."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, pk):
+        perm_err = check_staff_perm(request, 'promotions')
+        if perm_err:
+            return perm_err
+        from promotions.models import SaleEvent
+        from orders.models import OrderItem
+
+        try:
+            event = SaleEvent.objects.get(pk=pk, deleted_at__isnull=True)
+        except SaleEvent.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Sale event not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        items = OrderItem.objects.filter(
+            Q(sale_event=event) | Q(sale_event_name=event.name)
+        ).select_related('order')
+
+        orders_count = items.values('order_id').distinct().count()
+        units_sold = items.aggregate(u=Sum('quantity'))['u'] or 0
+        revenue = sum((it.sale_price or it.unit_price) * it.quantity for it in items)
+        total_discount_given = sum((it.discount_amount or 0) * it.quantity for it in items)
+
+        top_products = list(
+            items.values('product_name')
+            .annotate(units=Sum('quantity'), line_revenue=Sum('line_total'))
+            .order_by('-units')[:5]
+        )
+
+        return Response({
+            'report': {
+                'event_id': event.id,
+                'event_name': event.name,
+                'discount_badge': event.badge_text,
+                'orders_count': orders_count,
+                'units_sold': units_sold,
+                'revenue': revenue,
+                'total_discount_given': total_discount_given,
+                'top_products': top_products,
+            }
+        })
+
+

@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Breadcrumbs from '../components/layout/Breadcrumbs';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
+import Accordion from '../components/ui/Accordion';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../services/api';
 import SEOHead from '../components/seo/SEOHead';
+import { BRAND_FAQS, NEW_CUSTOMER_FAQS } from '../data/faqs';
 
 export default function ContactPage() {
   const { showToast } = useToast();
+  const [faqTab, setFaqTab] = useState('trust');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -84,7 +88,7 @@ export default function ContactPage() {
     <div className="bg-white min-h-screen pb-16">
       <SEOHead
         title="Contact Supplivix Care | Nationwide COD Support"
-        description="Get in touch with Supplivix customer care in Karachi. Phone, WhatsApp, and email support for all Cash on Delivery orders across Pakistan."
+        description="Get in touch with Supplivix customer care. Phone, WhatsApp (0302-5222405), and email support for all Cash on Delivery orders across Pakistan."
         canonical="/contact"
         schema={{
           '@type': 'ContactPage',
@@ -95,20 +99,38 @@ export default function ContactPage() {
       />
       <Breadcrumbs items={[{ label: 'Contact Us', href: '/contact' }]} />
 
-      <div className="max-w-site mx-auto px-4 sm:px-6 py-10">
-        <div className="text-center max-w-xl mx-auto mb-10">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-green">
-            Customer Support
+      {/* Hero Header Banner with Panoramic Wellness Background */}
+      <section className="relative overflow-hidden bg-surface-subtle border-b border-surface-border py-14 md:py-20 text-center">
+        {/* Panoramic Background Photography */}
+        <div
+          className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-85 transition-opacity duration-300"
+          style={{
+            backgroundImage: "url('/media/contact-hero-bg.jpg')",
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Soft center gradient wash ensuring 100% WCAG contrast for centered typography */}
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-[#faf9f6]/40 via-[#faf9f6]/92 via-50% to-[#faf9f6]/40 pointer-events-none"
+          aria-hidden="true"
+        />
+
+        <div className="max-w-site mx-auto px-4 sm:px-6 relative z-10">
+          <span className="text-xs font-bold uppercase tracking-widest text-brand-green mb-2 block">
+            Nationwide Customer Care • Fast Assistance
           </span>
-          <h1 className="text-2xl sm:text-3xl font-bold uppercase tracking-tight text-brand-ink mt-1">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold uppercase tracking-tight text-brand-ink mb-3">
             Get in Touch
           </h1>
-          <p className="text-xs text-ink-muted mt-2">
+          <p className="text-xs sm:text-sm md:text-base text-ink-muted max-w-xl mx-auto leading-relaxed">
             Have questions about multivitamin dosage, routine timing, or Cash on Delivery? Our dedicated team is here to assist you.
           </p>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="max-w-site mx-auto px-4 sm:px-6 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Direct Contact Info */}
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-surface-subtle border border-surface-border rounded-lg p-6 shadow-card space-y-4">
@@ -117,39 +139,85 @@ export default function ContactPage() {
               </h2>
 
               <div className="space-y-4 text-xs text-ink-muted">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-brand-green text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                <a
+                  href="https://wa.me/923025222405"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 group transition-colors cursor-pointer"
+                  title="Chat on WhatsApp (0302-5222405)"
+                >
+                  <div className="w-8 h-8 rounded-full bg-brand-green text-white flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-[#128C7E] transition-colors">
                     <Icon name="phone" className="text-xs" />
                   </div>
                   <div>
-                    <span className="font-bold text-brand-ink block">Phone Inquiries</span>
-                    <a href="tel:+923000000000" className="hover:text-brand-green">
-                      0300-0000000
-                    </a>
+                    <span className="font-bold text-brand-ink block group-hover:text-brand-green transition-colors">
+                      Phone Inquiries
+                    </span>
+                    <span className="text-ink-muted group-hover:text-brand-green group-hover:underline transition-colors">
+                      0302-5222405
+                    </span>
                   </div>
-                </div>
+                </a>
 
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-brand-green text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                <a
+                  href="https://mail.google.com/mail/?view=cm&fs=1&to=supplivix@gmail.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 group transition-colors cursor-pointer"
+                  title="Open Gmail to email supplivix@gmail.com"
+                >
+                  <div className="w-8 h-8 rounded-full bg-brand-green text-white flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-[#075E54] transition-colors">
                     <Icon name="envelope" className="text-xs" />
                   </div>
                   <div>
-                    <span className="font-bold text-brand-ink block">Email Support</span>
-                    <a href="mailto:info@supplivix.com" className="hover:text-brand-green">
-                      info@supplivix.com
-                    </a>
+                    <span className="font-bold text-brand-ink block group-hover:text-brand-green transition-colors">
+                      Email Support
+                    </span>
+                    <span className="text-ink-muted group-hover:text-brand-green group-hover:underline transition-colors">
+                      supplivix@gmail.com
+                    </span>
                   </div>
-                </div>
+                </a>
 
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-brand-green text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                <a
+                  href="https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 group transition-colors cursor-pointer"
+                  title="Follow & DM on Instagram (@supp.livix)"
+                >
+                  <div className="w-8 h-8 rounded-full bg-brand-green text-white flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-[#c13584] transition-colors">
+                    <Icon name="instagram" className="text-xs" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-brand-ink block group-hover:text-brand-green transition-colors">
+                      Instagram Official
+                    </span>
+                    <span className="text-ink-muted group-hover:text-brand-green group-hover:underline transition-colors">
+                      @supp.livix
+                    </span>
+                  </div>
+                </a>
+
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=Kohinoor+City,+Jaranwala+Road,+Faisalabad,+Punjab,+Pakistan"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 group transition-colors cursor-pointer"
+                  title="View on Google Maps"
+                >
+                  <div className="w-8 h-8 rounded-full bg-brand-green text-white flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-[#075E54] transition-colors">
                     <Icon name="location" className="text-xs" />
                   </div>
                   <div>
-                    <span className="font-bold text-brand-ink block">Corporate Office</span>
-                    <span>Kohinoor City, Jaranwala Road, Faisalabad, Punjab, Pakistan</span>
+                    <span className="font-bold text-brand-ink block group-hover:text-brand-green transition-colors">
+                      Corporate Office
+                    </span>
+                    <span className="text-ink-muted group-hover:text-brand-green group-hover:underline transition-colors">
+                      Kohinoor City, Jaranwala Road, Faisalabad, Punjab, Pakistan
+                    </span>
                   </div>
-                </div>
+                </a>
 
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full bg-brand-green text-white flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -165,7 +233,7 @@ export default function ContactPage() {
               {/* Instant WhatsApp Action */}
               <div className="pt-4 border-t border-surface-border">
                 <a
-                  href="https://wa.me/923000000000"
+                  href="https://wa.me/923025222405"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full inline-flex items-center justify-center gap-2 bg-[#075E54] hover:bg-[#128C7E] text-white py-3 px-4 rounded-sm text-xs font-bold uppercase tracking-wider transition-colors shadow-solid-sm"
@@ -197,7 +265,7 @@ export default function ContactPage() {
 
               {submitted && (
                 <div className="mb-6 p-4 bg-green-50 border border-brand-green rounded-md text-xs text-brand-green font-medium">
-                  Your message has been successfully transmitted. Our customer support team will get in touch with you within 24 business hours.
+                  Your message has been successfully transmitted.
                 </div>
               )}
 
@@ -264,7 +332,7 @@ export default function ContactPage() {
                       <option value="">Select an inquiry topic</option>
                       <option value="Product Guidance">Multivitamins Guidance / Dosage</option>
                       <option value="Order Tracking">Cash on Delivery Order Tracking</option>
-                      <option value="Returns & Exchanges">Returns or Exchanges</option>
+                      <option value="Order Issue">Order Issue / Damaged Item</option>
                       <option value="Wholesale / Bulk">Wholesale / Corporate Inquiry</option>
                       <option value="Other">Other Inquiry</option>
                     </select>
@@ -304,6 +372,60 @@ export default function ContactPage() {
             </div>
           </div>
         </div>
+
+        {/* Frequently Asked Questions Section - Full Width Centered Below Grid */}
+        <section className="mt-16 pt-12 border-t border-surface-border">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-8">
+              <span className="text-xs font-bold uppercase tracking-widest text-brand-green mb-2 block">
+                Common Inquiries &amp; Customer Confidence
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold uppercase tracking-tight text-brand-ink mb-2">
+                Frequently Asked Questions
+              </h2>
+              <p className="text-xs sm:text-sm text-ink-muted mb-6 max-w-xl mx-auto leading-relaxed">
+                Quick answers to common questions about Supplivix Beauty &amp; Wellness formulations, new customer trust, and nationwide fulfillment.
+              </p>
+
+              {/* Category Toggle Pills */}
+              <div className="inline-flex p-1 bg-surface-subtle border border-surface-border rounded-lg gap-1">
+                <button
+                  type="button"
+                  onClick={() => setFaqTab('trust')}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    faqTab === 'trust'
+                      ? 'bg-brand-green text-white shadow-sm'
+                      : 'text-brand-ink hover:text-brand-green'
+                  }`}
+                >
+                  Trust &amp; Customer Confidence ({NEW_CUSTOMER_FAQS.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFaqTab('brand')}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    faqTab === 'brand'
+                      ? 'bg-brand-green text-white shadow-sm'
+                      : 'text-brand-ink hover:text-brand-green'
+                  }`}
+                >
+                  Brand &amp; Products ({BRAND_FAQS.length})
+                </button>
+              </div>
+            </div>
+
+            <Accordion items={faqTab === 'trust' ? NEW_CUSTOMER_FAQS : BRAND_FAQS} />
+
+            <div className="text-center mt-8">
+              <Link to="/faq">
+                <Button variant="outline" size="sm" className="inline-flex items-center gap-2">
+                  <span>Explore All 20 Questions in Knowledge Base</span>
+                  <Icon name="arrow-right" className="text-xs" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

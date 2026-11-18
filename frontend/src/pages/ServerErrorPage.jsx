@@ -39,13 +39,13 @@ export default function ServerErrorPage({ onRetry }) {
         <div className="mt-6 pt-6 border-t border-surface-border text-xs text-ink-muted">
           Need immediate assistance?{' '}
           <a
-            href="https://wa.me/923000000000"
+            href="https://wa.me/923025222405"
             target="_blank"
             rel="noopener noreferrer"
             className="font-bold text-brand-green hover:underline inline-flex items-center gap-1"
           >
             <Icon name="whatsapp" />
-            <span>Chat on WhatsApp</span>
+            <span>Chat on WhatsApp (0302-5222405)</span>
           </a>
         </div>
       </div>

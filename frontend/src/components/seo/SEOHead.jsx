@@ -14,6 +14,7 @@ export default function SEOHead({
   ogType = 'website',
   noindex = false,
   schema = null,
+  alternateLanguages = null,
 }) {
   useEffect(() => {
     // 1. Title (strictly under 60 characters)
@@ -64,6 +65,22 @@ export default function SEOHead({
     }
     canonicalEl.setAttribute('href', finalCanonical);
 
+    // 4b. Alternate hreflang tags for multilingual SEO
+    const existingAlternates = document.querySelectorAll('link[rel="alternate"][hreflang]');
+    existingAlternates.forEach((el) => el.remove());
+
+    if (Array.isArray(alternateLanguages) && alternateLanguages.length > 0) {
+      alternateLanguages.forEach(({ hreflang, href }) => {
+        if (!hreflang || !href) return;
+        const linkEl = document.createElement('link');
+        linkEl.setAttribute('rel', 'alternate');
+        linkEl.setAttribute('hreflang', hreflang);
+        const finalHref = href.startsWith('http') ? href : `${baseSiteUrl}${href.startsWith('/') ? '' : '/'}${href}`;
+        linkEl.setAttribute('href', finalHref);
+        document.head.appendChild(linkEl);
+      });
+    }
+
     // 5. OpenGraph
     setMetaTag('property', 'og:title', formattedTitle);
     setMetaTag('property', 'og:description', finalDesc);
@@ -101,9 +118,13 @@ export default function SEOHead({
         name: 'Supplivix',
         url: 'https://supplivix.com',
         logo: 'https://supplivix.com/assets/logo.png',
+        sameAs: [
+          'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2',
+          'https://wa.me/923025222405',
+        ],
         contactPoint: {
           '@type': 'ContactPoint',
-          telephone: '+92-300-0000000',
+          telephone: '+92-302-5222405',
           contactType: 'customer support',
           areaServed: 'PK',
           availableLanguage: ['English', 'Urdu'],
@@ -136,7 +157,7 @@ export default function SEOHead({
     } else if (scriptEl) {
       scriptEl.remove();
     }
-  }, [title, description, canonical, ogImage, ogType, noindex, schema]);
+  }, [title, description, canonical, ogImage, ogType, noindex, schema, JSON.stringify(alternateLanguages)]);
 
   return null;
 }

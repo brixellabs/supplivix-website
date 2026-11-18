@@ -28,16 +28,22 @@ def custom_exception_handler(exc, context):
                 code = getattr(exc, 'default_code', 'error')
             else:
                 code = 'validation_error'
-                message = 'Validation failed.'
+                reasons = []
                 for key, val in data.items():
                     if isinstance(val, list):
                         fields[key] = [str(v) for v in val]
+                        reasons.extend([str(v) for v in val])
                     else:
                         fields[key] = [str(val)]
+                        reasons.append(str(val))
+                if reasons:
+                    message = f"Validation failed: {' '.join(reasons)}"
+                else:
+                    message = 'Validation failed.'
         elif isinstance(data, list):
             code = 'validation_error'
-            message = 'Validation failed.'
             fields['non_field_errors'] = [str(v) for v in data]
+            message = f"Validation failed: {' '.join(str(v) for v in data)}" if data else 'Validation failed.'
 
         formatted_data = {
             'code': code,

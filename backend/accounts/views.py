@@ -1,8 +1,10 @@
 from django.contrib.auth import login, logout
 from django.contrib.auth.tokens import default_token_generator
 from django.core.cache import cache
+from django.utils.decorators import method_decorator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -21,6 +23,16 @@ from .serializers import (
 )
 
 
+class CsrfTokenView(APIView):
+    """Provides a safe GET endpoint to establish or refresh the CSRF cookie."""
+    permission_classes = [permissions.AllowAny]
+
+    @method_decorator(ensure_csrf_cookie)
+    def get(self, request):
+        return Response({'message': 'CSRF cookie initialized.'}, status=status.HTTP_200_OK)
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'register'
@@ -64,6 +76,12 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        if user.email:
+            from orders.models import Order
+            Order.objects.filter(user__isnull=True, guest_email__iexact=user.email.strip().lower()).update(user=user)
+        if getattr(user, 'phone', None):
+            from orders.models import Order
+            Order.objects.filter(user__isnull=True, shipping_address_snapshot__phone=user.phone.strip()).update(user=user)
         login(request, user)
         return Response(
             {
@@ -74,6 +92,7 @@ class RegisterView(APIView):
         )
 
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'login'
@@ -122,6 +141,12 @@ class LoginView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         login(request, user)
+        if user.email:
+            from orders.models import Order
+            Order.objects.filter(user__isnull=True, guest_email__iexact=user.email.strip().lower()).update(user=user)
+        if getattr(user, 'phone', None):
+            from orders.models import Order
+            Order.objects.filter(user__isnull=True, shipping_address_snapshot__phone=user.phone.strip()).update(user=user)
         return Response(
             {
                 'message': 'Login successful.',
@@ -139,6 +164,7 @@ class LogoutView(APIView):
         return Response({'message': 'Logged out successfully.'}, status=status.HTTP_200_OK)
 
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class CurrentUserView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]

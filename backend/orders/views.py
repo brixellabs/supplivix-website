@@ -1,9 +1,11 @@
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.models import User
 from cart.views import get_or_create_cart
 from core.security import evaluate_risk
 
@@ -121,6 +123,11 @@ class PlaceOrderView(APIView):
             )
 
         user = request.user if request.user.is_authenticated else None
+        if not user and data.get('email'):
+            user = User.objects.filter(email__iexact=data['email'].strip(), is_active=True).first()
+        if not user and data.get('phone'):
+            user = User.objects.filter(phone=data['phone'].strip(), is_active=True).first()
+
         order = place_cod_order(cart=cart, checkout_data=data, user=user)
 
         if idempotency_key:
@@ -144,7 +151,30 @@ class OrderListView(APIView):
         return [permissions.IsAuthenticated()]
 
     def get(self, request):
-        orders = Order.objects.filter(user=request.user).order_by('-created_at')
+        user = request.user
+        user_email = (user.email or '').strip().lower()
+        user_phone = (getattr(user, 'phone', None) or '').strip()
+
+        # Retroactively associate any unlinked guest orders placed with this email or phone
+        if user_email:
+            Order.objects.filter(
+                user__isnull=True,
+                guest_email__iexact=user_email
+            ).update(user=user)
+
+        if user_phone:
+            Order.objects.filter(
+                user__isnull=True,
+                shipping_address_snapshot__phone=user_phone
+            ).update(user=user)
+
+        query = Q(user=user)
+        if user_email:
+            query |= Q(guest_email__iexact=user_email)
+        if user_phone:
+            query |= Q(shipping_address_snapshot__phone=user_phone)
+
+        orders = Order.objects.filter(query).distinct().order_by('-created_at')
         serializer = OrderListSerializer(orders, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -167,7 +197,17 @@ class OrderDetailView(APIView):
 
         # Object-level security: authenticated users only see their own orders
         if request.user.is_authenticated:
-            if order.user and order.user != request.user and not request.user.is_staff:
+            user_phone = (getattr(request.user, 'phone', None) or '').strip()
+            user_email = (request.user.email or '').strip().lower()
+            snap_phone = ''
+            if isinstance(order.shipping_address_snapshot, dict):
+                snap_phone = str(order.shipping_address_snapshot.get('phone') or '').strip()
+            is_owner = (
+                order.user == request.user or
+                (order.guest_email and order.guest_email.strip().lower() == user_email) or
+                (bool(user_phone) and snap_phone == user_phone)
+            )
+            if not is_owner and not request.user.is_staff:
                 return Response(
                     {'code': 'forbidden', 'message': 'You do not have permission to view this order.', 'fields': {}},
                     status=status.HTTP_403_FORBIDDEN
@@ -191,7 +231,11 @@ class CancelOrderView(APIView):
             )
 
         if request.user.is_authenticated:
-            if order.user and order.user != request.user and not request.user.is_staff:
+            is_owner = (
+                order.user == request.user or
+                (order.guest_email and order.guest_email.lower() == (request.user.email or '').lower())
+            )
+            if not is_owner and not request.user.is_staff:
                 return Response(
                     {'code': 'forbidden', 'message': 'You do not have permission to cancel this order.', 'fields': {}},
                     status=status.HTTP_403_FORBIDDEN

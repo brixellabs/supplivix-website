@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from .models import ContactMessage, SiteSetting, WaitlistEntry
+from .models import Certificate, ContactMessage, SiteSetting, WaitlistEntry
+
+
+@admin.register(Certificate)
+class CertificateAdmin(admin.ModelAdmin):
+    list_display = ('name', 'issuer', 'sort_order', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'issuer', 'description', 'badge_code')
+    list_editable = ('sort_order', 'is_active')
 
 
 @admin.register(SiteSetting)

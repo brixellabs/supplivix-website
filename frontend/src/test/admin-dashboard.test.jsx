@@ -103,6 +103,51 @@ describe('Phase 5: Staff Admin Dashboard (/admin-panel)', () => {
       ],
     });
 
+    vi.spyOn(api, 'getAdminOffers').mockResolvedValue({
+      count: 2,
+      active_count: 2,
+      inactive_count: 0,
+      results: [
+        {
+          id: 1,
+          title: 'Complete Daily Glow Duo',
+          badge: 'Special Bundle',
+          description: 'Pair our daily multivitamin with pure clarifying serum.',
+          price: 3499,
+          original_price: 4350,
+          highlight: '',
+          button_text: 'Shop The Duo',
+          link: '/shop?bundle=glow-duo',
+          is_active: true,
+          sort_order: 1,
+        },
+        {
+          id: 2,
+          title: '3-Month Wellness Supply',
+          badge: 'Family Pack',
+          description: 'Ensure daily vitamin consistency with our bulk family package.',
+          price: 0,
+          original_price: null,
+          highlight: 'Free Nationwide Delivery',
+          button_text: 'View Family Pack',
+          link: '/multivitamins',
+          is_active: true,
+          sort_order: 2,
+        },
+      ],
+    });
+
+    vi.spyOn(api, 'createAdminOffer').mockResolvedValue({
+      id: 3,
+      title: 'Mega Vitality Pack',
+      price: 4999,
+      is_active: true,
+    });
+
+    vi.spyOn(api, 'deleteAdminOffer').mockResolvedValue({
+      message: 'Offer deleted successfully.',
+    });
+
     vi.spyOn(api, 'getAdminSettings').mockResolvedValue({
       free_shipping_threshold: 2000,
       flat_shipping_fee: 200,
@@ -159,12 +204,12 @@ describe('Phase 5: Staff Admin Dashboard (/admin-panel)', () => {
     expect(screen.getByRole('button', { name: /Orders \(COD\)/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Products/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Categories/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Coupons/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sale Events/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Promotional Bundles/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Shipping & Settings/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Customers/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Reviews/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Messages & Waitlist/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Bot & IP Security/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Audit Trail/i })).toBeInTheDocument();
 
     // KPI cards
@@ -184,11 +229,10 @@ describe('Phase 5: Staff Admin Dashboard (/admin-panel)', () => {
       expect(screen.getByText(/Import CSV/i)).toBeInTheDocument();
     });
 
-    // Switch to Bot & IP Security tab
-    fireEvent.click(screen.getByRole('button', { name: /Bot & IP Security/i }));
+    // Switch to Messages & Waitlist tab
+    fireEvent.click(screen.getByRole('button', { name: /Messages & Waitlist/i }));
     await waitFor(() => {
-      expect(screen.getByText(/Manual IP Unblock/i)).toBeInTheDocument();
-      expect(screen.getByText(/Recent Bot & Honeypot Telemetry Events/i)).toBeInTheDocument();
+      expect(screen.getByText(/Customer Contact Inquiries/i)).toBeInTheDocument();
     });
 
     // Switch to Audit Trail tab
@@ -310,15 +354,9 @@ describe('Phase 5: Staff Admin Dashboard (/admin-panel)', () => {
     });
   });
 
-  it('ADM-06: renders Coupons tab with token generation and rules fields', async () => {
+  it('ADM-06: verifies Coupons tab is removed from admin navigation', async () => {
     renderAdminPage();
-    fireEvent.click(screen.getByRole('button', { name: /Coupons/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/Create Discount Coupon/i)).toBeInTheDocument();
-      expect(screen.getByText(/Generate Random/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Discount Type/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Min Order \(PKR\)/i)).toBeInTheDocument();
-    });
+    expect(screen.queryByRole('button', { name: /Coupons/i })).not.toBeInTheDocument();
   });
 
   it('ADM-07: renders Shipping & Settings tab with logistics controls and saves threshold', async () => {
@@ -371,6 +409,32 @@ describe('Phase 5: Staff Admin Dashboard (/admin-panel)', () => {
     await waitFor(() => {
       expect(screen.getByText(/Immutable Staff Action Audit Log/i)).toBeInTheDocument();
       expect(screen.getByText(/update_site_settings/i)).toBeInTheDocument();
+    });
+  });
+
+  it('ADM-11: allows admin to view, create, and remove promotional bundles', async () => {
+    renderAdminPage();
+    // Switch to Promotional Bundles tab
+    fireEvent.click(screen.getByRole('button', { name: /Promotional Bundles/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Promotional Bundles & Homepage Deals/i)).toBeInTheDocument();
+      expect(screen.getByText(/Complete Daily Glow Duo/i)).toBeInTheDocument();
+      expect(screen.getByText(/3-Month Wellness Supply/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /\+ Add New Bundle/i })).toBeInTheDocument();
+    });
+
+    // Open remove confirmation modal for first bundle
+    const removeButtons = screen.getAllByRole('button', { name: /Remove/i });
+    fireEvent.click(removeButtons[0]);
+    await waitFor(() => {
+      expect(screen.getByText(/Remove Promotional Bundle/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Yes, Remove Bundle/i })).toBeInTheDocument();
+    });
+
+    // Confirm deletion
+    fireEvent.click(screen.getByRole('button', { name: /Yes, Remove Bundle/i }));
+    await waitFor(() => {
+      expect(api.deleteAdminOffer).toHaveBeenCalledWith(1);
     });
   });
 });

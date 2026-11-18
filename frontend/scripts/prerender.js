@@ -51,6 +51,18 @@ const STATIC_ROUTES = [
     summary: 'Full range of dietary multivitamins and dermatological skincare formulations. Whole PKR pricing with Cash on Delivery nationwide.',
   },
   {
+    path: 'offers',
+    title: 'Special Offers & Bundles | Supplivix Pakistan',
+    description: 'Exclusive bundle discounts, limited-time price drops, and promotional multivitamin and skincare deals from Supplivix Pakistan.',
+    schema: {
+      '@type': 'CollectionPage',
+      name: 'Special Offers',
+      url: `${BASE_URL}/offers/`,
+    },
+    heading: 'Special Offers & Value Bundles',
+    summary: 'Active promotional price reductions, exclusive bundles, and checkout voucher savings with nationwide Cash on Delivery.',
+  },
+  {
     path: 'about',
     title: 'About Supplivix | Bioavailable Wellness Pakistan',
     description: 'Supplivix was founded in Karachi to eliminate widespread micronutrient deficiencies in Pakistan with certified bioavailable nutrition.',
@@ -65,14 +77,14 @@ const STATIC_ROUTES = [
   {
     path: 'contact',
     title: 'Contact Supplivix Care | Nationwide COD Support',
-    description: 'Get in touch with Supplivix customer care in Karachi. Phone, WhatsApp, and email support for all Cash on Delivery orders across Pakistan.',
+    description: 'Get in touch with Supplivix customer care. Phone, WhatsApp, and email support for all Cash on Delivery orders across Pakistan.',
     schema: {
       '@type': 'ContactPage',
       name: 'Contact Supplivix Care',
       url: `${BASE_URL}/contact/`,
     },
     heading: 'Customer Support & Inquiries',
-    summary: 'Our dedicated customer care team in Karachi is available Monday through Saturday. Phone: +92 300 0000000 | Email: care@supplivix.pk',
+    summary: 'Our dedicated customer care team in Faisalabad is available Monday through Saturday. Phone & WhatsApp: 0302-5222405 | Email: supplivix@gmail.com',
   },
   {
     path: 'privacy-policy',
@@ -109,18 +121,6 @@ const STATIC_ROUTES = [
     },
     heading: 'Nationwide Shipping & COD Policy',
     summary: 'Every order ships via tracked courier across Pakistan with Cash on Delivery. Free shipping unlocked at Rs. 2,000; flat Rs. 200 fee below.',
-  },
-  {
-    path: 'returns-policy',
-    title: '7-Day Return Policy & Guarantee | Supplivix',
-    description: 'Read our hassle-free 7-day return policy for sealed wellness formulations delivered via Cash on Delivery across Pakistan.',
-    schema: {
-      '@type': 'WebPage',
-      name: 'Return Policy',
-      url: `${BASE_URL}/returns-policy/`,
-    },
-    heading: '7-Day Return Policy & Guarantee',
-    summary: 'Unopened, tamper-sealed formulations may be returned within 7 calendar days of courier delivery for a replacement or refund.',
   },
 ];
 

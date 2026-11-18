@@ -44,6 +44,9 @@ import {
   faUpload,
   faPrint,
   faChartLine,
+  faCertificate,
+  faAward,
+  faLanguage,
 } from '@fortawesome/free-solid-svg-icons';
 
 import {
@@ -73,6 +76,8 @@ const ICON_MAP = {
   'chevron-down': faChevronDown,
   truck: faTruckFast,
   shield: faShieldHalved,
+  certificate: faCertificate,
+  award: faAward,
   capsules: faCapsules,
   flask: faFlask,
   leaf: faLeaf,
@@ -106,6 +111,7 @@ const ICON_MAP = {
   facebook: faFacebook,
   instagram: faInstagram,
   tiktok: faTiktok,
+  language: faLanguage,
 };
 
 /**

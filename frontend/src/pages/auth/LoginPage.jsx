@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
@@ -10,7 +10,7 @@ import { api } from '../../services/api';
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { user, isAuthenticated, login } = useAuth();
   const { showToast } = useToast();
 
   const [email, setEmail] = useState('');
@@ -22,6 +22,18 @@ export default function LoginPage() {
   const [honeypot, setHoneypot] = useState('');
 
   const redirectPath = location.state?.from?.pathname || '/account';
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.is_staff || user.is_superuser) {
+        navigate('/admin-panel', { replace: true });
+      } else if (redirectPath && redirectPath !== '/login') {
+        navigate(redirectPath, { replace: true });
+      } else {
+        navigate('/account', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate, redirectPath]);
 
   const validate = () => {
     const errs = {};
@@ -55,24 +67,33 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await login(email.trim(), password, { website: honeypot });
+      const res = await login(email.trim(), password, { website: honeypot });
       try {
         await api.mergeCart();
       } catch {
         // Ignore if no guest cart to merge
       }
       showToast('Welcome back to Supplivix!');
-      navigate(redirectPath, { replace: true });
+
+      const loggedUser = res?.user;
+      if (loggedUser?.is_staff || loggedUser?.is_superuser) {
+        navigate('/admin-panel', { replace: true });
+      } else {
+        navigate(redirectPath, { replace: true });
+      }
     } catch (err) {
       if (err.fields && Object.keys(err.fields).length > 0) {
         setErrors(err.fields);
-        if (err.fields.turnstile_token || err.fields.non_field_errors || err.message) {
-          setError(
-            err.fields.turnstile_token?.[0] ||
-            err.fields.non_field_errors?.[0] ||
-            err.message
-          );
+        let reasonMsg =
+          err.fields.turnstile_token?.[0] ||
+          err.fields.non_field_errors?.[0] ||
+          err.fields.email?.[0] ||
+          err.fields.password?.[0];
+        if (!reasonMsg) {
+          reasonMsg = err.message && err.message !== 'Validation failed.' ? err.message : 'Invalid email or password.';
         }
+        setError(reasonMsg);
+
         const keys = Object.keys(err.fields);
         const firstEl = document.querySelector(`[name="${keys[0]}"], #${keys[0]}`);
         if (firstEl && typeof firstEl.focus === 'function') {

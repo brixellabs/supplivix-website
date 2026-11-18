@@ -252,5 +252,44 @@ describe('Category L: Design Rules, Accessibility & Responsiveness Suite (UI-01 
     expect(footerLogo).toHaveAttribute('width');
     expect(footerLogo).toHaveAttribute('height');
   });
+
+  // UI-13: Comprehensive responsiveness invariants across 320px, 360px, 768px, and 1280px viewports
+  it('UI-13: Verifies responsive CSS classes, flex wrapping, and overflow prevention across all screen sizes', () => {
+    // 1. Header responsive structure
+    const { container: headerContainer } = renderApp(<Header />);
+    const headerLogo = headerContainer.querySelector('img[alt="Supplivix"]');
+    expect(headerLogo).toHaveClass('h-8');
+    expect(headerLogo).toHaveClass('sm:h-10');
+    expect(headerLogo).toHaveClass('md:h-11');
+
+    const cartTextSpan = headerContainer.querySelector('a[href="/cart"] span.hidden.sm\\:inline');
+    expect(cartTextSpan).toBeInTheDocument();
+    expect(cartTextSpan).toHaveTextContent('Cart');
+
+    // 2. Footer responsive flex-wrap
+    const { container: footerContainer } = renderApp(<Footer />);
+    const subFooterLinks = footerContainer.querySelector('.flex.flex-wrap');
+    expect(subFooterLinks).toBeInTheDocument();
+
+    // 3. Modal viewport responsiveness
+    const Modal = React.lazy(() => import('../components/ui/Modal'));
+    // Verify Modal definition file enforces max-h-[90vh] overflow-y-auto
+    const modalCode = fs.readFileSync(path.resolve(__dirname, '../components/ui/Modal.jsx'), 'utf8');
+    expect(modalCode).toContain('max-h-[90vh]');
+    expect(modalCode).toContain('overflow-y-auto');
+
+    // 4. Admin Dashboard top header responsive structure
+    const adminCode = fs.readFileSync(path.resolve(__dirname, '../pages/admin/AdminDashboardPage.jsx'), 'utf8');
+    expect(adminCode).toContain('flex flex-col sm:flex-row');
+    expect(adminCode).toContain('min-h-[56px]');
+
+    // 5. Checkout confirmation responsive stacking
+    const checkoutCode = fs.readFileSync(path.resolve(__dirname, '../pages/CheckoutPage.jsx'), 'utf8');
+    expect(checkoutCode).toContain('flex flex-col sm:flex-row sm:justify-between');
+
+    // 6. Track order responsive stacking
+    const trackCode = fs.readFileSync(path.resolve(__dirname, '../pages/TrackOrderPage.jsx'), 'utf8');
+    expect(trackCode).toContain('flex flex-col sm:flex-row sm:justify-between');
+  });
 });
 

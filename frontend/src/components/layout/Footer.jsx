@@ -1,9 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Icon from '../ui/Icon';
 import logoImg from '../../assets/brand/logo.png';
+import { api } from '../../services/api';
 
 export default function Footer() {
+  const [dealsEnabled, setDealsEnabled] = useState(true);
+  const [instagramUrl, setInstagramUrl] = useState('https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2');
+
+  useEffect(() => {
+    let active = true;
+    api.getPublicSettings?.()
+      .then((res) => {
+        if (!active) return;
+        if (res?.deals_enabled !== undefined) {
+          setDealsEnabled(Boolean(res.deals_enabled));
+        }
+        if (res?.instagram_url) {
+          setInstagramUrl(res.instagram_url);
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
   return (
     <footer className="bg-surface-subtle border-t border-surface-border text-brand-ink">
       {/* Upper Footer: 4-Column Grid */}
@@ -21,22 +40,51 @@ export default function Footer() {
                 className="h-10 w-auto object-contain"
               />
             </Link>
-            <p className="text-xs text-ink-muted leading-relaxed mb-4">
-              Premium multivitamins and science-backed skincare. Formulated for everyday vitality and healthy, radiant skin.
+            <p className="text-xs font-bold uppercase tracking-wide text-brand-ink mt-2 mb-1">
+              Your Beauty. Your Wellness. Our Commitment.
+            </p>
+            <p className="text-[11px] font-semibold text-brand-green mb-1.5">
+              Quality • Trust • Wellness
+            </p>
+            <p className="text-xs text-ink-muted leading-relaxed mb-2">
+              We believe that true beauty begins with wellness, and quality should always come first. More Than Beauty. More Than Wellness.
+            </p>
+            <p className="text-[11px] font-bold text-brand-ink uppercase tracking-wider mb-4">
+              Choose Quality. Choose SUPPLIVIX.
             </p>
             <div className="space-y-2 text-xs text-ink-muted">
-              <div className="flex items-center gap-2">
-                <Icon name="phone" className="text-brand-green text-xs" />
-                <a href="tel:+923000000000" className="hover:text-brand-green">0300-0000000</a>
-              </div>
-              <div className="flex items-center gap-2">
-                <Icon name="envelope" className="text-brand-green text-xs" />
-                <a href="mailto:info@supplivix.com" className="hover:text-brand-green">info@supplivix.com</a>
-              </div>
-              <div className="flex items-start gap-2">
-                <Icon name="location" className="text-brand-green text-xs mt-0.5" />
-                <span>Kohinoor City, Jaranwala Road, Faisalabad, Pakistan</span>
-              </div>
+              <a
+                href="https://wa.me/923025222405"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 group cursor-pointer hover:text-brand-green transition-colors"
+                title="Chat on WhatsApp (0302-5222405)"
+              >
+                <Icon name="phone" className="text-brand-green text-xs group-hover:scale-110 transition-transform" />
+                <span className="group-hover:underline">0302-5222405</span>
+              </a>
+
+              <a
+                href="https://mail.google.com/mail/?view=cm&fs=1&to=supplivix@gmail.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 group cursor-pointer hover:text-brand-green transition-colors"
+                title="Open Gmail to email supplivix@gmail.com"
+              >
+                <Icon name="envelope" className="text-brand-green text-xs group-hover:scale-110 transition-transform" />
+                <span className="group-hover:underline">supplivix@gmail.com</span>
+              </a>
+
+              <a
+                href="https://www.google.com/maps/search/?api=1&query=Kohinoor+City,+Jaranwala+Road,+Faisalabad,+Punjab,+Pakistan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-2 group cursor-pointer hover:text-brand-green transition-colors"
+                title="View on Google Maps"
+              >
+                <Icon name="location" className="text-brand-green text-xs mt-0.5 group-hover:scale-110 transition-transform" />
+                <span className="group-hover:underline">Kohinoor City, Jaranwala Road, Faisalabad, Pakistan</span>
+              </a>
             </div>
           </div>
 
@@ -61,11 +109,13 @@ export default function Footer() {
                   Skin Care Formulations
                 </Link>
               </li>
-              <li>
-                <Link to="/offers" className="hover:text-brand-green transition-colors">
-                  Value Bundles & Deals
-                </Link>
-              </li>
+              {dealsEnabled && (
+                <li>
+                  <Link to="/offers" className="hover:text-brand-green transition-colors">
+                    Value Bundles & Deals
+                  </Link>
+                </li>
+              )}
               <li>
                 <Link to="/track" className="hover:text-brand-green transition-colors">
                   Track Your Order
@@ -86,11 +136,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/returns-policy" className="hover:text-brand-green transition-colors">
-                  7-Day Return Policy
-                </Link>
-              </li>
-              <li>
                 <Link to="/privacy-policy" className="hover:text-brand-green transition-colors">
                   Privacy Policy
                 </Link>
@@ -103,6 +148,11 @@ export default function Footer() {
               <li>
                 <Link to="/contact" className="hover:text-brand-green transition-colors">
                   Help & Contact Us
+                </Link>
+              </li>
+              <li>
+                <Link to="/faq" className="hover:text-brand-green transition-colors">
+                  FAQs & Knowledge Base
                 </Link>
               </li>
             </ul>
@@ -133,28 +183,20 @@ export default function Footer() {
                 <Icon name="facebook" />
               </a>
               <a
-                href="https://instagram.com"
+                href={instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Supplivix on Instagram"
+                aria-label="Supplivix on Instagram (@supp.livix)"
                 className="hover:text-brand-green transition-colors"
+                title="Follow Supplivix on Instagram (@supp.livix)"
               >
                 <Icon name="instagram" />
               </a>
               <a
-                href="https://tiktok.com"
+                href="https://wa.me/923025222405"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Supplivix on TikTok"
-                className="hover:text-brand-green transition-colors"
-              >
-                <Icon name="tiktok" />
-              </a>
-              <a
-                href="https://wa.me/923000000000"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Chat with Supplivix on WhatsApp"
+                aria-label="Chat with Supplivix on WhatsApp (0302-5222405)"
                 className="hover:text-brand-green transition-colors"
               >
                 <Icon name="whatsapp" />
@@ -174,11 +216,11 @@ export default function Footer() {
 
       {/* Bottom Sub-Footer Bar */}
       <div className="bg-white border-t border-surface-border py-4">
-        <div className="max-w-site mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between text-xs text-ink-muted gap-2">
+        <div className="max-w-site mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between text-xs text-ink-muted gap-2 text-center sm:text-left">
           <div>
             © 2026 Supplivix. All rights reserved. Registered in Pakistan.
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap justify-center sm:justify-end items-center gap-3 sm:gap-4">
             <Link to="/privacy-policy" className="hover:text-brand-green underline">
               Privacy
             </Link>
@@ -187,9 +229,6 @@ export default function Footer() {
             </Link>
             <Link to="/shipping-policy" className="hover:text-brand-green underline">
               Shipping
-            </Link>
-            <Link to="/returns-policy" className="hover:text-brand-green underline">
-              Returns
             </Link>
           </div>
         </div>

@@ -1,8 +1,12 @@
 # Environment variables (keep examples only)
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+backend/.env
+frontend/.env
 !.env.example
+!backend/.env.example
+!frontend/.env.example
 
 # Python
 __pycache__/
@@ -40,6 +44,11 @@ db.sqlite3-wal
 *.sqlite3*
 media/
 staticfiles/
+initial_catalog_data.json
+backend/initial_catalog_data.json
+*.dump
+*.sql
+*.bak
 
 # Node & Frontend
 node_modules/

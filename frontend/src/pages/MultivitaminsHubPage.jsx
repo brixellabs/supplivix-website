@@ -112,14 +112,25 @@ export default function MultivitaminsHubPage() {
       />
       <Breadcrumbs items={[{ label: 'Multivitamins Hub', href: '/multivitamins' }]} />
 
-      {/* Flagship Hero Header */}
-      <section className="bg-surface-subtle border-b border-surface-border py-12 md:py-16">
-        <div className="max-w-site mx-auto px-4 sm:px-6">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 bg-brand-lavender text-brand-purple border border-brand-lime px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
-              <Icon name="capsules" className="text-xs" />
-              <span>Flagship Nutritional Focus</span>
-            </div>
+      {/* Flagship Hero Header with Seamless Background Photography */}
+      <section className="relative overflow-hidden bg-[#faf9f6] border-b border-surface-border py-12 md:py-16 lg:py-20">
+        {/* Background Image: Commercial Multivitamins Trio Photography */}
+        <div
+          className="absolute inset-0 bg-no-repeat bg-right bg-cover lg:bg-contain pointer-events-none opacity-90 transition-opacity duration-300"
+          style={{
+            backgroundImage: "url('/media/hero-banner.jpg')",
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Soft gradient wash to guarantee 100% WCAG contrast and readability */}
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-[#faf9f6] via-[#faf9f6]/95 via-45% lg:via-[#faf9f6]/80 lg:via-55% to-transparent pointer-events-none"
+          aria-hidden="true"
+        />
+
+        <div className="max-w-site mx-auto px-4 sm:px-6 relative z-10">
+          <div className="max-w-xl lg:max-w-2xl">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold uppercase tracking-tight text-brand-ink leading-tight mb-4">
               Bioavailable Multivitamins for Daily Vitality
             </h1>
@@ -218,9 +229,9 @@ export default function MultivitaminsHubPage() {
                   Biotin, hydrolyzed marine collagen peptides, and Vitamin E to nurture hair density and skin elasticity.
                 </p>
               </div>
-              <Link to="/shop?category=skin-glow">
+              <Link to="/shop?category=skincare">
                 <Button variant="outline" size="sm" className="w-full">
-                  View Glow Formulas
+                  View Skincare Formulas
                 </Button>
               </Link>
             </div>

@@ -4,10 +4,13 @@ import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Layout from './components/layout/Layout';
+import ScrollToTop from './components/common/ScrollToTop';
 
 // Pages
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
+import OffersPage from './pages/OffersPage';
+import SaleEventDetailPage from './pages/SaleEventDetailPage';
 import MultivitaminsHubPage from './pages/MultivitaminsHubPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
@@ -15,6 +18,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import TrackOrderPage from './pages/TrackOrderPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
+import FAQPage from './pages/FAQPage';
 import ComingSoonPage from './pages/ComingSoonPage';
 import StyleguidePage from './pages/StyleguidePage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -33,13 +37,13 @@ import AccountDashboardPage from './pages/account/AccountDashboardPage';
 import PrivacyPolicyPage from './pages/policies/PrivacyPolicyPage';
 import TermsPage from './pages/policies/TermsPage';
 import ShippingPolicyPage from './pages/policies/ShippingPolicyPage';
-import ReturnsPolicyPage from './pages/policies/ReturnsPolicyPage';
 
 export default function App() {
   return (
     <ToastProvider>
       <AuthProvider>
         <CartProvider>
+          <ScrollToTop />
           <Routes>
             {/* Standalone Coming Soon page */}
             <Route path="/coming-soon" element={<ComingSoonPage />} />
@@ -51,15 +55,19 @@ export default function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<HomePage />} />
               <Route path="shop" element={<ShopPage />} />
-              <Route path="offers" element={<ShopPage />} />
+              <Route path="offers" element={<OffersPage />} />
+              <Route path="sale/:slug" element={<SaleEventDetailPage />} />
               <Route path="multivitamins" element={<MultivitaminsHubPage />} />
               <Route path="products/:slug" element={<ProductDetailPage />} />
+              <Route path="ur/products/:slug" element={<ProductDetailPage />} />
               <Route path="cart" element={<CartPage />} />
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="track" element={<TrackOrderPage />} />
               <Route path="track-order" element={<TrackOrderPage />} />
               <Route path="about" element={<AboutPage />} />
               <Route path="contact" element={<ContactPage />} />
+              <Route path="faq" element={<FAQPage />} />
+              <Route path="faqs" element={<FAQPage />} />
 
               {/* Customer Account & Auth */}
               <Route path="login" element={<LoginPage />} />
@@ -70,9 +78,10 @@ export default function App() {
 
               {/* Policy Pages */}
               <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="privacy_policy" element={<PrivacyPolicyPage />} />
               <Route path="terms" element={<TermsPage />} />
               <Route path="shipping-policy" element={<ShippingPolicyPage />} />
-              <Route path="returns-policy" element={<ReturnsPolicyPage />} />
+              <Route path="shipping_policy" element={<ShippingPolicyPage />} />
 
               {/* Design System Styleguide */}
               <Route path="styleguide" element={<StyleguidePage />} />

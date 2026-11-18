@@ -148,6 +148,17 @@ class OrderItem(models.Model):
     unit_price = models.PositiveIntegerField(help_text='Unit price in PKR')
     quantity = models.PositiveIntegerField(default=1)
     line_total = models.PositiveIntegerField(help_text='Line total in PKR')
+    original_price = models.PositiveIntegerField(null=True, blank=True, help_text='Original catalog price in PKR')
+    sale_price = models.PositiveIntegerField(null=True, blank=True, help_text='Applied sale price in PKR')
+    sale_event = models.ForeignKey(
+        'promotions.SaleEvent',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='order_items'
+    )
+    sale_event_name = models.CharField(max_length=150, blank=True)
+    discount_amount = models.PositiveIntegerField(default=0, help_text='Discount given per unit in PKR')
 
     class Meta:
         verbose_name = 'Order Item'

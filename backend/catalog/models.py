@@ -53,6 +53,9 @@ class Product(models.Model):
     brand = models.CharField(max_length=100, default='Supplivix')
     short_description = models.TextField(blank=True)
     description = models.TextField()
+    description_ur = models.TextField(blank=True, default='')
+    directions_ur = models.TextField(blank=True, default='')
+    ingredients_ur = models.TextField(blank=True, default='')
     price = models.PositiveIntegerField(help_text='Price in PKR (whole rupees)')
     compare_at_price = models.PositiveIntegerField(null=True, blank=True, help_text='Original price in PKR (optional)')
     sku = models.CharField(max_length=60, unique=True, db_index=True)
@@ -123,7 +126,7 @@ class ProductAttribute(models.Model):
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='attributes')
     key = models.CharField(max_length=100)
-    value = models.CharField(max_length=255)
+    value = models.TextField()
 
     class Meta:
         verbose_name = 'Product Attribute'

@@ -15,6 +15,14 @@ class CartItemSerializer(serializers.ModelSerializer):
         source='product',
         write_only=True
     )
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_slug = serializers.CharField(source='product.slug', read_only=True)
+    unit_price = serializers.IntegerField(read_only=True)
+    original_price = serializers.SerializerMethodField()
+    is_on_sale = serializers.SerializerMethodField()
+    sale_badge = serializers.SerializerMethodField()
+    product_stock = serializers.IntegerField(source='product.stock', read_only=True)
+    product_thumbnail = serializers.SerializerMethodField()
     line_total = serializers.IntegerField(read_only=True)
     price_when_added = serializers.IntegerField(read_only=True)
     price_changed = serializers.SerializerMethodField()
@@ -26,9 +34,28 @@ class CartItemSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = [
             'id', 'product', 'product_id', 'quantity', 'line_total',
+            'product_name', 'product_slug', 'unit_price', 'original_price',
+            'is_on_sale', 'sale_badge', 'product_stock', 'product_thumbnail',
             'price_when_added', 'price_changed', 'price_change_notice',
             'is_active', 'flagged_inactive'
         ]
+
+    def _get_pricing(self, obj):
+        from promotions.services import PricingService
+        return PricingService.calculate_sale_price(obj.product)
+
+    def get_original_price(self, obj):
+        return self._get_pricing(obj)['original_price']
+
+    def get_is_on_sale(self, obj):
+        return self._get_pricing(obj)['is_on_sale']
+
+    def get_sale_badge(self, obj):
+        return self._get_pricing(obj)['badge_text']
+
+    def get_product_thumbnail(self, obj):
+        img = obj.product.images.order_by('sort_order').first()
+        return img.image.url if img and img.image else ''
 
     def get_price_changed(self, obj):
         if obj.price_when_added is not None and obj.product.price != obj.price_when_added:
@@ -95,7 +122,9 @@ class CartDetailSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
     subtotal = serializers.SerializerMethodField()
     discount_total = serializers.SerializerMethodField()
+    discount_amount = serializers.SerializerMethodField()
     shipping_total = serializers.SerializerMethodField()
+    shipping_fee = serializers.SerializerMethodField()
     grand_total = serializers.SerializerMethodField()
     free_shipping_threshold = serializers.SerializerMethodField()
     amount_needed_for_free_shipping = serializers.SerializerMethodField()
@@ -109,7 +138,7 @@ class CartDetailSerializer(serializers.ModelSerializer):
         model = Cart
         fields = [
             'id', 'items', 'total_items', 'subtotal', 'coupon_code',
-            'discount_total', 'shipping_total', 'grand_total',
+            'discount_total', 'discount_amount', 'shipping_total', 'shipping_fee', 'grand_total',
             'free_shipping_threshold', 'amount_needed_for_free_shipping',
             'free_shipping_message', 'free_shipping_eligible',
             'notices', 'has_inactive_items', 'checkout_blocked'
@@ -125,12 +154,21 @@ class CartDetailSerializer(serializers.ModelSerializer):
                 coupon = Coupon.objects.filter(code=obj.coupon_code, is_active=True).first()
                 if coupon:
                     is_valid, _ = coupon.is_valid_now()
+                    from promotions.services import PricingService
+                    stackable_items = [
+                        item for item in obj.items.all()
+                        if (PricingService.calculate_sale_price(item.product)['allow_coupon_stacking']
+                            or not PricingService.calculate_sale_price(item.product)['is_on_sale'])
+                    ]
                     category_ok = True
                     if coupon.applies_to_category_id:
-                        category_ok = any(item.product.category_id == coupon.applies_to_category_id for item in obj.items.all())
+                        category_ok = any(item.product.category_id == coupon.applies_to_category_id for item in stackable_items)
+                        eligible_subtotal = sum(item.line_total for item in stackable_items if item.product.category_id == coupon.applies_to_category_id)
+                    else:
+                        eligible_subtotal = sum(item.line_total for item in stackable_items)
 
-                    if is_valid and subtotal >= coupon.min_order_amount and category_ok:
-                        discount = coupon.calculate_discount(subtotal)
+                    if is_valid and subtotal >= coupon.min_order_amount and category_ok and eligible_subtotal > 0:
+                        discount = coupon.calculate_discount(subtotal, eligible_subtotal)
                     else:
                         # Auto-remove invalid coupon with notice
                         removed_code = obj.coupon_code
@@ -195,7 +233,13 @@ class CartDetailSerializer(serializers.ModelSerializer):
     def get_discount_total(self, obj):
         return self._get_calculation(obj)['discount']
 
+    def get_discount_amount(self, obj):
+        return self._get_calculation(obj)['discount']
+
     def get_shipping_total(self, obj):
+        return self._get_calculation(obj)['shipping']
+
+    def get_shipping_fee(self, obj):
         return self._get_calculation(obj)['shipping']
 
     def get_grand_total(self, obj):

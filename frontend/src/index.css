@@ -29,4 +29,16 @@
     outline: 2px solid #016a38;
     outline-offset: 2px;
   }
+
+  /* Urdu Typography & RTL Styling (Noto Nastaliq Urdu) */
+  .font-urdu {
+    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Alvi Nastaleeq', Tahoma, sans-serif;
+  }
+
+  .urdu-text-block {
+    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Alvi Nastaleeq', Tahoma, sans-serif;
+    direction: rtl;
+    text-align: right;
+    line-height: 2.2;
+  }
 }

@@ -10,14 +10,43 @@ import Skeleton from '../components/ui/Skeleton';
 import SEOHead from '../components/seo/SEOHead';
 import { api } from '../services/api';
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   { slug: '', label: 'All Categories' },
   { slug: 'multivitamins', label: 'Multivitamins' },
   { slug: 'skincare', label: 'Skin Care' },
   { slug: 'immunity', label: 'Immunity' },
   { slug: 'bones-joints', label: 'Bone & Joints' },
-  { slug: 'skin-glow', label: 'Skin & Glow' },
+  { slug: 'anti-aging', label: 'Anti-Aging' },
 ];
+
+function flattenCategories(items = []) {
+  const result = [{ slug: '', label: 'All Categories' }];
+  const seenSlugs = new Set(['']);
+
+  const traverse = (list, parentName = '') => {
+    if (!Array.isArray(list)) return;
+    for (const item of list) {
+      if (!item || !item.slug) continue;
+      if (!seenSlugs.has(item.slug)) {
+        seenSlugs.add(item.slug);
+        result.push({
+          id: item.id,
+          slug: item.slug,
+          label: item.name || item.label || item.slug,
+          fullLabel: parentName ? `${parentName} > ${item.name || item.label}` : (item.name || item.label),
+          isChild: Boolean(parentName),
+          parent: item.parent,
+        });
+      }
+      if (item.children && Array.isArray(item.children) && item.children.length > 0) {
+        traverse(item.children, item.name || item.label);
+      }
+    }
+  };
+
+  traverse(items);
+  return result;
+}
 
 const SORT_OPTIONS = [
   { value: '-created_at', label: 'Newest Arrivals' },
@@ -61,8 +90,8 @@ const FALLBACK_CATALOG = [
     name: 'Radiant Glow Biotin & Collagen Complex',
     slug: 'radiant-glow-biotin-collagen-complex',
     product_type: 'multivitamin',
-    category_slug: 'skin-glow',
-    category_name: 'Skin & Glow',
+    category_slug: 'skincare',
+    category_name: 'Skin Care',
     price: 2750,
     compare_at_price: 3300,
     rating: 4.9,
@@ -173,8 +202,25 @@ const FALLBACK_CATALOG = [
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState(FALLBACK_CATALOG);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  // Dynamic categories fetch
+  useEffect(() => {
+    let active = true;
+    api.getCategories()
+      .then((data) => {
+        if (!active) return;
+        const list = Array.isArray(data) ? data : (data?.results || []);
+        if (list.length > 0) {
+          const flat = flattenCategories(list);
+          setCategories(flat);
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   // Filter states derived from URL
   const currentCategory = searchParams.get('category') || '';
@@ -269,9 +315,11 @@ export default function ShopPage() {
     return count;
   }, [currentCategory, searchQuery, inStockOnly, minPrice, maxPrice]);
 
-  const currentCategoryLabel = currentCategory
-    ? CATEGORIES.find((c) => c.slug === currentCategory)?.label || currentCategory
-    : 'All Formulations';
+  const currentCategoryObj = useMemo(() => {
+    return categories.find((c) => c.slug === currentCategory);
+  }, [categories, currentCategory]);
+
+  const currentCategoryLabel = currentCategoryObj?.label || currentCategory || 'All Formulations';
 
   const shopSchema = {
     '@context': 'https://schema.org',
@@ -292,7 +340,7 @@ export default function ShopPage() {
 
   const breadcrumbItems = [
     { label: 'Shop', href: '/shop' },
-    ...(currentCategory ? [{ label: CATEGORIES.find((c) => c.slug === currentCategory)?.label || currentCategory }] : []),
+    ...(currentCategory ? [{ label: currentCategoryObj?.fullLabel || currentCategoryObj?.label || currentCategory }] : []),
   ];
 
   const filterSidebarContent = (
@@ -303,20 +351,22 @@ export default function ShopPage() {
           Categories
         </h3>
         <div className="space-y-1">
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isActive = currentCategory === cat.slug;
             return (
               <button
-                key={cat.slug}
+                key={cat.slug || 'all'}
                 type="button"
-                data-testid={`category-filter-${cat.slug}`}
+                data-testid={`category-filter-${cat.slug || 'all'}`}
                 onClick={() => updateParam('category', cat.slug)}
-                className={`w-full text-left px-3 py-2 rounded-sm text-xs transition-colors flex items-center justify-between ${isActive
+                className={`w-full text-left px-3 py-2 rounded-sm text-xs transition-colors flex items-center justify-between ${
+                  cat.isChild ? 'pl-6 text-[11px]' : ''
+                } ${isActive
                   ? 'bg-brand-ink text-white font-bold'
                   : 'text-ink-muted hover:bg-surface-subtle hover:text-brand-ink'
                   }`}
               >
-                <span>{cat.label}</span>
+                <span>{cat.isChild ? `↳ ${cat.label}` : cat.label}</span>
                 {isActive && <Icon name="check" className="text-xs" />}
               </button>
             );
@@ -428,9 +478,7 @@ export default function ShopPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-surface-border gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold uppercase tracking-tight text-brand-ink">
-              {currentCategory
-                ? CATEGORIES.find((c) => c.slug === currentCategory)?.label || 'All Products'
-                : 'All Formulations'}
+              {currentCategory ? currentCategoryLabel : 'All Formulations'}
             </h1>
             <p className="text-xs text-ink-muted mt-1">
               Showing {products.length} {products.length === 1 ? 'product' : 'products'} • Cash on Delivery across Pakistan

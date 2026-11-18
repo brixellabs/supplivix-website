@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 from catalog.models import Product
 from content.models import SiteSetting
 from promotions.models import Coupon, CouponRedemption
+from promotions.services import PricingService
 
 from .models import Order, OrderItem, OrderStatusHistory
 
@@ -28,15 +29,26 @@ def calculate_checkout_quote(cart_items, coupon_code=None, user=None, email=None
         product = item.product
         if not product.is_active:
             raise ValidationError({'cart': f"Product {product.name} is no longer available. Please remove it to proceed."})
-        unit_price = product.price
+
+        pricing = PricingService.calculate_sale_price(product)
+        unit_price = pricing['sale_price']
+        original_price = pricing['original_price']
         qty = item.quantity
         line_total = unit_price * qty
         subtotal += line_total
+
         item_rows.append({
             'product': product,
             'product_name': product.name,
             'sku': product.sku,
             'unit_price': unit_price,
+            'original_price': original_price,
+            'sale_price': unit_price if pricing['is_on_sale'] else None,
+            'sale_event_id': pricing['event_id'],
+            'sale_event_name': pricing['event_name'] or '',
+            'discount_amount': pricing['discount_amount'],
+            'is_on_sale': pricing['is_on_sale'],
+            'allow_coupon_stacking': pricing['allow_coupon_stacking'],
             'quantity': qty,
             'line_total': line_total,
         })
@@ -60,13 +72,22 @@ def calculate_checkout_quote(cart_items, coupon_code=None, user=None, email=None
                         user_allowed = False
 
                 if user_allowed:
-                    eligible_subtotal = subtotal
+                    # Enforce coupon stacking: if coupon stacking is disabled on an active sale item,
+                    # that item is excluded from coupon discount calculation.
+                    stackable_rows = [
+                        row for row in item_rows
+                        if (row['allow_coupon_stacking'] or not row['is_on_sale'])
+                    ]
                     if coupon.applies_to_category:
-                        eligible_subtotal = sum(
-                            row['line_total'] for row in item_rows
+                        stackable_rows = [
+                            row for row in stackable_rows
                             if row['product'].category_id == coupon.applies_to_category_id
-                        )
-                    discount = coupon.calculate_discount(subtotal, eligible_subtotal)
+                        ]
+                    eligible_subtotal = sum(row['line_total'] for row in stackable_rows)
+                    if eligible_subtotal > 0:
+                        discount = coupon.calculate_discount(subtotal, eligible_subtotal)
+                    else:
+                        discount = 0
 
     subtotal_after_discount = max(0, subtotal - discount)
     threshold = SiteSetting.get_int('free_shipping_threshold', 2000)
@@ -82,6 +103,8 @@ def calculate_checkout_quote(cart_items, coupon_code=None, user=None, email=None
     return {
         'subtotal': subtotal,
         'discount_total': discount,
+        'coupon_discount': discount,
+        'sale_discount_total': sum(r['discount_amount'] * r['quantity'] for r in item_rows),
         'shipping_total': shipping,
         'grand_total': grand_total,
         'coupon': coupon,
@@ -110,9 +133,6 @@ def place_cod_order(cart, checkout_data, user=None):
         raise ValidationError({'payment_method': 'Cash on Delivery (COD) is the only accepted payment method.'})
 
     guest_email = checkout_data.get('email', '').strip().lower()
-    if not user or not user.is_authenticated:
-        if not guest_email:
-            raise ValidationError({'email': 'Guest email is required.'})
 
     # 1. Lock and verify product stock
     product_ids = [item.product_id for item in items]
@@ -196,7 +216,12 @@ def place_cod_order(cart, checkout_data, user=None):
             sku=row['sku'],
             unit_price=row['unit_price'],
             quantity=row['quantity'],
-            line_total=row['line_total']
+            line_total=row['line_total'],
+            original_price=row.get('original_price', row['unit_price']),
+            sale_price=row.get('sale_price'),
+            sale_event_id=row.get('sale_event_id'),
+            sale_event_name=row.get('sale_event_name', ''),
+            discount_amount=row.get('discount_amount', 0),
         )
         for row in quote['item_rows']
     ]

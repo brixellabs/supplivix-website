@@ -36,7 +36,7 @@ DISCLAIMER = (
 DEMO_PRODUCTS = [
     # 1 - 28: Multivitamins & Supplements (Primary Focus - 28 items)
     {
-        'name': 'Daily Balance Multivitamin 60s (Demo)',
+        'name': 'Daily Balance Multivitamin 60s',
         'slug': 'daily-balance-multivitamin-60s',
         'sku': 'SPLV-MV-01',
         'category_slug': 'multivitamins',
@@ -49,7 +49,7 @@ DEMO_PRODUCTS = [
         'description': f'Comprehensive 24-micronutrient daily multivitamin featuring chelated zinc, methylfolate, and active B-complex vitamins for sustained energy and metabolic support. Manufactured under strict pharmaceutical cGMP controls in a certified facility. Each tablet provides bioavailable micronutrients designed for gentle digestion without stomach irritation. Recommended for daily adult wellness support. {DISCLAIMER}',
     },
     {
-        'name': 'Daily Balance Gold High Potency 60s (Demo)',
+        'name': 'Daily Balance Gold High Potency 60s',
         'slug': 'daily-balance-gold-high-potency-60s',
         'sku': 'SPLV-MV-02',
         'category_slug': 'multivitamins',
@@ -62,7 +62,7 @@ DEMO_PRODUCTS = [
         'description': f'Our gold-tier high-potency daily multivitamin formulated with active coenzyme Q10, bioactive methylated B-vitamins, lutein, and organic minerals. Formulated specifically to sustain cellular mitochondria and combat environmental oxidation in demanding daily lifestyles. Take one tablet daily with morning breakfast. {DISCLAIMER}',
     },
     {
-        'name': 'Active Daily Multi Energy Blend 60s (Demo)',
+        'name': 'Active Daily Multi Energy Blend 60s',
         'slug': 'active-daily-multi-energy-blend-60s',
         'sku': 'SPLV-MV-03',
         'category_slug': 'vitality',
@@ -75,7 +75,7 @@ DEMO_PRODUCTS = [
         'description': f'A dynamic daily multivitamin complex fortified with Siberian ginseng, green tea polyphenols, and bioavailable magnesium malate. Promotes natural ATP generation without jitteriness or caffeine crash. Perfect for fitness enthusiasts and working professionals across Pakistan. {DISCLAIMER}',
     },
     {
-        'name': 'Senior 50+ Vitality Daily Multi 60s (Demo)',
+        'name': 'Senior 50+ Vitality Daily Multi 60s',
         'slug': 'senior-50-plus-vitality-daily-multi-60s',
         'sku': 'SPLV-MV-04',
         'category_slug': 'multivitamins',
@@ -88,7 +88,7 @@ DEMO_PRODUCTS = [
         'description': f'Specialized age-adjusted multivitamin focusing on cardiovascular wellness, eye health, and bone mineral density for adults over 50. Features concentrated Vitamin B12 as methylcobalamin, lutein, zeaxanthin, and zero added iron. Gentle on digestion. {DISCLAIMER}',
     },
     {
-        'name': 'Essential Everyday Multivitamin 90s (Demo)',
+        'name': 'Essential Everyday Multivitamin 90s',
         'slug': 'essential-everyday-multivitamin-90s',
         'sku': 'SPLV-MV-05',
         'category_slug': 'multivitamins',
@@ -101,7 +101,7 @@ DEMO_PRODUCTS = [
         'description': f'High-value 3-month family supply delivering 100% recommended daily value of essential vitamins A, C, D3, E, and full B-complex. Clean vegan tablet coating with zero synthetic colorants or preservatives. Everyday wellness made accessible and trustworthy. {DISCLAIMER}',
     },
     {
-        'name': 'Organic Whole Food Daily Multi 60s (Demo)',
+        'name': 'Organic Whole Food Daily Multi 60s',
         'slug': 'organic-whole-food-daily-multi-60s',
         'sku': 'SPLV-MV-06',
         'category_slug': 'multivitamins',
@@ -114,7 +114,7 @@ DEMO_PRODUCTS = [
         'description': f'Fermented whole-food multivitamin derived from certified organic fruits, vegetables, and botanical herbs. Easy to digest and gentle even on an empty stomach. Enhanced with live digestive enzyme blends and prebiotic organic botanical fiber. {DISCLAIMER}',
     },
     {
-        'name': 'Daily Sustained Release Multi 60s (Demo)',
+        'name': 'Daily Sustained Release Multi 60s',
         'slug': 'daily-sustained-release-multi-60s',
         'sku': 'SPLV-MV-07',
         'category_slug': 'multivitamins',
@@ -127,7 +127,7 @@ DEMO_PRODUCTS = [
         'description': f'Advanced multi-phase beadlet delivery technology ensures sustained 8-hour absorption of water-soluble vitamins throughout the day. Prevents nutrient flushing and provides reliable micronutrient bioavailability from morning till evening. {DISCLAIMER}',
     },
     {
-        'name': 'Advanced Daily Micronutrient Formula 60s (Demo)',
+        'name': 'Advanced Daily Micronutrient Formula 60s',
         'slug': 'advanced-daily-micronutrient-formula-60s',
         'sku': 'SPLV-MV-08',
         'category_slug': 'multivitamins',
@@ -140,7 +140,7 @@ DEMO_PRODUCTS = [
         'description': f'Clinically backed micronutrient spectrum delivering Albion chelated minerals, boron, selenium, and Quatrefolic bioactive methylfolate. Optimizes metabolic resilience and cellular recovery. Ideal for individuals leading high-stress urban lifestyles. {DISCLAIMER}',
     },
     {
-        'name': 'Men Core Multi Active Formula 60s (Demo)',
+        'name': 'Men Core Multi Active Formula 60s',
         'slug': 'men-core-multi-active-formula-60s',
         'sku': 'SPLV-MV-09',
         'category_slug': 'multivitamins',
@@ -153,7 +153,7 @@ DEMO_PRODUCTS = [
         'description': f'Tailored specifically for men with targeted zinc citrate, saw palmetto berry extract, lycopene, and active B-complex. Promotes testosterone metabolism, prostate health, and cardiovascular stamina. Iron-free formula for adult men. {DISCLAIMER}',
     },
     {
-        'name': 'Men Active 50+ Vitality Complex 60s (Demo)',
+        'name': 'Men Active 50+ Vitality Complex 60s',
         'slug': 'men-active-50-plus-vitality-complex-60s',
         'sku': 'SPLV-MV-10',
         'category_slug': 'multivitamins',
@@ -166,7 +166,7 @@ DEMO_PRODUCTS = [
         'description': f'Formulated for men over 50 seeking robust vitality, cognitive focus, and joint flexibility. Combines high-dose Vitamin D3, methyl B12, pine bark extract, and pumpkin seed sterols. Easy-to-swallow film-coated tablets. {DISCLAIMER}',
     },
     {
-        'name': 'Men High Performance Sport Multi 60s (Demo)',
+        'name': 'Men High Performance Sport Multi 60s',
         'slug': 'men-high-performance-sport-multi-60s',
         'sku': 'SPLV-MV-11',
         'category_slug': 'vitality',
@@ -179,7 +179,7 @@ DEMO_PRODUCTS = [
         'description': f'Athlete-grade multivitamin fortified with branched-chain amino acids, essential electrolytes, and magnesium glycinate to replenish minerals depleted during rigorous physical exertion. Accelerates muscle recovery and mitigates exercise-induced fatigue. {DISCLAIMER}',
     },
     {
-        'name': 'Men Daily Wellness & Prostate Multi 60s (Demo)',
+        'name': 'Men Daily Wellness & Prostate Multi 60s',
         'slug': 'men-daily-wellness-prostate-multi-60s',
         'sku': 'SPLV-MV-12',
         'category_slug': 'multivitamins',
@@ -192,7 +192,7 @@ DEMO_PRODUCTS = [
         'description': f'Dual-action daily wellness multivitamin delivering complete micronutrient support alongside standardized stinging nettle, pumpkin seed oil, and lycopene for urinary tract and prostate health. Designed for adult men of all ages. {DISCLAIMER}',
     },
     {
-        'name': 'Women Core Multi Gentle Iron 60s (Demo)',
+        'name': 'Women Core Multi Gentle Iron 60s',
         'slug': 'women-core-multi-gentle-iron-60s',
         'sku': 'SPLV-MV-13',
         'category_slug': 'multivitamins',
@@ -205,7 +205,7 @@ DEMO_PRODUCTS = [
         'description': f'Comprehensive female wellness multivitamin featuring non-constipating gentle iron bisglycinate, L-methylfolate, calcium, and biotin. Supports red blood cell formation, hormonal balance, hair strength, and sustained metabolic energy. {DISCLAIMER}',
     },
     {
-        'name': 'Women Prenatal Style Demo Multi 60s (Demo)',
+        'name': 'Women Prenatal Style Nourishing Multi 60s',
         'slug': 'women-prenatal-style-demo-multi-60s',
         'sku': 'SPLV-MV-14',
         'category_slug': 'multivitamins',
@@ -218,7 +218,7 @@ DEMO_PRODUCTS = [
         'description': f'Carefully balanced formulation delivering active Quatrefolic methylfolate, gentle chelated iron, iodine, and algae-derived plant DHA. Formulated to provide complete micronutrient confidence during all stages of motherhood. {DISCLAIMER}',
     },
     {
-        'name': 'Women Active 50+ Hormone Harmony Multi 60s (Demo)',
+        'name': 'Women Active 50+ Hormone Harmony Multi 60s',
         'slug': 'women-active-50-plus-hormone-harmony-multi-60s',
         'sku': 'SPLV-MV-15',
         'category_slug': 'multivitamins',
@@ -231,7 +231,7 @@ DEMO_PRODUCTS = [
         'description': f'Enriched with red clover isoflavones, calcium citrate, Vitamin K2 MK-7, and bioavailable Vitamin D3. Aids natural hormone transition, bone mineral preservation, and tranquil sleep patterns for women over 50. {DISCLAIMER}',
     },
     {
-        'name': 'Women Radiant Energy Daily Multi 60s (Demo)',
+        'name': 'Women Radiant Energy Daily Multi 60s',
         'slug': 'women-radiant-energy-daily-multi-60s',
         'sku': 'SPLV-MV-16',
         'category_slug': 'skin-glow',
@@ -244,7 +244,7 @@ DEMO_PRODUCTS = [
         'description': f'Synergistic beauty and energy multivitamin combining hydrolyzed marine collagen peptides, 5000mcg biotin, organic Vitamin C, and silica. Nourishes skin elasticity, fortifies fragile nails, and imparts a natural luminous complexion. {DISCLAIMER}',
     },
     {
-        'name': 'Kids Gummy Multi Demo Fruit Bites 60s (Demo)',
+        'name': 'Kids Gummy Multi Fruit Bites 60s',
         'slug': 'kids-gummy-multi-demo-fruit-bites-60s',
         'sku': 'SPLV-MV-17',
         'category_slug': 'multivitamins',
@@ -257,7 +257,7 @@ DEMO_PRODUCTS = [
         'description': f'Delicious pectin-based natural fruit gummies delivering 12 essential growing micronutrients including Vitamin A, C, D3, E, and Zinc for children aged 4 and above. Made with zero gelatin, zero artificial colors, and zero high-fructose corn syrup. {DISCLAIMER}',
     },
     {
-        'name': 'Kids Chewable Multi Immune Support 60s (Demo)',
+        'name': 'Kids Chewable Multi Immune Support 60s',
         'slug': 'kids-chewable-multi-immune-support-60s',
         'sku': 'SPLV-MV-18',
         'category_slug': 'immunity',
@@ -270,7 +270,7 @@ DEMO_PRODUCTS = [
         'description': f'Pleasant wild-berry flavored chewable tablets packed with black elderberry extract, buffered Vitamin C, and gentle zinc citrate. Supports pediatric immune defense during seasonal shifts and school terms. Tooth-friendly xylitol sweetened. {DISCLAIMER}',
     },
     {
-        'name': 'Kids Junior Daily Liquid Drops 50ml (Demo)',
+        'name': 'Kids Junior Daily Liquid Drops 50ml',
         'slug': 'kids-junior-daily-liquid-drops-50ml',
         'sku': 'SPLV-MV-19',
         'category_slug': 'multivitamins',
@@ -283,7 +283,7 @@ DEMO_PRODUCTS = [
         'description': f'Calibrated liquid dropper formulation designed for infants and toddlers. Delivers exact pediatric doses of Vitamin D3, Vitamin C, and active folate. Blends effortlessly into milk, fresh juice, or purees without altering taste or texture. {DISCLAIMER}',
     },
     {
-        'name': 'Immune Shield Blend Vitamin C + Zinc 60s (Demo)',
+        'name': 'Immune Shield Blend Vitamin C + Zinc 60s',
         'slug': 'immune-shield-blend-vitamin-c-plus-zinc-60s',
         'sku': 'SPLV-MV-20',
         'category_slug': 'immunity',
@@ -296,7 +296,7 @@ DEMO_PRODUCTS = [
         'description': f'Triple-action immunity defense combining 1000mg pharmaceutical-grade ascorbic acid, 15mg bioavailable zinc citrate, and citrus bioflavonoid complex. Enhances white blood cell defenses and safeguards against seasonal respiratory vulnerabilities. {DISCLAIMER}',
     },
     {
-        'name': 'Vitamin C Plus Zinc Effervescent 20s (Demo)',
+        'name': 'Vitamin C Plus Zinc Effervescent 20s',
         'slug': 'vitamin-c-plus-zinc-effervescent-20s',
         'sku': 'SPLV-MV-21',
         'category_slug': 'immunity',
@@ -309,7 +309,7 @@ DEMO_PRODUCTS = [
         'description': f'Refreshing effervescent drink tablets dissolving in a cool glass of water to deliver 1000mg Vitamin C and 10mg Zinc in a rapid-absorbing liquid format. Sugar-free zesty natural orange flavor. Perfect travel and gym immunity hydration. {DISCLAIMER}',
     },
     {
-        'name': 'Elderberry Ultra Immune Defense 60s (Demo)',
+        'name': 'Elderberry Ultra Immune Defense 60s',
         'slug': 'elderberry-ultra-immune-defense-60s',
         'sku': 'SPLV-MV-22',
         'category_slug': 'immunity',
@@ -322,7 +322,7 @@ DEMO_PRODUCTS = [
         'description': f'Standardized European Sambucus nigra black elderberry fruit extract concentrated 10:1, blended with organic Echinacea purpurea and zinc. Potent antioxidant anthocyanins provide rapid respiratory and throat cellular comfort. {DISCLAIMER}',
     },
     {
-        'name': 'Super Quercetin with Zinc & D3 60s (Demo)',
+        'name': 'Super Quercetin with Zinc & D3 60s',
         'slug': 'super-quercetin-with-zinc-and-d3-60s',
         'sku': 'SPLV-MV-23',
         'category_slug': 'immunity',
@@ -335,7 +335,7 @@ DEMO_PRODUCTS = [
         'description': f'Advanced cellular defense combining 500mg bioavailable quercetin dihydrate acting as a zinc ionophore to shuttle zinc molecules directly into cellular interiors. Fortified with 2000 IU Vitamin D3 and bromelain for optimal systemic bio-efficacy. {DISCLAIMER}',
     },
     {
-        'name': 'Beauty Bloom Complex Biotin 5000mcg 60s (Demo)',
+        'name': 'Beauty Bloom Complex Biotin 5000mcg 60s',
         'slug': 'beauty-bloom-complex-biotin-5000mcg-60s',
         'sku': 'SPLV-MV-24',
         'category_slug': 'skin-glow',
@@ -348,7 +348,7 @@ DEMO_PRODUCTS = [
         'description': f'High-potency pure D-biotin combined with L-cysteine keratin builders, zinc, and selenium. Strengthens brittle nail beds, stimulates dormant hair follicles, and promotes thicker, more resilient hair texture over 60 days of consistent use. {DISCLAIMER}',
     },
     {
-        'name': 'Biotin Plus Marine Collagen Peptides 60s (Demo)',
+        'name': 'Biotin Plus Marine Collagen Peptides 60s',
         'slug': 'biotin-plus-marine-collagen-peptides-60s',
         'sku': 'SPLV-MV-25',
         'category_slug': 'skin-glow',
@@ -361,7 +361,7 @@ DEMO_PRODUCTS = [
         'description': f'Premium hydrolyzed Type I & III wild marine collagen peptides combined with multi-molecular hyaluronic acid and biotin. Enhances dermal moisture retention, visibly softens fine expression lines, and promotes skin firmness from within. {DISCLAIMER}',
     },
     {
-        'name': 'Keratin & Silica Hair Strength Formula 60s (Demo)',
+        'name': 'Keratin & Silica Hair Strength Formula 60s',
         'slug': 'keratin-and-silica-hair-strength-formula-60s',
         'sku': 'SPLV-MV-26',
         'category_slug': 'skin-glow',
@@ -374,7 +374,7 @@ DEMO_PRODUCTS = [
         'description': f'Solubilized bioactive Cynatine HNS keratin paired with natural bamboo shoot silica extract and copper. Reduces excessive hair shedding, stimulates scalp microcirculation, and fortifies the foundational structural matrix of every strand. {DISCLAIMER}',
     },
     {
-        'name': 'Energy B-Complex Active Methylated 60s (Demo)',
+        'name': 'Energy B-Complex Active Methylated 60s',
         'slug': 'energy-b-complex-active-methylated-60s',
         'sku': 'SPLV-MV-27',
         'category_slug': 'vitality',
@@ -387,7 +387,7 @@ DEMO_PRODUCTS = [
         'description': f'Full-spectrum coenzymated B-vitamin complex delivering bioactive methylcobalamin B12, pyridoxal-5-phosphate B6, and riboflavin-5-phosphate. Provides immediate biological availability to support nervous system stamina and metabolic vitality without conversion loss. {DISCLAIMER}',
     },
     {
-        'name': 'Focus Daily Nootropic Brain Support 60s (Demo)',
+        'name': 'Focus Daily Nootropic Brain Support 60s',
         'slug': 'focus-daily-nootropic-brain-support-60s',
         'sku': 'SPLV-MV-28',
         'category_slug': 'vitality',
@@ -402,7 +402,7 @@ DEMO_PRODUCTS = [
 
     # 29 - 48: Skincare & Body (20 items)
     {
-        'name': 'Gentle Foam Cleanser Sensitive Care 150ml (Demo)',
+        'name': 'Gentle Foam Cleanser Sensitive Care 150ml',
         'slug': 'gentle-foam-cleanser-sensitive-care-150ml',
         'sku': 'SPLV-SK-01',
         'category_slug': 'skincare',
@@ -415,7 +415,7 @@ DEMO_PRODUCTS = [
         'description': 'A gentle pH-balanced foaming facial cleanser formulated with colloidal oat extract, soothing allantoin, and three essential ceramides. Effortlessly lifts away excess sebum, particulate pollution, and makeup while preserving the integrity of the natural skin acid mantle.',
     },
     {
-        'name': 'Clear Gel Wash Salicylic Acid 150ml (Demo)',
+        'name': 'Clear Gel Wash Salicylic Acid 150ml',
         'slug': 'clear-gel-wash-salicylic-acid-150ml',
         'sku': 'SPLV-SK-02',
         'category_slug': 'skincare',
@@ -428,7 +428,7 @@ DEMO_PRODUCTS = [
         'description': 'Targeted clarifying wash containing 2% beta-hydroxy salicylic acid, tea tree hydrolat, and zinc PCA. Penetrates deep inside congested pores to dissolve stubborn oxidized sebum and prevent future blemish breakouts without leaving skin feeling uncomfortably parched.',
     },
     {
-        'name': 'Hydrating Cream-to-Foam Facial Wash 150ml (Demo)',
+        'name': 'Hydrating Cream-to-Foam Facial Wash 150ml',
         'slug': 'hydrating-cream-to-foam-facial-wash-150ml',
         'sku': 'SPLV-SK-03',
         'category_slug': 'skincare',
@@ -441,7 +441,7 @@ DEMO_PRODUCTS = [
         'description': 'Luxurious non-comedogenic cream cleanser that transitions into velvety micro-foam upon water activation. Infused with 11 skin-identical amino acids and pure hyaluronic acid to lock in essential hydration while effortlessly purifying the skin surface.',
     },
     {
-        'name': 'Soothing Amino Acid Gel Cleanser 120ml (Demo)',
+        'name': 'Soothing Amino Acid Gel Cleanser 120ml',
         'slug': 'soothing-amino-acid-gel-cleanser-120ml',
         'sku': 'SPLV-SK-04',
         'category_slug': 'skincare',
@@ -454,7 +454,7 @@ DEMO_PRODUCTS = [
         'description': 'Ultra-mild sulfate-free jelly cleanser harnessing natural apple and coconut-derived amino acid surfactants. Calms sensitized, reactive skin with Centella asiatica and organic green tea extract. Leaves complexion serene, soft, and balanced.',
     },
     {
-        'name': 'Daily Hydra Cream Ceramide Barrier 50ml (Demo)',
+        'name': 'Daily Hydra Cream Ceramide Barrier 50ml',
         'slug': 'daily-hydra-cream-ceramide-barrier-50ml',
         'sku': 'SPLV-SK-05',
         'category_slug': 'skincare',
@@ -467,7 +467,7 @@ DEMO_PRODUCTS = [
         'description': 'Rich yet lightweight barrier repair moisturizer engineered with skin-identical ceramides 1, 3, 6-II, plant-derived squalane, and cholesterol. Rebuilds compromised lipid membranes, locks in all-day moisture, and guards against dry urban atmospheric pollutants.',
     },
     {
-        'name': 'Light Gel Moisturizer Oil-Free 50ml (Demo)',
+        'name': 'Light Gel Moisturizer Oil-Free 50ml',
         'slug': 'light-gel-moisturizer-oil-free-50ml',
         'sku': 'SPLV-SK-06',
         'category_slug': 'skincare',
@@ -480,7 +480,7 @@ DEMO_PRODUCTS = [
         'description': 'Cooling oil-free water gel moisturizer that quenches dehydrated combination and oily skin instantly. Formulated with organic aloe leaf juice, cooling cucumber extract, and 3% niacinamide to balance shine while keeping skin dewy and plump.',
     },
     {
-        'name': 'Intensive Overnight Recovery Cream 50ml (Demo)',
+        'name': 'Intensive Overnight Recovery Cream 50ml',
         'slug': 'intensive-overnight-recovery-cream-50ml',
         'sku': 'SPLV-SK-07',
         'category_slug': 'skincare',
@@ -493,7 +493,7 @@ DEMO_PRODUCTS = [
         'description': 'Restorative nocturnal treatment balm containing plant-derived bakuchiol, cold-pressed shea butter, and signaling peptides. Works in synergy with natural circadian rhythms to reverse daily UV oxidative strain and restore bounce by daybreak.',
     },
     {
-        'name': 'Peptide Firming Rich Cream 50ml (Demo)',
+        'name': 'Peptide Firming Rich Cream 50ml',
         'slug': 'peptide-firming-rich-cream-50ml',
         'sku': 'SPLV-SK-08',
         'category_slug': 'skincare',
@@ -506,7 +506,7 @@ DEMO_PRODUCTS = [
         'description': 'Velvety peptide emulsion delivering clinical Matrixyl 3000, bio-copper peptides, and marula seed oil. Helps encourage collagen matrix density, enhances skin firmness, and provides deeply soothing moisture for mature complexions.',
     },
     {
-        'name': 'Vitamin C Glow Serum 15% Ethyl Ascorbic 30ml (Demo)',
+        'name': 'Vitamin C Glow Serum 15% Ethyl Ascorbic 30ml',
         'slug': 'vitamin-c-glow-serum-15-percent-ethyl-ascorbic-30ml',
         'sku': 'SPLV-SK-09',
         'category_slug': 'skincare',
@@ -519,7 +519,7 @@ DEMO_PRODUCTS = [
         'description': 'Highly stable, non-oxidizing 15% 3-O-ethyl ascorbic acid antioxidant serum synergized with natural ferulic acid and pure Vitamin E. Fades stubborn post-acne dark spots, evens out irregular skin tone, and restores radiant luminosity.',
     },
     {
-        'name': 'Niacinamide Balance Serum 10% + Zinc 30ml (Demo)',
+        'name': 'Niacinamide Balance Serum 10% + Zinc 30ml',
         'slug': 'niacinamide-balance-serum-10-percent-zinc-30ml',
         'sku': 'SPLV-SK-10',
         'category_slug': 'skincare',
@@ -532,7 +532,7 @@ DEMO_PRODUCTS = [
         'description': 'Targeted pore-refining and oil-controlling formula containing 10% pharmaceutical-grade niacinamide and 1% bioavailable zinc PCA. Dramatically minimizes congested pore appearance, soothes blotchiness, and regulates excess sebum excretion.',
     },
     {
-        'name': 'Hyaluronic Multi-Weight Hydrating Serum 30ml (Demo)',
+        'name': 'Hyaluronic Multi-Weight Hydrating Serum 30ml',
         'slug': 'hyaluronic-multi-weight-hydrating-serum-30ml',
         'sku': 'SPLV-SK-11',
         'category_slug': 'skincare',
@@ -545,7 +545,7 @@ DEMO_PRODUCTS = [
         'description': 'Advanced multi-depth hydration booster formulated with five distinct molecular weights of sodium hyaluronate and soothing provitamin B5 panthenol. Quenches every stratum of the epidermis to instantly plump fine lines and restore youthful dewiness.',
     },
     {
-        'name': 'Retinol 0.3% Renewal Youth Serum 30ml (Demo)',
+        'name': 'Retinol 0.3% Renewal Youth Serum 30ml',
         'slug': 'retinol-0-3-percent-renewal-youth-serum-30ml',
         'sku': 'SPLV-SK-12',
         'category_slug': 'skincare',
@@ -558,7 +558,7 @@ DEMO_PRODUCTS = [
         'description': 'Micro-encapsulated slow-release pure retinol formulation suspended in a nourishing squalane base with chamomile bisabolol. Stimulates healthy cellular turnover and refines rough texture with minimal peeling or irritation. Apply at bedtime.',
     },
     {
-        'name': 'Daily Shield SPF 50 Mineral Defense 50ml (Demo)',
+        'name': 'Daily Shield SPF 50 Mineral Defense 50ml',
         'slug': 'daily-shield-spf-50-mineral-defense-50ml',
         'sku': 'SPLV-SK-13',
         'category_slug': 'skincare',
@@ -571,7 +571,7 @@ DEMO_PRODUCTS = [
         'description': '100% Non-nano zinc oxide broad-spectrum mineral sunscreen offering PA++++ high defense. Formulated with lightweight plant squalane and green tea polyphenols to defend against solar radiation and urban blue light with zero greasy residue or white cast.',
     },
     {
-        'name': 'Ultra-Light Invisible Sunscreen SPF 50 50ml (Demo)',
+        'name': 'Ultra-Light Invisible Sunscreen SPF 50 50ml',
         'slug': 'ultra-light-invisible-sunscreen-spf-50-50ml',
         'sku': 'SPLV-SK-14',
         'category_slug': 'skincare',
@@ -584,7 +584,7 @@ DEMO_PRODUCTS = [
         'description': 'Weightless modern chemical filter fluid that absorbs instantly like a light primer with a velvety matte finish. Water and sweat resistant for up to 80 minutes. Suitable for sensitive and acne-prone skin types in hot Pakistani summers.',
     },
     {
-        'name': 'Matte Fluid Sunscreen PA++++ 50ml (Demo)',
+        'name': 'Matte Fluid Sunscreen PA++++ 50ml',
         'slug': 'matte-fluid-sunscreen-pa-plus-plus-plus-plus-50ml',
         'sku': 'SPLV-SK-15',
         'category_slug': 'skincare',
@@ -597,7 +597,7 @@ DEMO_PRODUCTS = [
         'description': 'Sebum-absorbing daily fluid sun protection enriched with porous silica micro-spheres and niacinamide. Keeps the T-zone perfectly shine-free and fresh throughout humid daytime hours while maintaining full broad-spectrum SPF 50 shield.',
     },
     {
-        'name': 'Mineral Tinted Glow Sunscreen SPF 50 50ml (Demo)',
+        'name': 'Mineral Tinted Glow Sunscreen SPF 50 50ml',
         'slug': 'mineral-tinted-glow-sunscreen-spf-50-50ml',
         'sku': 'SPLV-SK-16',
         'category_slug': 'skincare',
@@ -610,7 +610,7 @@ DEMO_PRODUCTS = [
         'description': 'Universal sheer tint mineral sunscreen crafted with iron oxides to neutralize visible white cast while protecting against hyperpigmentation-triggering high-energy visible light. Imparts an effortlessly radiant, even finish for every skin tone.',
     },
     {
-        'name': 'Soft Lip Balm Nourishing Ceramide 15g (Demo)',
+        'name': 'Soft Lip Balm Nourishing Ceramide 15g',
         'slug': 'soft-lip-balm-nourishing-ceramide-15g',
         'sku': 'SPLV-SK-17',
         'category_slug': 'skincare',
@@ -623,7 +623,7 @@ DEMO_PRODUCTS = [
         'description': 'Intensively nourishing lip repair salve crafted with organic shea butter, jojoba seed oil, and plant ceramides. Creates a protective conditioning shield over dry or chapped lips, delivering enduring softness and comfortable hydration.',
     },
     {
-        'name': 'Restorative Body Butter Shea & Cocoa 200g (Demo)',
+        'name': 'Restorative Body Butter Shea & Cocoa 200g',
         'slug': 'restorative-body-butter-shea-and-cocoa-200g',
         'sku': 'SPLV-SK-18',
         'category_slug': 'skincare',
@@ -636,7 +636,7 @@ DEMO_PRODUCTS = [
         'description': 'Decadent whipped body cream blending raw cold-pressed African shea butter, cocoa seed butter, and sweet almond oil. Deeply rehydrates rough elbows, knees, and dry limbs with a velvety, non-greasy protective moisture barrier.',
     },
     {
-        'name': 'Hydrating Body Lotion 5% Urea 250ml (Demo)',
+        'name': 'Hydrating Body Lotion 5% Urea 250ml',
         'slug': 'hydrating-body-lotion-5-percent-urea-250ml',
         'sku': 'SPLV-SK-19',
         'category_slug': 'skincare',
@@ -649,7 +649,7 @@ DEMO_PRODUCTS = [
         'description': 'Clinical dermatological daily body lotion combining 5% medical-grade urea with gentle lactic acid. Gently exfoliates microscopic dead surface keratin while delivering intense moisture to alleviate rough, bumpy, or keratosis pilaris skin.',
     },
     {
-        'name': 'Exfoliating AHA Body Wash 250ml (Demo)',
+        'name': 'Exfoliating AHA Body Wash 250ml',
         'slug': 'exfoliating-aha-body-wash-250ml',
         'sku': 'SPLV-SK-20',
         'category_slug': 'skincare',
@@ -721,8 +721,8 @@ class Command(BaseCommand):
         # 1. Site Settings
         setting, _ = SiteSetting.objects.get_or_create(id=1)
         setting.store_name = 'Supplivix'
-        setting.store_phone = '0300-0000000'
-        setting.store_email = 'info@supplivix.com'
+        setting.store_phone = '0302-5222405'
+        setting.store_email = 'supplivix@gmail.com'
         setting.free_shipping_threshold = 2000
         setting.flat_shipping_fee = 200
         setting.save()
@@ -894,8 +894,8 @@ class Command(BaseCommand):
 
             variants = [
                 (f"demo-{sku}-front", front_svg, f"Front packaging of {product.name}", 0),
-                (f"demo-{sku}-label", label_svg, f"Label detail and ingredients of {product.name}", 1),
-                (f"demo-{sku}-lifestyle", lifestyle_svg, f"Lifestyle presentation of {product.name}", 2),
+                (f"demo-{sku}-label", label_svg, f"Nutritional and active label of {product.name}", 1),
+                (f"demo-{sku}-lifestyle", lifestyle_svg, f"Supplivix daily routine aesthetic for {product.name}", 2),
             ]
 
             for file_base, svg_content, alt_text, sort_order in variants:

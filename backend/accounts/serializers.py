@@ -27,17 +27,109 @@ def normalize_pakistani_phone(phone_str):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    first_name = serializers.SerializerMethodField()
+    last_name = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'email', 'full_name', 'phone', 'is_staff', 'date_joined']
-        read_only_fields = ['id', 'email', 'is_staff', 'date_joined']
+        fields = [
+            'id',
+            'email',
+            'full_name',
+            'first_name',
+            'last_name',
+            'phone',
+            'is_staff',
+            'is_superuser',
+            'staff_role',
+            'staff_permissions',
+            'date_joined',
+        ]
+        read_only_fields = ['id', 'email', 'is_staff', 'is_superuser', 'staff_role', 'staff_permissions', 'date_joined']
+
+    def get_first_name(self, obj):
+        parts = (obj.full_name or '').strip().split(' ', 1)
+        return parts[0] if parts else ''
+
+    def get_last_name(self, obj):
+        parts = (obj.full_name or '').strip().split(' ', 1)
+        return parts[1] if len(parts) > 1 else ''
+
+
+class StaffMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'email',
+            'full_name',
+            'phone',
+            'is_active',
+            'is_staff',
+            'is_superuser',
+            'staff_role',
+            'staff_permissions',
+            'date_joined',
+            'last_login',
+        ]
+        read_only_fields = ['id', 'date_joined', 'last_login']
+
+
+class StaffRegisterSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    full_name = serializers.CharField(max_length=255, required=True)
+    phone = serializers.CharField(max_length=30, required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True, min_length=8)
+    staff_role = serializers.CharField(max_length=100, required=False, default='General Staff')
+    staff_permissions = serializers.ListField(
+        child=serializers.CharField(max_length=50),
+        required=False,
+        default=list,
+    )
+    is_active = serializers.BooleanField(required=False, default=True)
+
+    def validate_email(self, value):
+        norm = value.lower().strip()
+        if User.objects.filter(email=norm).exists():
+            raise serializers.ValidationError('A user with this email address already exists.')
+        return norm
+
+    def validate_phone(self, value):
+        if not value:
+            return ''
+        return normalize_pakistani_phone(value)
 
 
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    full_name = serializers.CharField(max_length=255)
+    full_name = serializers.CharField(max_length=255, required=True)
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     phone = serializers.CharField(max_length=30, required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, min_length=8)
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            fn = str(data.get('first_name', '')).strip()
+            ln = str(data.get('last_name', '')).strip()
+            if (fn or ln) and not data.get('full_name'):
+                data = dict(data)
+                data['full_name'] = f"{fn} {ln}".strip()
+        return super().to_internal_value(data)
+
+    def validate(self, attrs):
+        full_name = attrs.get('full_name', '').strip()
+        first_name = attrs.get('first_name', '').strip()
+        last_name = attrs.get('last_name', '').strip()
+
+        if not full_name and (first_name or last_name):
+            full_name = f"{first_name} {last_name}".strip()
+
+        if not full_name:
+            raise serializers.ValidationError({'full_name': 'Full name (or first name and last name) is required.'})
+
+        attrs['full_name'] = full_name
+        return attrs
 
     def validate_email(self, value):
         norm = value.strip().lower()
@@ -87,6 +179,10 @@ class LoginSerializer(serializers.Serializer):
 
         user = authenticate(request=self.context.get('request'), email=email, password=password)
         if not user:
+            inactive_user = User.objects.filter(email=email).first()
+            if inactive_user and not inactive_user.is_active and inactive_user.check_password(password):
+                raise serializers.ValidationError('This account has been deactivated.')
+
             cache.set(lockout_key, failed_count + 1, timeout=900)
             request = self.context.get('request')
             if request:
@@ -110,13 +206,14 @@ class LoginSerializer(serializers.Serializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(write_only=True)
+    old_password = serializers.CharField(write_only=True, required=False, allow_blank=True, default='')
     new_password = serializers.CharField(write_only=True, min_length=8)
 
     def validate_old_password(self, value):
-        user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError('Incorrect existing password.')
+        if value:
+            user = self.context['request'].user
+            if not user.check_password(value):
+                raise serializers.ValidationError('Incorrect existing password.')
         return value
 
     def validate_new_password(self, value):

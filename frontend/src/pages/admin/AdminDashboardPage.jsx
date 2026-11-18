@@ -9,18 +9,20 @@ import Modal from '../../components/ui/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/ui/Toast';
 import { api } from '../../services/api';
+import AdminSaleEventsTab from './AdminSaleEventsTab';
+import AdminBundlesTab from './AdminBundlesTab';
 
 const ADMIN_TABS = [
   { key: 'overview', label: 'Overview', icon: 'chart' },
   { key: 'orders', label: 'Orders (COD)', icon: 'cod' },
   { key: 'products', label: 'Products', icon: 'box' },
   { key: 'categories', label: 'Categories', icon: 'tag' },
-  { key: 'coupons', label: 'Coupons', icon: 'bolt' },
+  { key: 'sale_events', label: 'Sale Events', icon: 'tag' },
+  { key: 'bundles', label: 'Promotional Bundles', icon: 'tag' },
   { key: 'settings', label: 'Shipping & Settings', icon: 'sliders' },
   { key: 'customers', label: 'Customers', icon: 'user' },
   { key: 'reviews', label: 'Reviews', icon: 'star' },
   { key: 'messages', label: 'Messages & Waitlist', icon: 'envelope' },
-  { key: 'security', label: 'Bot & IP Security', icon: 'shield' },
   { key: 'audit', label: 'Audit Trail', icon: 'clock' },
 ];
 
@@ -71,6 +73,7 @@ export default function AdminDashboardPage() {
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [editingProduct, setEditingProduct] = useState(null);
   const [newProductModalOpen, setNewProductModalOpen] = useState(false);
+  const [isTranslatingUrdu, setIsTranslatingUrdu] = useState(false);
   const [newProductData, setNewProductData] = useState({
     name: '',
     slug: '',
@@ -83,6 +86,11 @@ export default function AdminDashboardPage() {
     brand: 'Supplivix',
     short_description: '',
     description: '',
+    directions: '',
+    ingredients: '',
+    description_ur: '',
+    directions_ur: '',
+    ingredients_ur: '',
     seo_title: '',
     seo_description: '',
   });
@@ -91,6 +99,9 @@ export default function AdminDashboardPage() {
   const [imageModalProduct, setImageModalProduct] = useState(null);
   const [uploadImageFile, setUploadImageFile] = useState(null);
   const [uploadAltText, setUploadAltText] = useState('');
+  const [newProductImages, setNewProductImages] = useState([]);
+  const [newProductImagesAlt, setNewProductImagesAlt] = useState('');
+  const [isSubmittingNewProduct, setIsSubmittingNewProduct] = useState(false);
   const [faqModalProduct, setFaqModalProduct] = useState(null);
   const [newFaqQuestion, setNewFaqQuestion] = useState('');
   const [newFaqAnswer, setNewFaqAnswer] = useState('');
@@ -102,28 +113,31 @@ export default function AdminDashboardPage() {
   const [newCategoryParent, setNewCategoryParent] = useState('');
   const [newCategoryOrder, setNewCategoryOrder] = useState('0');
 
-  // 5. Coupons state
-  const [coupons, setCoupons] = useState([]);
-  const [newCouponData, setNewCouponData] = useState({
-    code: '',
-    discount_type: 'percentage',
-    discount_value: '10',
-    min_order_amount: '0',
-    max_discount_amount: '',
-    usage_limit: '',
-    is_active: true,
-  });
-  const [redemptionsModalOpen, setRedemptionsModalOpen] = useState(false);
-  const [couponRedemptions, setCouponRedemptions] = useState([]);
-  const [activeCouponCode, setActiveCouponCode] = useState('');
-
-  // 6. Settings state
+  // 5. Settings state
   const [settingsData, setSettingsData] = useState({
     free_shipping_threshold: '2000',
     flat_shipping_fee: '200',
-    store_phone: '+92 300 0000000',
-    store_email: 'care@supplivix.pk',
-    corporate_address: 'Supplivix Labs, Clifton Block 4, Karachi, Pakistan',
+    announcement_bar_enabled: true,
+    announcement_text_primary: 'Free delivery on orders above Rs. {threshold}',
+    announcement_text_secondary: 'Cash on Delivery (COD) Across Pakistan',
+    deals_enabled: true,
+    deal_banner_1_badge: 'Special Bundle',
+    deal_banner_1_title: 'Complete Daily Glow Duo',
+    deal_banner_1_desc: 'Pair our daily multivitamin with pure clarifying serum for comprehensive internal nutrition and external skin radiance.',
+    deal_banner_1_price: '3499',
+    deal_banner_1_original_price: '4350',
+    deal_banner_1_button_text: 'Shop The Duo',
+    deal_banner_1_link: '/shop?bundle=glow-duo',
+    deal_banner_2_badge: 'Family Pack',
+    deal_banner_2_title: '3-Month Wellness Supply',
+    deal_banner_2_desc: 'Ensure daily vitamin consistency with our bulk family package. Includes free nationwide COD shipping.',
+    deal_banner_2_highlight: 'Free Nationwide Delivery',
+    deal_banner_2_button_text: 'View Family Pack',
+    deal_banner_2_link: '/multivitamins',
+    store_phone: '0302-5222405',
+    store_email: 'supplivix@gmail.com',
+    corporate_address: 'Kohinoor City, Jaranwala Road, Faisalabad, Punjab, Pakistan',
+    instagram_url: 'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2',
     site_mode: 'live',
     launch_date: '',
   });
@@ -142,12 +156,7 @@ export default function AdminDashboardPage() {
   const [messages, setMessages] = useState([]);
   const [waitlistEntries, setWaitlistEntries] = useState([]);
 
-  // 10. Security state
-  const [securityLogs, setSecurityLogs] = useState({ bot_events: [], blocked_ips: [], failed_logins: [] });
-  const [unblockIPInput, setUnblockIPInput] = useState('');
-  const [manualBlockData, setManualBlockData] = useState({ ip: '', reason: 'Suspicious bot traffic', hours: '24' });
-
-  // 11. Audit logs state
+  // 10. Audit logs state
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditPage, setAuditPage] = useState(1);
   const [auditTotalPages, setAuditTotalPages] = useState(1);
@@ -183,17 +192,32 @@ export default function AdminDashboardPage() {
       } else if (activeTab === 'categories') {
         const data = await api.getAdminCategories();
         setCategories(data.results || []);
-      } else if (activeTab === 'coupons') {
-        const data = await api.getAdminCoupons();
-        setCoupons(data.results || []);
       } else if (activeTab === 'settings') {
         const data = await api.getAdminSettings();
         setSettingsData({
           free_shipping_threshold: String(data.free_shipping_threshold || 2000),
           flat_shipping_fee: String(data.flat_shipping_fee || 200),
-          store_phone: data.store_phone || '',
-          store_email: data.store_email || '',
-          corporate_address: data.corporate_address || '',
+          announcement_bar_enabled: data.announcement_bar_enabled !== 'false' && data.announcement_bar_enabled !== false,
+          announcement_text_primary: data.announcement_text_primary !== undefined ? String(data.announcement_text_primary) : 'Free delivery on orders above Rs. {threshold}',
+          announcement_text_secondary: data.announcement_text_secondary !== undefined ? String(data.announcement_text_secondary) : 'Cash on Delivery (COD) Across Pakistan',
+          deals_enabled: data.deals_enabled !== 'false' && data.deals_enabled !== false,
+          deal_banner_1_badge: data.deal_banner_1_badge || 'Special Bundle',
+          deal_banner_1_title: data.deal_banner_1_title || 'Complete Daily Glow Duo',
+          deal_banner_1_desc: data.deal_banner_1_desc || '',
+          deal_banner_1_price: String(data.deal_banner_1_price || '3499'),
+          deal_banner_1_original_price: String(data.deal_banner_1_original_price || '4350'),
+          deal_banner_1_button_text: data.deal_banner_1_button_text || 'Shop The Duo',
+          deal_banner_1_link: data.deal_banner_1_link || '/shop?bundle=glow-duo',
+          deal_banner_2_badge: data.deal_banner_2_badge || 'Family Pack',
+          deal_banner_2_title: data.deal_banner_2_title || '3-Month Wellness Supply',
+          deal_banner_2_desc: data.deal_banner_2_desc || '',
+          deal_banner_2_highlight: data.deal_banner_2_highlight || 'Free Nationwide Delivery',
+          deal_banner_2_button_text: data.deal_banner_2_button_text || 'View Family Pack',
+          deal_banner_2_link: data.deal_banner_2_link || '/multivitamins',
+          store_phone: data.store_phone || '0302-5222405',
+          store_email: data.store_email || 'supplivix@gmail.com',
+          corporate_address: data.corporate_address || 'Kohinoor City, Jaranwala Road, Faisalabad, Punjab, Pakistan',
+          instagram_url: data.instagram_url || 'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2',
           site_mode: data.site_mode || 'live',
           launch_date: data.launch_date || '',
         });
@@ -212,9 +236,6 @@ export default function AdminDashboardPage() {
         ]);
         setMessages(msgData.results || []);
         setWaitlistEntries(waitData.results || []);
-      } else if (activeTab === 'security') {
-        const data = await api.getAdminSecurityLogs();
-        setSecurityLogs(data);
       } else if (activeTab === 'audit') {
         const data = await api.getAdminAuditLogs({ page: auditPage });
         setAuditLogs(data.results || []);
@@ -311,8 +332,40 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleNewProductImagesChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const maxFiles = 3;
+    if (newProductImages.length + files.length > maxFiles) {
+      showToast(`A maximum of ${maxFiles} images can be added per product.`, 'error');
+    }
+
+    const availableSlots = Math.max(0, maxFiles - newProductImages.length);
+    const filesToConsider = files.slice(0, availableSlots);
+    const validFiles = [];
+
+    for (const file of filesToConsider) {
+      if (file.size > 2 * 1024 * 1024) {
+        showToast(`Image "${file.name}" exceeds 2 MB limit.`, 'error');
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length > 0) {
+      setNewProductImages((prev) => [...prev, ...validFiles]);
+    }
+    e.target.value = '';
+  };
+
+  const handleRemoveNewProductImage = (idxToRemove) => {
+    setNewProductImages((prev) => prev.filter((_, idx) => idx !== idxToRemove));
+  };
+
   const handleCreateProduct = async (e) => {
     e.preventDefault();
+    setIsSubmittingNewProduct(true);
     try {
       const payload = {
         ...newProductData,
@@ -321,9 +374,35 @@ export default function AdminDashboardPage() {
         stock: Number(newProductData.stock),
         category_id: newProductData.category_id ? Number(newProductData.category_id) : null,
       };
-      await api.createAdminProduct(payload);
-      showToast('Product created successfully.');
+      const res = await api.createAdminProduct(payload);
+      const createdId = res?.id || res?.data?.id;
+
+      let uploadedCount = 0;
+      if (createdId && newProductImages.length > 0) {
+        for (let i = 0; i < newProductImages.length; i++) {
+          const imgFile = newProductImages[i];
+          const formData = new window.FormData();
+          formData.append('image', imgFile);
+          const alt = newProductImagesAlt.trim() || `${newProductData.name || 'Product'} photo ${i + 1}`;
+          formData.append('alt_text', alt);
+          try {
+            await api.uploadProductImage(createdId, formData);
+            uploadedCount++;
+          } catch (uploadErr) {
+            console.error('Failed to upload image:', uploadErr);
+          }
+        }
+      }
+
+      if (uploadedCount > 0) {
+        showToast(`Product created with ${uploadedCount} image(s) successfully.`);
+      } else {
+        showToast('Product created successfully.');
+      }
+
       setNewProductModalOpen(false);
+      setNewProductImages([]);
+      setNewProductImagesAlt('');
       setNewProductData({
         name: '',
         slug: '',
@@ -342,6 +421,40 @@ export default function AdminDashboardPage() {
       loadTabData();
     } catch (err) {
       showToast(err.message || 'Could not create product.', 'error');
+    } finally {
+      setIsSubmittingNewProduct(false);
+    }
+  };
+
+  const handleAutoTranslateUrdu = async (target, setTarget) => {
+    const desc = target.description || '';
+    const dirs = target.directions || '';
+    const ings = target.ingredients || '';
+
+    if (!desc && !dirs && !ings) {
+      showToast('Please enter English description, directions, or ingredients first.', 'error');
+      return;
+    }
+
+    try {
+      setIsTranslatingUrdu(true);
+      const res = await api.translateProductToUrdu({
+        description: desc,
+        directions: dirs,
+        ingredients: ings,
+      });
+
+      setTarget((prev) => ({
+        ...prev,
+        description_ur: res.description_ur || prev.description_ur || '',
+        directions_ur: res.directions_ur || prev.directions_ur || '',
+        ingredients_ur: res.ingredients_ur || prev.ingredients_ur || '',
+      }));
+      showToast('Draft Urdu translation generated. Please review and save.');
+    } catch (err) {
+      showToast(err.message || 'Auto-translation failed.', 'error');
+    } finally {
+      setIsTranslatingUrdu(false);
     }
   };
 
@@ -358,6 +471,12 @@ export default function AdminDashboardPage() {
         product_type: editingProduct.product_type,
         seo_title: editingProduct.seo_title || '',
         seo_description: editingProduct.seo_description || '',
+        description: editingProduct.description || '',
+        directions: editingProduct.directions || '',
+        ingredients: editingProduct.ingredients || '',
+        description_ur: editingProduct.description_ur || '',
+        directions_ur: editingProduct.directions_ur || '',
+        ingredients_ur: editingProduct.ingredients_ur || '',
       });
       showToast('Product updated successfully.');
       setEditingProduct(null);
@@ -495,69 +614,6 @@ export default function AdminDashboardPage() {
   };
 
   // ============================================================================
-  // COUPONS HANDLERS
-  // ============================================================================
-  const handleGenerateRandomCode = async () => {
-    try {
-      const res = await api.generateAdminCouponCode('SPLV');
-      setNewCouponData((prev) => ({ ...prev, code: res.code }));
-    } catch {
-      showToast('Could not generate random code.', 'error');
-    }
-  };
-
-  const handleCreateCoupon = async (e) => {
-    e.preventDefault();
-    if (!newCouponData.code.trim()) return;
-    try {
-      await api.createAdminCoupon({
-        code: newCouponData.code.trim().toUpperCase(),
-        discount_type: newCouponData.discount_type,
-        discount_value: Number(newCouponData.discount_value),
-        min_order_amount: Number(newCouponData.min_order_amount) || 0,
-        max_discount_amount: newCouponData.max_discount_amount ? Number(newCouponData.max_discount_amount) : null,
-        usage_limit: newCouponData.usage_limit ? Number(newCouponData.usage_limit) : null,
-        is_active: newCouponData.is_active,
-      });
-      showToast('Coupon created successfully.');
-      setNewCouponData({
-        code: '',
-        discount_type: 'percentage',
-        discount_value: '10',
-        min_order_amount: '0',
-        max_discount_amount: '',
-        usage_limit: '',
-        is_active: true,
-      });
-      loadTabData();
-    } catch (err) {
-      showToast(err.message || 'Could not create coupon.', 'error');
-    }
-  };
-
-  const handleViewCouponRedemptions = async (coupon) => {
-    try {
-      const res = await api.getAdminCouponRedemptions(coupon.id);
-      setActiveCouponCode(coupon.code);
-      setCouponRedemptions(res.results || []);
-      setRedemptionsModalOpen(true);
-    } catch (err) {
-      showToast(err.message || 'Could not load redemptions.', 'error');
-    }
-  };
-
-  const handleDeleteCoupon = async (id, code) => {
-    if (!window.confirm(`Delete coupon "${code}"?`)) return;
-    try {
-      await api.deleteAdminCoupon(id);
-      showToast(`Coupon "${code}" deleted.`);
-      loadTabData();
-    } catch (err) {
-      showToast(err.message || 'Could not delete coupon.', 'error');
-    }
-  };
-
-  // ============================================================================
   // SETTINGS HANDLERS
   // ============================================================================
   const handleSaveSettings = async (e) => {
@@ -566,9 +622,27 @@ export default function AdminDashboardPage() {
       await api.updateAdminSettings({
         free_shipping_threshold: Number(settingsData.free_shipping_threshold),
         flat_shipping_fee: Number(settingsData.flat_shipping_fee),
+        announcement_bar_enabled: Boolean(settingsData.announcement_bar_enabled),
+        announcement_text_primary: settingsData.announcement_text_primary || '',
+        announcement_text_secondary: settingsData.announcement_text_secondary || '',
+        deals_enabled: Boolean(settingsData.deals_enabled),
+        deal_banner_1_badge: settingsData.deal_banner_1_badge || '',
+        deal_banner_1_title: settingsData.deal_banner_1_title || '',
+        deal_banner_1_desc: settingsData.deal_banner_1_desc || '',
+        deal_banner_1_price: settingsData.deal_banner_1_price || '',
+        deal_banner_1_original_price: settingsData.deal_banner_1_original_price || '',
+        deal_banner_1_button_text: settingsData.deal_banner_1_button_text || '',
+        deal_banner_1_link: settingsData.deal_banner_1_link || '',
+        deal_banner_2_badge: settingsData.deal_banner_2_badge || '',
+        deal_banner_2_title: settingsData.deal_banner_2_title || '',
+        deal_banner_2_desc: settingsData.deal_banner_2_desc || '',
+        deal_banner_2_highlight: settingsData.deal_banner_2_highlight || '',
+        deal_banner_2_button_text: settingsData.deal_banner_2_button_text || '',
+        deal_banner_2_link: settingsData.deal_banner_2_link || '',
         store_phone: settingsData.store_phone.trim(),
         store_email: settingsData.store_email.trim(),
         corporate_address: settingsData.corporate_address.trim(),
+        instagram_url: (settingsData.instagram_url || '').trim(),
         site_mode: settingsData.site_mode,
         launch_date: settingsData.launch_date,
       });
@@ -639,36 +713,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // ============================================================================
-  // BOT & SECURITY HANDLERS
-  // ============================================================================
-  const handleManualBlockIP = async (e) => {
-    e.preventDefault();
-    if (!manualBlockData.ip.trim()) return;
-    try {
-      await api.blockAdminIP({
-        ip: manualBlockData.ip.trim(),
-        reason: manualBlockData.reason.trim(),
-        hours: Number(manualBlockData.hours),
-      });
-      showToast(`IP ${manualBlockData.ip} blocked.`);
-      setManualBlockData({ ip: '', reason: 'Suspicious bot traffic', hours: '24' });
-      loadTabData();
-    } catch (err) {
-      showToast(err.message || 'Could not block IP.', 'error');
-    }
-  };
 
-  const handleUnblockIP = async (ip) => {
-    try {
-      await api.unblockAdminIP(ip);
-      showToast(`IP ${ip} unblocked.`);
-      setUnblockIPInput('');
-      loadTabData();
-    } catch (err) {
-      showToast(err.message || 'Could not unblock IP.', 'error');
-    }
-  };
 
   // ============================================================================
   // REVENUE LINE CHART HELPER (SVG)
@@ -799,7 +844,7 @@ export default function AdminDashboardPage() {
       <SEOHead title="Staff Admin Panel" noindex={true} />
       {/* Top Admin Header */}
       <header className="bg-brand-ink text-white border-b border-surface-border sticky top-0 z-30">
-        <div className="max-w-site mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <div className="max-w-site mx-auto px-4 sm:px-6 h-14 min-h-[56px] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="font-bold text-sm tracking-wider uppercase text-brand-lavender">
               Supplivix Admin Panel
@@ -822,7 +867,7 @@ export default function AdminDashboardPage() {
       {/* Main Container */}
       <div className="max-w-site mx-auto px-4 sm:px-6 py-8">
         {/* Navigation Tabs Strip */}
-        <div className="flex items-center gap-1.5 border-b border-surface-border pb-3 overflow-x-auto mb-8">
+        <div className="flex items-center gap-1.5 border-b border-surface-border pb-3 overflow-x-auto mb-8 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {ADMIN_TABS.map((tab) => (
             <button
               key={tab.key}
@@ -1558,230 +1603,475 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ================================================================== */}
-        {/* 5. COUPONS TAB */}
+        {/* SALE EVENTS & CAMPAIGNS TAB */}
         {/* ================================================================== */}
-        {activeTab === 'coupons' && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-            <div className="md:col-span-4 bg-surface-subtle border border-surface-border rounded-lg p-6 shadow-card self-start">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-brand-ink mb-4">
-                Create Discount Coupon
-              </h2>
-              <form onSubmit={handleCreateCoupon} className="space-y-3.5">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-brand-ink">Coupon Code</label>
-                    <button
-                      type="button"
-                      onClick={handleGenerateRandomCode}
-                      className="text-[10px] text-brand-green font-bold hover:underline"
-                    >
-                      Generate Random
-                    </button>
-                  </div>
-                  <Input
-                    name="code"
-                    value={newCouponData.code}
-                    onChange={(e) => setNewCouponData({ ...newCouponData, code: e.target.value.toUpperCase() })}
-                    placeholder="e.g. SPLV-WELCOME10"
-                    className="uppercase"
-                    required
-                  />
-                </div>
+        {activeTab === 'sale_events' && <AdminSaleEventsTab />}
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label htmlFor="discount-type-select" className="block text-xs font-semibold text-brand-ink mb-1">Discount Type</label>
-                    <select
-                      id="discount-type-select"
-                      value={newCouponData.discount_type}
-                      onChange={(e) => setNewCouponData({ ...newCouponData, discount_type: e.target.value })}
-                      className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs"
-                    >
-                      <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">Fixed PKR (Rs.)</option>
-                    </select>
-                  </div>
-                  <Input
-                    label="Discount Value"
-                    name="discountValue"
-                    type="number"
-                    value={newCouponData.discount_value}
-                    onChange={(e) => setNewCouponData({ ...newCouponData, discount_value: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    label="Min Order (PKR)"
-                    name="minOrder"
-                    type="number"
-                    value={newCouponData.min_order_amount}
-                    onChange={(e) => setNewCouponData({ ...newCouponData, min_order_amount: e.target.value })}
-                  />
-                  <Input
-                    label="Max Discount"
-                    name="maxDiscount"
-                    type="number"
-                    value={newCouponData.max_discount_amount}
-                    onChange={(e) => setNewCouponData({ ...newCouponData, max_discount_amount: e.target.value })}
-                    placeholder="Optional cap"
-                  />
-                </div>
-
-                <Input
-                  label="Total Usage Limit"
-                  name="usageLimit"
-                  type="number"
-                  value={newCouponData.usage_limit}
-                  onChange={(e) => setNewCouponData({ ...newCouponData, usage_limit: e.target.value })}
-                  placeholder="Unlimited if empty"
-                />
-
-                <Button type="submit" variant="primary" size="sm" className="w-full">
-                  Create Coupon
-                </Button>
-              </form>
-            </div>
-
-            <div className="md:col-span-8 bg-white border border-surface-border rounded-lg shadow-card overflow-hidden">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-surface-subtle border-b border-surface-border uppercase font-bold text-ink-muted">
-                    <th className="p-3">Code</th>
-                    <th className="p-3">Discount</th>
-                    <th className="p-3">Min Order</th>
-                    <th className="p-3">Times Used</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-border">
-                  {coupons.map((c) => (
-                    <tr key={c.id}>
-                      <td className="p-3 font-bold text-brand-green uppercase">{c.code}</td>
-                      <td className="p-3">
-                        {c.discount_type === 'percentage' || c.type === 'percent'
-                          ? `${c.discount_value || c.value}%`
-                          : `Rs. ${c.discount_value || c.value}`}
-                      </td>
-                      <td className="p-3">Rs. {Number(c.min_order_amount || 0).toLocaleString()}</td>
-                      <td className="p-3">{c.times_used || 0}</td>
-                      <td className="p-3">
-                        <Badge variant={c.is_active ? 'pill' : 'default'}>
-                          {c.is_active ? 'Active' : 'Disabled'}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewCouponRedemptions(c)}
-                          className="text-[10px] py-1 px-2"
-                        >
-                          Redemptions
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteCoupon(c.id, c.code)}
-                          className="text-[10px] py-1 px-2 text-red-600"
-                        >
-                          Delete
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        {/* ================================================================== */}
+        {/* PROMOTIONAL BUNDLES & DEALS TAB */}
+        {/* ================================================================== */}
+        {activeTab === 'bundles' && <AdminBundlesTab />}
 
         {/* ================================================================== */}
         {/* 6. SHIPPING & SETTINGS TAB */}
         {/* ================================================================== */}
         {activeTab === 'settings' && (
-          <div className="max-w-2xl bg-surface-subtle border border-surface-border rounded-lg p-6 shadow-card">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-brand-ink mb-6">
-              Store Logistics &amp; Public Settings
-            </h2>
-            <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="Free Shipping Threshold (PKR)"
-                  name="threshold"
-                  type="number"
-                  value={settingsData.free_shipping_threshold}
-                  onChange={(e) => setSettingsData({ ...settingsData, free_shipping_threshold: e.target.value })}
-                  required
-                />
-                <Input
-                  label="Flat Shipping Fee (PKR)"
-                  name="flatFee"
-                  type="number"
-                  value={settingsData.flat_shipping_fee}
-                  onChange={(e) => setSettingsData({ ...settingsData, flat_shipping_fee: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="Store Phone (Helpline / WhatsApp)"
-                  name="storePhone"
-                  value={settingsData.store_phone}
-                  onChange={(e) => setSettingsData({ ...settingsData, store_phone: e.target.value })}
-                  required
-                />
-                <Input
-                  label="Official Support Email"
-                  name="storeEmail"
-                  type="email"
-                  value={settingsData.store_email}
-                  onChange={(e) => setSettingsData({ ...settingsData, store_email: e.target.value })}
-                  required
-                />
-              </div>
-
+          <div className="w-full max-w-5xl space-y-6">
+            {/* Tab Header Banner */}
+            <div className="bg-white border border-surface-border rounded-lg p-5 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <label className="block text-xs font-semibold text-brand-ink mb-1">
-                  Corporate Physical Address
-                </label>
-                <textarea
-                  value={settingsData.corporate_address}
-                  onChange={(e) => setSettingsData({ ...settingsData, corporate_address: e.target.value })}
-                  rows="2"
-                  className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="site-mode-select" className="block text-xs font-semibold text-brand-ink mb-1">
-                    Storefront Operational Mode
-                  </label>
-                  <select
-                    id="site-mode-select"
-                    value={settingsData.site_mode}
-                    onChange={(e) => setSettingsData({ ...settingsData, site_mode: e.target.value })}
-                    className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs"
-                  >
-                    <option value="live">Live (Full Storefront &amp; Checkout)</option>
-                    <option value="coming_soon">Coming Soon (Waitlist Mode Only)</option>
-                  </select>
+                <div className="flex items-center gap-2">
+                  <Icon name="sliders" className="text-brand-purple text-base" />
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-brand-ink">
+                    Store Logistics &amp; Public Settings
+                  </h2>
                 </div>
-                <Input
-                  label="Official Launch Date"
-                  name="launchDate"
-                  type="date"
-                  value={settingsData.launch_date}
-                  onChange={(e) => setSettingsData({ ...settingsData, launch_date: e.target.value })}
-                />
+                <p className="text-xs text-ink-muted mt-1">
+                  Manage nationwide shipping rates, the storefront announcement banner, homepage deals, and official contacts.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-brand-green bg-green-50 border border-green-200 px-3 py-1 rounded">
+                  Live Sync Active
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveSettings} className="space-y-6 text-xs">
+              {/* Card 1: Logistics & Delivery Rates */}
+              <div className="bg-surface-subtle border border-surface-border rounded-lg p-6 shadow-card space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-surface-border">
+                  <Icon name="truck" className="text-brand-green" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-brand-ink">
+                    Nationwide Delivery &amp; Shipping Rates
+                  </h3>
+                </div>
+                <p className="text-xs text-ink-muted">
+                  Set the free delivery threshold and standard flat rate for Cash on Delivery orders across all cities in Pakistan.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Free Shipping Threshold (PKR)"
+                    name="threshold"
+                    type="number"
+                    value={settingsData.free_shipping_threshold}
+                    onChange={(e) => setSettingsData({ ...settingsData, free_shipping_threshold: e.target.value })}
+                    required
+                  />
+                  <Input
+                    label="Flat Shipping Fee (PKR)"
+                    name="flatFee"
+                    type="number"
+                    value={settingsData.flat_shipping_fee}
+                    onChange={(e) => setSettingsData({ ...settingsData, flat_shipping_fee: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="p-3 bg-white border border-surface-border rounded text-[11px] text-ink-muted flex items-start gap-2">
+                  <Icon name="info" className="text-brand-purple mt-0.5 shrink-0" />
+                  <span>
+                    Orders with subtotal equal to or above <strong>Rs. {Number(settingsData.free_shipping_threshold || 0).toLocaleString()}</strong> will automatically receive free nationwide delivery. Orders below this threshold are charged a flat delivery fee of <strong>Rs. {Number(settingsData.flat_shipping_fee || 0).toLocaleString()}</strong>.
+                  </span>
+                </div>
               </div>
 
-              <div className="pt-4 border-t border-surface-border flex justify-end">
-                <Button type="submit" variant="primary" size="sm">
+              {/* Card 2: Top Announcement Bar Settings & Live Preview */}
+              <div className="bg-white border border-surface-border rounded-lg p-6 shadow-card space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-surface-border">
+                  <div className="flex items-center gap-2">
+                    <Icon name="bolt" className="text-brand-purple" />
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-brand-ink">
+                        Top Announcement Bar (Header Banner)
+                      </h3>
+                      <p className="text-[11px] text-ink-muted mt-0.5">
+                        Top header marquee banner displayed on all storefront pages.
+                      </p>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-brand-purple bg-brand-lavender/40 px-3 py-1.5 rounded border border-brand-purple/20">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(settingsData.announcement_bar_enabled)}
+                      onChange={(e) => setSettingsData({ ...settingsData, announcement_bar_enabled: e.target.checked })}
+                      className="rounded text-brand-purple focus:ring-brand-purple"
+                    />
+                    <span>Active on Storefront</span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Input
+                      label="Primary Announcement Text"
+                      name="announcementPrimary"
+                      value={settingsData.announcement_text_primary}
+                      onChange={(e) => setSettingsData({ ...settingsData, announcement_text_primary: e.target.value })}
+                      placeholder="Free delivery on orders above Rs. {threshold}"
+                    />
+                    <p className="text-[11px] text-ink-muted mt-1.5">
+                      Use <code className="bg-gray-100 px-1.5 py-0.5 rounded text-brand-ink font-mono text-[10px]">{'{threshold}'}</code> to dynamically display your shipping limit.
+                    </p>
+                  </div>
+                  <div>
+                    <Input
+                      label="Secondary / Tagline Text"
+                      name="announcementSecondary"
+                      value={settingsData.announcement_text_secondary}
+                      onChange={(e) => setSettingsData({ ...settingsData, announcement_text_secondary: e.target.value })}
+                      placeholder="Cash on Delivery (COD) Across Pakistan"
+                    />
+                    <p className="text-[11px] text-ink-muted mt-1.5">
+                      Displayed on the right side of the announcement bar or separated by a divider.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live Preview */}
+                <div className="pt-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted block mb-1.5">
+                    Storefront Live Preview:
+                  </span>
+                  {settingsData.announcement_bar_enabled ? (
+                    <div className="p-3 bg-brand-lavender text-brand-purple text-xs font-semibold text-center rounded border border-brand-purple/20 flex items-center justify-center gap-3 flex-wrap">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Icon name="truck" className="text-xs" />
+                        <span>
+                          {(settingsData.announcement_text_primary || 'Free delivery on orders above Rs. {threshold}')
+                            .replace('{threshold}', Number(settingsData.free_shipping_threshold || 2000).toLocaleString())}
+                        </span>
+                      </span>
+                      <span className="opacity-40">|</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Icon name="cod" className="text-xs" />
+                        <span>{settingsData.announcement_text_secondary || 'Cash on Delivery (COD) Across Pakistan'}</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-gray-100 text-gray-500 text-xs italic text-center rounded border border-gray-200">
+                      Announcement bar is currently hidden on storefront.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Card 3: Homepage Promotional Deals & Banners */}
+              <div className="bg-white border border-surface-border rounded-lg p-6 shadow-card space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-surface-border gap-3">
+                  <div>
+                    <div className="font-bold text-brand-ink text-xs flex items-center gap-1.5">
+                      <Icon name="tag" className="text-brand-green" />
+                      <span>Homepage Promotional Deals &amp; Bundles</span>
+                    </div>
+                    <p className="text-[11px] text-ink-muted mt-0.5">
+                      Storefront homepage promotional deals section visibility and bundle management.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-brand-green bg-green-50 px-3 py-1.5 rounded border border-green-200">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(settingsData.deals_enabled)}
+                        onChange={(e) => setSettingsData({ ...settingsData, deals_enabled: e.target.checked })}
+                        className="rounded text-brand-green focus:ring-brand-green"
+                      />
+                      <span>Show Deals on Homepage</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('bundles')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-ink text-white text-xs font-semibold rounded hover:bg-black transition-colors"
+                    >
+                      <Icon name="tag" className="text-xs" />
+                      <span>Manage Bundles (Add / Remove) &rarr;</span>
+                    </button>
+                  </div>
+                </div>
+
+                {settingsData.deals_enabled && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+                    {/* Deal Card 1 Form & Live Preview */}
+                    <div className="p-4 bg-surface-subtle border border-surface-border rounded-lg space-y-4">
+                      <div className="flex items-center justify-between border-b border-surface-border pb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-brand-ink">
+                          Deal Card 1 (Bundle / Discount Offer)
+                        </span>
+                        <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                          Left Card
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Input
+                          label="Badge / Tag Text"
+                          name="deal1Badge"
+                          value={settingsData.deal_banner_1_badge}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_1_badge: e.target.value })}
+                          placeholder="Special Bundle"
+                        />
+                        <Input
+                          label="Deal Title"
+                          name="deal1Title"
+                          value={settingsData.deal_banner_1_title}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_1_title: e.target.value })}
+                          placeholder="Complete Daily Glow Duo"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-brand-ink mb-1">
+                          Deal Description
+                        </label>
+                        <textarea
+                          rows="2"
+                          value={settingsData.deal_banner_1_desc}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_1_desc: e.target.value })}
+                          placeholder="Pair our daily multivitamin with pure clarifying serum..."
+                          className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs focus:ring-1 focus:ring-brand-purple focus:border-brand-purple outline-none"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          label="Sale Price (PKR)"
+                          name="deal1Price"
+                          type="number"
+                          value={settingsData.deal_banner_1_price}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_1_price: e.target.value })}
+                          placeholder="3499"
+                        />
+                        <Input
+                          label="Original Price (PKR)"
+                          name="deal1OrigPrice"
+                          type="number"
+                          value={settingsData.deal_banner_1_original_price}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_1_original_price: e.target.value })}
+                          placeholder="4350"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          label="Button Text"
+                          name="deal1BtnText"
+                          value={settingsData.deal_banner_1_button_text}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_1_button_text: e.target.value })}
+                          placeholder="Shop The Duo"
+                        />
+                        <Input
+                          label="Button Link"
+                          name="deal1Link"
+                          value={settingsData.deal_banner_1_link}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_1_link: e.target.value })}
+                          placeholder="/shop?bundle=glow-duo"
+                        />
+                      </div>
+
+                      {/* Live Preview for Card 1 */}
+                      <div className="pt-3 border-t border-surface-border">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted block mb-2">
+                          Card 1 Live Preview:
+                        </span>
+                        <div className="border border-surface-border rounded-lg p-5 bg-white shadow-card">
+                          {settingsData.deal_banner_1_badge && (
+                            <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-red-600 text-white mb-2">
+                              {settingsData.deal_banner_1_badge}
+                            </span>
+                          )}
+                          <h4 className="text-base font-bold uppercase tracking-tight text-brand-ink mb-1">
+                            {settingsData.deal_banner_1_title || 'Deal Title'}
+                          </h4>
+                          {settingsData.deal_banner_1_desc && (
+                            <p className="text-[11px] text-ink-muted mb-3 line-clamp-2">
+                              {settingsData.deal_banner_1_desc}
+                            </p>
+                          )}
+                          <div className="text-sm font-bold text-brand-ink mb-3">
+                            Rs. {Number(settingsData.deal_banner_1_price || 0).toLocaleString()}{' '}
+                            {settingsData.deal_banner_1_original_price && Number(settingsData.deal_banner_1_original_price) > Number(settingsData.deal_banner_1_price) && (
+                              <span className="text-[11px] text-ink-muted line-through font-normal ml-1">
+                                Rs. {Number(settingsData.deal_banner_1_original_price).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="inline-block bg-brand-ink text-white text-[11px] font-bold px-4 py-1.5 rounded uppercase">
+                            {settingsData.deal_banner_1_button_text || 'Shop The Deal'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Deal Card 2 Form & Live Preview */}
+                    <div className="p-4 bg-surface-subtle border border-surface-border rounded-lg space-y-4">
+                      <div className="flex items-center justify-between border-b border-surface-border pb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-brand-ink">
+                          Deal Card 2 (Highlight / Family Pack Offer)
+                        </span>
+                        <span className="text-[10px] font-bold text-brand-green bg-green-50 border border-green-200 px-2 py-0.5 rounded">
+                          Right Card
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Input
+                          label="Badge / Tag Text"
+                          name="deal2Badge"
+                          value={settingsData.deal_banner_2_badge}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_2_badge: e.target.value })}
+                          placeholder="Family Pack"
+                        />
+                        <Input
+                          label="Deal Title"
+                          name="deal2Title"
+                          value={settingsData.deal_banner_2_title}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_2_title: e.target.value })}
+                          placeholder="3-Month Wellness Supply"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-brand-ink mb-1">
+                          Deal Description
+                        </label>
+                        <textarea
+                          rows="2"
+                          value={settingsData.deal_banner_2_desc}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_2_desc: e.target.value })}
+                          placeholder="Ensure daily vitamin consistency with our bulk family package..."
+                          className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs focus:ring-1 focus:ring-brand-purple focus:border-brand-purple outline-none"
+                        />
+                      </div>
+                      <Input
+                        label="Highlight / Perk Text"
+                        name="deal2Highlight"
+                        value={settingsData.deal_banner_2_highlight}
+                        onChange={(e) => setSettingsData({ ...settingsData, deal_banner_2_highlight: e.target.value })}
+                        placeholder="Free Nationwide Delivery"
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          label="Button Text"
+                          name="deal2BtnText"
+                          value={settingsData.deal_banner_2_button_text}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_2_button_text: e.target.value })}
+                          placeholder="View Family Pack"
+                        />
+                        <Input
+                          label="Button Link"
+                          name="deal2Link"
+                          value={settingsData.deal_banner_2_link}
+                          onChange={(e) => setSettingsData({ ...settingsData, deal_banner_2_link: e.target.value })}
+                          placeholder="/multivitamins"
+                        />
+                      </div>
+
+                      {/* Live Preview for Card 2 */}
+                      <div className="pt-3 border-t border-surface-border">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted block mb-2">
+                          Card 2 Live Preview:
+                        </span>
+                        <div className="border border-brand-green/30 rounded-lg p-5 bg-green-50/50 shadow-card">
+                          {settingsData.deal_banner_2_badge && (
+                            <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-brand-lavender text-brand-purple mb-2">
+                              {settingsData.deal_banner_2_badge}
+                            </span>
+                          )}
+                          <h4 className="text-base font-bold uppercase tracking-tight text-brand-ink mb-1">
+                            {settingsData.deal_banner_2_title || 'Deal Title'}
+                          </h4>
+                          {settingsData.deal_banner_2_desc && (
+                            <p className="text-[11px] text-ink-muted mb-3 line-clamp-2">
+                              {settingsData.deal_banner_2_desc}
+                            </p>
+                          )}
+                          {settingsData.deal_banner_2_highlight && (
+                            <div className="text-sm font-bold text-brand-green mb-3">
+                              {settingsData.deal_banner_2_highlight}
+                            </div>
+                          )}
+                          <div className="inline-block bg-brand-ink text-white text-[11px] font-bold px-4 py-1.5 rounded uppercase">
+                            {settingsData.deal_banner_2_button_text || 'View Deal'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Card 4: Store Helpline, Official Email & Operations */}
+              <div className="bg-surface-subtle border border-surface-border rounded-lg p-6 shadow-card space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-surface-border">
+                  <Icon name="phone" className="text-brand-purple" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-brand-ink">
+                    Store Helpline, Official Email &amp; Operational Mode
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Store Phone (Helpline / WhatsApp)"
+                    name="storePhone"
+                    value={settingsData.store_phone}
+                    onChange={(e) => setSettingsData({ ...settingsData, store_phone: e.target.value })}
+                    required
+                  />
+                  <Input
+                    label="Official Support Email"
+                    name="storeEmail"
+                    type="email"
+                    value={settingsData.store_email}
+                    onChange={(e) => setSettingsData({ ...settingsData, store_email: e.target.value })}
+                    required
+                  />
+                  <Input
+                    label="Official Instagram Profile URL"
+                    name="instagramUrl"
+                    type="url"
+                    value={settingsData.instagram_url}
+                    onChange={(e) => setSettingsData({ ...settingsData, instagram_url: e.target.value })}
+                    placeholder="https://www.instagram.com/supp.livix"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">
+                    Corporate Physical Address
+                  </label>
+                  <textarea
+                    value={settingsData.corporate_address}
+                    onChange={(e) => setSettingsData({ ...settingsData, corporate_address: e.target.value })}
+                    rows="2"
+                    className="w-full bg-white border border-surface-border rounded-sm p-2.5 text-xs focus:ring-1 focus:ring-brand-purple focus:border-brand-purple outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="site-mode-select" className="block text-xs font-semibold text-brand-ink mb-1">
+                      Storefront Operational Mode
+                    </label>
+                    <select
+                      id="site-mode-select"
+                      value={settingsData.site_mode}
+                      onChange={(e) => setSettingsData({ ...settingsData, site_mode: e.target.value })}
+                      className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs focus:ring-1 focus:ring-brand-purple focus:border-brand-purple outline-none"
+                    >
+                      <option value="live">Live (Full Storefront &amp; Checkout)</option>
+                      <option value="coming_soon">Coming Soon (Waitlist Mode Only)</option>
+                    </select>
+                  </div>
+                  <Input
+                    label="Official Launch Date"
+                    name="launchDate"
+                    type="date"
+                    value={settingsData.launch_date}
+                    onChange={(e) => setSettingsData({ ...settingsData, launch_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Bottom Actions Bar */}
+              <div className="bg-white border border-surface-border rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-card">
+                <span className="text-xs text-ink-muted">
+                  Changes take effect across the storefront, cart calculations, and checkout immediately after saving.
+                </span>
+                <Button type="submit" variant="primary" size="md" className="w-full sm:w-auto px-6 font-bold uppercase tracking-wider">
                   Save Store Settings
                 </Button>
               </div>
@@ -2031,164 +2321,7 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ================================================================== */}
-        {/* 10. BOT & IP SECURITY TAB */}
-        {/* ================================================================== */}
-        {activeTab === 'security' && (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Manual IP Block Form */}
-              <div className="bg-surface-subtle border border-surface-border rounded-lg p-5 shadow-card">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-brand-ink mb-3">
-                  Add IP Address to Blocklist
-                </h2>
-                <form onSubmit={handleManualBlockIP} className="space-y-3">
-                  <Input
-                    name="ip"
-                    placeholder="e.g. 192.168.1.1"
-                    value={manualBlockData.ip}
-                    onChange={(e) => setManualBlockData({ ...manualBlockData, ip: e.target.value })}
-                    required
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      name="reason"
-                      placeholder="Reason for blocking"
-                      value={manualBlockData.reason}
-                      onChange={(e) => setManualBlockData({ ...manualBlockData, reason: e.target.value })}
-                    />
-                    <Input
-                      name="hours"
-                      type="number"
-                      placeholder="Hours (default 24)"
-                      value={manualBlockData.hours}
-                      onChange={(e) => setManualBlockData({ ...manualBlockData, hours: e.target.value })}
-                    />
-                  </div>
-                  <Button type="submit" variant="primary" size="sm" className="w-full">
-                    Block IP Address
-                  </Button>
-                </form>
-              </div>
-
-              {/* Quick Unblock Tool */}
-              <div className="bg-surface-subtle border border-surface-border rounded-lg p-5 shadow-card self-start">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-brand-ink mb-3">
-                  Manual IP Unblock
-                </h2>
-                <div className="flex gap-2">
-                  <Input
-                    name="unblockIp"
-                    placeholder="Enter blocked IP address"
-                    value={unblockIPInput}
-                    onChange={(e) => setUnblockIPInput(e.target.value)}
-                    className="text-xs py-2"
-                  />
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleUnblockIP(unblockIPInput)}
-                    className="text-xs whitespace-nowrap"
-                  >
-                    Unblock
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Blocked IP Table */}
-            <div className="bg-white border border-surface-border rounded-lg shadow-card overflow-hidden">
-              <div className="p-3 bg-surface-subtle border-b border-surface-border font-bold text-xs uppercase tracking-wider text-brand-ink">
-                Currently Blocked IP Addresses ({securityLogs.blocked_ips?.length || 0})
-              </div>
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-surface-subtle border-b border-surface-border uppercase font-bold text-ink-muted">
-                    <th className="p-3">IP Address</th>
-                    <th className="p-3">Block Reason</th>
-                    <th className="p-3">Blocked At</th>
-                    <th className="p-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-border">
-                  {securityLogs.blocked_ips?.map((b) => (
-                    <tr key={b.id}>
-                      <td className="p-3 font-bold text-red-600 font-mono">{b.ip_address}</td>
-                      <td className="p-3 text-ink-muted">{b.reason}</td>
-                      <td className="p-3">{new Date(b.created_at).toLocaleDateString()}</td>
-                      <td className="p-3 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleUnblockIP(b.ip_address)}
-                          className="text-[10px] py-1 px-2 text-green-700"
-                        >
-                          Unblock
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Failed Login Attempts Log */}
-            <div className="bg-white border border-surface-border rounded-lg shadow-card overflow-hidden">
-              <div className="p-3 bg-surface-subtle border-b border-surface-border font-bold text-xs uppercase tracking-wider text-brand-ink">
-                Recent Failed Authentication Attempts (Lockout Tracking)
-              </div>
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-surface-subtle border-b border-surface-border uppercase font-bold text-ink-muted">
-                    <th className="p-3">Target Email</th>
-                    <th className="p-3">Originating IP</th>
-                    <th className="p-3">Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-border">
-                  {securityLogs.failed_logins?.map((fl) => (
-                    <tr key={fl.id}>
-                      <td className="p-3 font-semibold text-brand-ink">{fl.email}</td>
-                      <td className="p-3 font-mono text-ink-muted">{fl.ip_address}</td>
-                      <td className="p-3 text-ink-muted">{new Date(fl.created_at).toLocaleTimeString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Bot Telemetry Events */}
-            <div className="bg-white border border-surface-border rounded-lg shadow-card overflow-hidden">
-              <div className="p-3 bg-surface-subtle border-b border-surface-border font-bold text-xs uppercase tracking-wider text-brand-ink">
-                Recent Bot &amp; Honeypot Telemetry Events
-              </div>
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-surface-subtle border-b border-surface-border uppercase font-bold text-ink-muted">
-                    <th className="p-3">Triggered Event</th>
-                    <th className="p-3">IP Address</th>
-                    <th className="p-3">Target Path</th>
-                    <th className="p-3">Threat Score</th>
-                    <th className="p-3">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-border">
-                  {securityLogs.bot_events?.map((ev) => (
-                    <tr key={ev.id}>
-                      <td className="p-3 font-bold text-brand-ink">{ev.event_type}</td>
-                      <td className="p-3 font-mono text-ink-muted">{ev.ip_address}</td>
-                      <td className="p-3 text-ink-muted">{ev.path || 'N/A'}</td>
-                      <td className="p-3 font-semibold">{ev.score || 0}</td>
-                      <td className="p-3 text-ink-muted">{new Date(ev.created_at).toLocaleTimeString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================== */}
-        {/* 11. AUDIT TRAIL TAB */}
+        {/* 10. AUDIT TRAIL TAB */}
         {/* ================================================================== */}
         {activeTab === 'audit' && (
           <div className="space-y-6">
@@ -2302,8 +2435,31 @@ export default function AdminDashboardPage() {
           isOpen={!!editingProduct}
           onClose={() => setEditingProduct(null)}
           title={`Edit Product: ${editingProduct.name}`}
+          hideFooter={true}
+          maxWidth="max-w-3xl"
         >
           <div className="space-y-4 text-xs">
+            {/* Quick Urdu Banner & Translate Shortcut */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+              <div className="flex items-center gap-2">
+                <Icon name="language" className="text-emerald-700 text-base" />
+                <div>
+                  <span className="font-bold text-emerald-950 block">Urdu Localization Active • اردو سپورٹ</span>
+                  <span className="text-[11px] text-emerald-800">Translate English description, directions, and ingredients to Urdu</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAutoTranslateUrdu(editingProduct, setEditingProduct)}
+                disabled={isTranslatingUrdu}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#016a38] hover:bg-[#01542c] disabled:opacity-50 text-white rounded text-xs font-bold shadow-sm transition-colors cursor-pointer self-start sm:self-auto"
+                title="Auto-generate draft Urdu translation from English fields"
+              >
+                <Icon name="language" className="text-xs" />
+                <span>{isTranslatingUrdu ? 'Translating to Urdu...' : 'Auto-Translate to Urdu'}</span>
+              </button>
+            </div>
+
             <Input
               label="Product Title"
               name="title"
@@ -2363,6 +2519,113 @@ export default function AdminDashboardPage() {
                 <span>Featured Multivitamin</span>
               </label>
             </div>
+
+            {/* English Product Content (Description, Directions, Ingredients) */}
+            <div className="pt-3 border-t border-surface-border space-y-3">
+              <span className="font-bold text-brand-ink block">English Product Content</span>
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink mb-1">Description</label>
+                <textarea
+                  rows={2}
+                  value={editingProduct.description || ''}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                  placeholder="Detailed product description in English..."
+                  className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs focus:border-brand-green focus:outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">Directions / Daily Use</label>
+                  <textarea
+                    rows={2}
+                    value={editingProduct.directions || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, directions: e.target.value })}
+                    placeholder="Take 1 tablet daily with a meal..."
+                    className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs focus:border-brand-green focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">Ingredients / Matrix</label>
+                  <textarea
+                    rows={2}
+                    value={editingProduct.ingredients || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, ingredients: e.target.value })}
+                    placeholder="Active nutritional matrix ingredients..."
+                    className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs focus:border-brand-green focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Urdu Language Section with Auto-Translate Button (Nutrifactor Style) */}
+            <div className="pt-3 border-t border-surface-border space-y-3 bg-[#fdfdfc] p-3 rounded-md border">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-surface-border pb-2.5">
+                <div>
+                  <span className="font-bold text-brand-ink flex items-center gap-2">
+                    <span className="text-base text-brand-green font-urdu font-bold">اردو تفصیلات</span>
+                    <span className="text-xs text-ink-muted">(Urdu Product Details)</span>
+                  </span>
+                  <span className="text-[11px] text-ink-muted">Feeds the /ur/products/&lt;slug&gt; page and Urdu switcher pill</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAutoTranslateUrdu(editingProduct, setEditingProduct)}
+                  disabled={isTranslatingUrdu}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#016a38] hover:bg-[#01542c] disabled:opacity-50 text-white rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer self-start sm:self-auto"
+                  title="Auto-generate draft Urdu translation from English fields above"
+                >
+                  <Icon name="language" className="text-sm" />
+                  <span>{isTranslatingUrdu ? 'Translating to Urdu...' : 'Auto-Translate to Urdu'}</span>
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink mb-1 flex items-center justify-between">
+                  <span>Urdu Description (مصنوعات کی تفصیل)</span>
+                  <span className="font-urdu text-[11px] text-brand-green">RTL • Noto Nastaliq</span>
+                </label>
+                <textarea
+                  dir="rtl"
+                  rows={3}
+                  value={editingProduct.description_ur || ''}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, description_ur: e.target.value })}
+                  placeholder="مصنوعات کی مکمل تفصیل اردو میں درج کریں..."
+                  className="w-full bg-white border border-surface-border rounded-sm p-2.5 text-sm font-urdu leading-relaxed focus:border-brand-green focus:outline-none text-right"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1 flex items-center justify-between">
+                    <span>Urdu Directions (ہدایاتِ استعمال)</span>
+                    <span className="font-urdu text-[11px] text-brand-green">RTL</span>
+                  </label>
+                  <textarea
+                    dir="rtl"
+                    rows={3}
+                    value={editingProduct.directions_ur || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, directions_ur: e.target.value })}
+                    placeholder="استعمال کی ہدایات درج کریں..."
+                    className="w-full bg-white border border-surface-border rounded-sm p-2.5 text-sm font-urdu leading-relaxed focus:border-brand-green focus:outline-none text-right"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1 flex items-center justify-between">
+                    <span>Urdu Ingredients (اجزاء کی تفصیل)</span>
+                    <span className="font-urdu text-[11px] text-brand-green">RTL</span>
+                  </label>
+                  <textarea
+                    dir="rtl"
+                    rows={3}
+                    value={editingProduct.ingredients_ur || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, ingredients_ur: e.target.value })}
+                    placeholder="اجزاء کی تفصیل درج کریں..."
+                    className="w-full bg-white border border-surface-border rounded-sm p-2.5 text-sm font-urdu leading-relaxed focus:border-brand-green focus:outline-none text-right"
+                  />
+                </div>
+              </div>
+            </div>
             <div className="flex justify-end gap-2 pt-4 border-t border-surface-border">
               <Button variant="outline" size="sm" onClick={() => setEditingProduct(null)}>
                 Cancel
@@ -2379,10 +2642,37 @@ export default function AdminDashboardPage() {
       {newProductModalOpen && (
         <Modal
           isOpen={newProductModalOpen}
-          onClose={() => setNewProductModalOpen(false)}
+          onClose={() => {
+            setNewProductModalOpen(false);
+            setNewProductImages([]);
+            setNewProductImagesAlt('');
+          }}
           title="Add New Catalog Product"
+          hideFooter={true}
+          maxWidth="max-w-3xl"
         >
           <form onSubmit={handleCreateProduct} className="space-y-3.5 text-xs">
+            {/* Quick Urdu Banner & Translate Shortcut */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+              <div className="flex items-center gap-2">
+                <Icon name="language" className="text-emerald-700 text-base" />
+                <div>
+                  <span className="font-bold text-emerald-950 block">Urdu Localization Active • اردو سپورٹ</span>
+                  <span className="text-[11px] text-emerald-800">Auto-translates English description, directions, and ingredients into Urdu</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAutoTranslateUrdu(newProductData, setNewProductData)}
+                disabled={isTranslatingUrdu}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#016a38] hover:bg-[#01542c] disabled:opacity-50 text-white rounded text-xs font-bold shadow-sm transition-colors cursor-pointer self-start sm:self-auto"
+                title="Auto-generate draft Urdu translation from English fields"
+              >
+                <Icon name="language" className="text-xs" />
+                <span>{isTranslatingUrdu ? 'Translating to Urdu...' : 'Auto-Translate to Urdu'}</span>
+              </button>
+            </div>
+
             <Input
               label="Product Name"
               name="name"
@@ -2445,12 +2735,236 @@ export default function AdminDashboardPage() {
               onChange={(e) => setNewProductData({ ...newProductData, seo_title: e.target.value })}
               placeholder="e.g. Daily Multivitamin 60 Tablets | Supplivix Pakistan"
             />
+
+            {/* Product Images Upload Section */}
+            <div className="pt-2 border-t border-surface-border space-y-2">
+              <label className="block text-xs font-bold text-brand-ink">
+                Product Images <span className="font-normal text-ink-muted">(Optional, up to 3 images • Max 2 MB each)</span>
+              </label>
+
+              <div className="bg-surface-subtle border-2 border-dashed border-surface-border hover:border-brand-green/60 rounded-md p-3 text-center transition-colors">
+                <input
+                  type="file"
+                  id="new-product-images-input"
+                  accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                  multiple
+                  onChange={handleNewProductImagesChange}
+                  className="hidden"
+                  disabled={newProductImages.length >= 3}
+                />
+                <label
+                  htmlFor="new-product-images-input"
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-semibold cursor-pointer transition-colors ${
+                    newProductImages.length >= 3
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-white border border-surface-border hover:border-brand-green text-brand-ink hover:text-brand-green shadow-solid-sm'
+                  }`}
+                >
+                  <Icon name="upload" className="text-xs text-brand-green" />
+                  <span>
+                    {newProductImages.length >= 3 ? 'Max 3 Images Selected' : '+ Choose Product Photos'}
+                  </span>
+                </label>
+                <p className="text-[10px] text-ink-muted mt-1">
+                  Accepts JPEG, PNG, WebP, SVG. Will automatically upload with product.
+                </p>
+              </div>
+
+              {/* Previews of Selected Images */}
+              {newProductImages.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-brand-ink">
+                    <span>Selected Images ({newProductImages.length}/3):</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewProductImages([])}
+                      className="text-red-600 hover:underline text-[10px]"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {newProductImages.map((file, idx) => {
+                      const objectUrl = typeof window !== 'undefined' && typeof window.URL?.createObjectURL === 'function'
+                        ? window.URL.createObjectURL(file)
+                        : '';
+                      return (
+                        <div
+                          key={idx}
+                          className="relative flex items-center gap-2 p-1.5 bg-white border border-surface-border rounded-md shadow-sm"
+                        >
+                          {objectUrl ? (
+                            <img
+                              src={objectUrl}
+                              alt={`Preview ${idx + 1}`}
+                              className="w-10 h-10 object-cover rounded-sm border border-surface-border flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-100 rounded-sm border border-surface-border flex items-center justify-center flex-shrink-0 text-ink-muted">
+                              <Icon name="upload" className="text-xs" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-medium text-brand-ink truncate" title={file.name}>
+                              {file.name}
+                            </p>
+                            <span className="text-[9px] text-ink-muted">
+                              {(file.size / 1024).toFixed(0)} KB {idx === 0 && '• Primary'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNewProductImage(idx)}
+                            className="p-1 text-ink-muted hover:text-red-600 transition-colors"
+                            title="Remove image"
+                          >
+                            <Icon name="close" className="text-[10px]" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-1">
+                    <Input
+                      label="Images Alt Text (Optional)"
+                      name="imageAlt"
+                      value={newProductImagesAlt}
+                      onChange={(e) => setNewProductImagesAlt(e.target.value)}
+                      placeholder="e.g. Front packaging & bioavailable capsules"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* English Product Content */}
+            <div className="pt-2 border-t border-surface-border space-y-3">
+              <span className="font-bold text-brand-ink block">English Product Content</span>
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink mb-1">Description</label>
+                <textarea
+                  rows={2}
+                  value={newProductData.description || ''}
+                  onChange={(e) => setNewProductData({ ...newProductData, description: e.target.value })}
+                  placeholder="Detailed product description in English..."
+                  className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs focus:border-brand-green focus:outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">Directions / Daily Use</label>
+                  <textarea
+                    rows={2}
+                    value={newProductData.directions || ''}
+                    onChange={(e) => setNewProductData({ ...newProductData, directions: e.target.value })}
+                    placeholder="Take 1 tablet daily with a meal..."
+                    className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs focus:border-brand-green focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1">Ingredients / Matrix</label>
+                  <textarea
+                    rows={2}
+                    value={newProductData.ingredients || ''}
+                    onChange={(e) => setNewProductData({ ...newProductData, ingredients: e.target.value })}
+                    placeholder="Active nutritional matrix ingredients..."
+                    className="w-full bg-white border border-surface-border rounded-sm p-2 text-xs focus:border-brand-green focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Urdu Language Section with Auto-Translate Button (Nutrifactor Style) */}
+            <div className="pt-3 border-t border-surface-border space-y-3 bg-[#fdfdfc] p-3 rounded-md border">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-surface-border pb-2.5">
+                <div>
+                  <span className="font-bold text-brand-ink flex items-center gap-2">
+                    <span className="text-base text-brand-green font-urdu font-bold">اردو تفصیلات</span>
+                    <span className="text-xs text-ink-muted">(Urdu Product Details)</span>
+                  </span>
+                  <span className="text-[11px] text-ink-muted">Feeds the /ur/products/&lt;slug&gt; page and Urdu switcher pill</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAutoTranslateUrdu(newProductData, setNewProductData)}
+                  disabled={isTranslatingUrdu}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#016a38] hover:bg-[#01542c] disabled:opacity-50 text-white rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer self-start sm:self-auto"
+                  title="Auto-generate draft Urdu translation from English fields above"
+                >
+                  <Icon name="language" className="text-sm" />
+                  <span>{isTranslatingUrdu ? 'Translating to Urdu...' : 'Auto-Translate to Urdu'}</span>
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-brand-ink mb-1 flex items-center justify-between">
+                  <span>Urdu Description (مصنوعات کی تفصیل)</span>
+                  <span className="font-urdu text-[11px] text-brand-green">RTL • Noto Nastaliq</span>
+                </label>
+                <textarea
+                  dir="rtl"
+                  rows={3}
+                  value={newProductData.description_ur || ''}
+                  onChange={(e) => setNewProductData({ ...newProductData, description_ur: e.target.value })}
+                  placeholder="مصنوعات کی مکمل تفصیل اردو میں درج کریں..."
+                  className="w-full bg-white border border-surface-border rounded-sm p-2.5 text-sm font-urdu leading-relaxed focus:border-brand-green focus:outline-none text-right"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1 flex items-center justify-between">
+                    <span>Urdu Directions (ہدایاتِ استعمال)</span>
+                    <span className="font-urdu text-[11px] text-brand-green">RTL</span>
+                  </label>
+                  <textarea
+                    dir="rtl"
+                    rows={3}
+                    value={newProductData.directions_ur || ''}
+                    onChange={(e) => setNewProductData({ ...newProductData, directions_ur: e.target.value })}
+                    placeholder="استعمال کی ہدایات درج کریں..."
+                    className="w-full bg-white border border-surface-border rounded-sm p-2.5 text-sm font-urdu leading-relaxed focus:border-brand-green focus:outline-none text-right"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-brand-ink mb-1 flex items-center justify-between">
+                    <span>Urdu Ingredients (اجزاء کی تفصیل)</span>
+                    <span className="font-urdu text-[11px] text-brand-green">RTL</span>
+                  </label>
+                  <textarea
+                    dir="rtl"
+                    rows={3}
+                    value={newProductData.ingredients_ur || ''}
+                    onChange={(e) => setNewProductData({ ...newProductData, ingredients_ur: e.target.value })}
+                    placeholder="اجزاء کی تفصیل درج کریں..."
+                    className="w-full bg-white border border-surface-border rounded-sm p-2.5 text-sm font-urdu leading-relaxed focus:border-brand-green focus:outline-none text-right"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2 pt-4 border-t border-surface-border">
-              <Button variant="outline" size="sm" onClick={() => setNewProductModalOpen(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setNewProductModalOpen(false);
+                  setNewProductImages([]);
+                  setNewProductImagesAlt('');
+                }}
+                disabled={isSubmittingNewProduct}
+              >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" size="sm">
-                Create Product
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                loading={isSubmittingNewProduct}
+              >
+                {newProductImages.length > 0 ? `Create Product (+${newProductImages.length} Photo${newProductImages.length > 1 ? 's' : ''})` : 'Create Product'}
               </Button>
             </div>
           </form>
@@ -2687,59 +3201,7 @@ export default function AdminDashboardPage() {
         </Modal>
       )}
 
-      {/* 7. Coupon Redemptions Modal */}
-      {redemptionsModalOpen && (
-        <Modal
-          isOpen={redemptionsModalOpen}
-          onClose={() => setRedemptionsModalOpen(false)}
-          title={`Redemptions Log: ${activeCouponCode}`}
-        >
-          <div className="space-y-4 text-xs">
-            <span className="text-ink-muted block">
-              Orders placed using discount coupon <strong>{activeCouponCode}</strong> ({couponRedemptions.length} uses):
-            </span>
-            <div className="border border-surface-border rounded-md overflow-hidden max-h-72 overflow-y-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-surface-subtle border-b border-surface-border uppercase font-bold text-ink-muted text-[10px]">
-                    <th className="p-2">Order #</th>
-                    <th className="p-2">Customer Email</th>
-                    <th className="p-2">Discount</th>
-                    <th className="p-2">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-border">
-                  {couponRedemptions.length > 0 ? (
-                    couponRedemptions.map((r) => (
-                      <tr key={r.id}>
-                        <td className="p-2 font-bold text-brand-ink">#{r.order_number}</td>
-                        <td className="p-2">{r.email}</td>
-                        <td className="p-2 text-brand-green font-semibold">
-                          Rs. {Number(r.discount_amount).toLocaleString()}
-                        </td>
-                        <td className="p-2 text-ink-muted">{new Date(r.redeemed_at).toLocaleDateString()}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4" className="p-3 text-center text-ink-muted">
-                        No redemptions recorded for this coupon token yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex justify-end pt-2 border-t border-surface-border">
-              <Button variant="outline" size="sm" onClick={() => setRedemptionsModalOpen(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* 8. Customer Order History Modal */}
+      {/* 7. Customer Order History Modal */}
       {customerOrdersModalOpen && (
         <Modal
           isOpen={customerOrdersModalOpen}
