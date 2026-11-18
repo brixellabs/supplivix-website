@@ -95,15 +95,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database Configuration
 # Neon Serverless PostgreSQL support with pooled and direct connection strings.
 # Migrations use DIRECT_DATABASE_URL if specified, avoiding PgBouncer transaction/DDL limits.
+is_test = 'pytest' in sys.modules or any('pytest' in arg for arg in sys.argv) or 'test' in sys.argv
 is_migration = any(cmd in sys.argv for cmd in ['migrate', 'makemigrations', 'showmigrations'])
 direct_url = os.environ.get('DIRECT_DATABASE_URL')
 db_url = os.environ.get('DATABASE_URL')
 
-selected_db_url = direct_url if (is_migration and direct_url) else (db_url or 'sqlite:///db.sqlite3')
+if is_test:
+    selected_db_url = 'sqlite:///:memory:'
+else:
+    selected_db_url = direct_url if (is_migration and direct_url) else (db_url or 'sqlite:///db.sqlite3')
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=selected_db_url,
+    'default': dj_database_url.parse(
+        selected_db_url,
         conn_max_age=0,
         conn_health_checks=True,
         ssl_require=True if 'postgresql' in selected_db_url else False,
@@ -231,10 +235,6 @@ TURNSTILE_SITE_KEY = os.environ.get(
     'TURNSTILE_SITE_KEY',
     '1x00000000000000000000AA'
 )
-
-# Demo and Store Seed Defaults
-DEMO_STAFF_EMAIL = os.environ.get('DEMO_STAFF_EMAIL', 'admin@supplivix.com')
-DEMO_STAFF_PASSWORD = os.environ.get('DEMO_STAFF_PASSWORD', 'SupplivixAdmin2026!')
 
 # Email Configuration
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.locmem.EmailBackend')

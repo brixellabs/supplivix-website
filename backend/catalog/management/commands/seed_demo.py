@@ -727,22 +727,23 @@ class Command(BaseCommand):
         setting.flat_shipping_fee = 200
         setting.save()
 
-        # 2. Staff Admin Account (from env or defaults)
+        # 2. Staff Admin Account (persisted in database; never overwritten if existing)
         admin_email = os.environ.get('ADMIN_EMAIL', 'admin@supplivix.com')
-        admin_pass = os.environ.get('ADMIN_PASSWORD', 'SupplivixAdmin2026!')
-        admin_user, _ = User.objects.get_or_create(
-            email=admin_email,
-            defaults={
-                'full_name': 'Supplivix Admin Staff',
-                'is_staff': True,
-                'is_superuser': True,
-                'phone': '+923000000000',
-            }
-        )
-        admin_user.set_password(admin_pass)
-        admin_user.is_staff = True
-        admin_user.is_superuser = True
-        admin_user.save()
+        admin_pass = os.environ.get('ADMIN_PASSWORD')
+        admin_user = User.objects.filter(is_superuser=True).first()
+        if not admin_user:
+            admin_user, created = User.objects.get_or_create(
+                email=admin_email,
+                defaults={
+                    'full_name': 'Supplivix Admin Staff',
+                    'is_staff': True,
+                    'is_superuser': True,
+                    'phone': '+923000000000',
+                }
+            )
+            if created and admin_pass:
+                admin_user.set_password(admin_pass)
+                admin_user.save()
 
         # 3. 20 Demo Users
         demo_password = os.environ.get('DEMO_USER_PASSWORD', 'DemoUserPass2026!')
