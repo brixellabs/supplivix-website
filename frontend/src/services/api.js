@@ -8,21 +8,24 @@ export function normalizeMediaUrl(url) {
 }
 
 export function getApiBaseUrl() {
-  const envUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
   if (typeof window !== 'undefined' && window.location) {
     try {
-      const parsed = new URL(envUrl, window.location.origin);
       const currentHost = window.location.hostname;
-      if ((currentHost === '127.0.0.1' || currentHost === 'localhost') && (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost')) {
-        parsed.hostname = currentHost;
-        return parsed.toString().replace(/\/$/, '');
+      // Local development fallback
+      if (currentHost === '127.0.0.1' || currentHost === 'localhost') {
+        return envUrl || 'http://127.0.0.1:8000/api/v1';
       }
-      return envUrl.replace(/\/$/, '');
+      // Production on supplivix.com or www.supplivix.com
+      if (currentHost === 'supplivix.com' || currentHost.endsWith('.supplivix.com')) {
+        return envUrl || 'https://api.supplivix.com/api/v1';
+      }
+      return envUrl || 'https://api.supplivix.com/api/v1';
     } catch {
-      return envUrl;
+      return envUrl || 'https://api.supplivix.com/api/v1';
     }
   }
-  return envUrl;
+  return envUrl || 'https://api.supplivix.com/api/v1';
 }
 
 function getSessionKey() {
