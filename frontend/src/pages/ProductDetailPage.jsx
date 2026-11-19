@@ -10,7 +10,7 @@ import QuantityStepper from '../components/ui/QuantityStepper';
 import Input from '../components/ui/Input';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../components/ui/Toast';
-import { api } from '../services/api';
+import { api, normalizeMediaUrl } from '../services/api';
 import SEOHead from '../components/seo/SEOHead';
 import NotFoundPage from './NotFoundPage';
 
@@ -355,7 +355,7 @@ export default function ProductDetailPage() {
               <div className="w-full flex items-center justify-center min-h-[300px]">
                 {product.images && product.images.length > 0 ? (
                   <img
-                    src={product.images[selectedImageIndex]?.image || product.images[0].image}
+                    src={normalizeMediaUrl(product.images[selectedImageIndex]?.image || product.images[0].image)}
                     alt={product.images[selectedImageIndex]?.alt_text || product.name}
                     width="600"
                     height="380"
@@ -385,7 +385,7 @@ export default function ProductDetailPage() {
                       aria-label={`View photo ${idx + 1}`}
                     >
                       <img
-                        src={img.image}
+                        src={normalizeMediaUrl(img.image)}
                         alt={img.alt_text || `${product.name} view ${idx + 1}`}
                         className="w-full h-full object-contain"
                       />

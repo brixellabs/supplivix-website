@@ -42,7 +42,9 @@ db.sqlite3-journal
 db.sqlite3-shm
 db.sqlite3-wal
 *.sqlite3*
-media/
+backend/media/
+!frontend/public/media/
+!frontend/public/media/**
 staticfiles/
 initial_catalog_data.json
 backend/initial_catalog_data.json

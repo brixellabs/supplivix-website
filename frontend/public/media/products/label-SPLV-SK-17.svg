@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+    <!-- DEMO: Supplivix Original Vector Asset - Variant 2 (Label Detail) -->
+    <rect width="600" height="600" fill="#f8f8f8" />
+    <rect x="40" y="40" width="520" height="520" rx="16" fill="#ffffff" stroke="#e8e8e8" stroke-width="2" />
+    <!-- Header Plaque -->
+    <text x="300" y="85" font-family="Poppins, Arial, sans-serif" font-size="13" font-weight="700" fill="#7a2fd0" text-anchor="middle" letter-spacing="2">SUPPLIVIX NUTRACEUTICAL LABS</text>
+    <text x="300" y="120" font-family="Poppins, Arial, sans-serif" font-size="18" font-weight="700" fill="#232323" text-anchor="middle">Soft Lip Balm Nourishing Ceramide </text>
+    <text x="300" y="145" font-family="Poppins, Arial, sans-serif" font-size="11" font-weight="600" fill="#666666" text-anchor="middle">SKU: SPLV-SK-17 | PHARMACEUTICAL QUALITY SPECIFICATION</text>
+
+    <!-- Quality Seal Badges -->
+    <g transform="translate(140, 160)">
+        <rect x="0" y="0" width="90" height="26" rx="13" fill="#e1d6f9" />
+        <text x="45" y="17" font-family="Poppins, Arial, sans-serif" font-size="9" font-weight="700" fill="#59376d" text-anchor="middle">100% PURE</text>
+    </g>
+    <g transform="translate(255, 160)">
+        <rect x="0" y="0" width="90" height="26" rx="13" fill="#016a38" />
+        <text x="45" y="17" font-family="Poppins, Arial, sans-serif" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">GMP TESTED</text>
+    </g>
+    <g transform="translate(370, 160)">
+        <rect x="0" y="0" width="90" height="26" rx="13" fill="#232323" />
+        <text x="45" y="17" font-family="Poppins, Arial, sans-serif" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">HALAL FORMULA</text>
+    </g>
+
+    
+        <!-- Skincare Active Ingredients Table -->
+        <rect x="70" y="210" width="460" height="290" rx="8" fill="#ffffff" stroke="#232323" stroke-width="2" />
+        <rect x="70" y="210" width="460" height="40" fill="#7a2fd0" />
+        <text x="85" y="236" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">FORMULATION ANALYSIS</text>
+        <text x="85" y="270" font-family="Poppins, Arial, sans-serif" font-size="11" font-weight="600" fill="#232323">Target: Barrier Repair, Hydration &amp; Skin Balance</text>
+        <line x1="70" y1="285" x2="530" y2="285" stroke="#232323" stroke-width="3" />
+        <text x="85" y="310" font-family="Poppins, Arial, sans-serif" font-size="11" font-weight="700" fill="#232323">Key Active Ingredient</text>
+        <text x="360" y="310" font-family="Poppins, Arial, sans-serif" font-size="11" font-weight="700" fill="#232323">Concentration</text>
+        <text x="470" y="310" font-family="Poppins, Arial, sans-serif" font-size="11" font-weight="700" fill="#232323">Function</text>
+        <line x1="70" y1="320" x2="530" y2="320" stroke="#e8e8e8" stroke-width="1.5" />
+        <text x="85" y="342" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#232323">Niacinamide (Vitamin B3)</text>
+        <text x="360" y="342" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#232323">10.0% Pure</text>
+        <text x="470" y="342" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#7a2fd0">Pores</text>
+        <line x1="70" y1="352" x2="530" y2="352" stroke="#e8e8e8" stroke-width="1" />
+        <text x="85" y="374" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#232323">Zinc PCA Complex</text>
+        <text x="360" y="374" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#232323">1.0% Bio</text>
+        <text x="470" y="374" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#7a2fd0">Sebum</text>
+        <line x1="70" y1="384" x2="530" y2="384" stroke="#e8e8e8" stroke-width="1" />
+        <text x="85" y="406" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#232323">Multi-Weight Hyaluronic Acid</text>
+        <text x="360" y="406" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#232323">2.0% Multi</text>
+        <text x="470" y="406" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#7a2fd0">Hydrate</text>
+        <line x1="70" y1="416" x2="530" y2="416" stroke="#e8e8e8" stroke-width="1" />
+        <text x="85" y="438" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#232323">Ceramide NP + AP + EOP</text>
+        <text x="360" y="438" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#232323">Complex</text>
+        <text x="470" y="438" font-family="Poppins, Arial, sans-serif" font-size="11" fill="#7a2fd0">Barrier</text>
+        <line x1="70" y1="450" x2="530" y2="450" stroke="#232323" stroke-width="2" />
+        <text x="85" y="475" font-family="Poppins, Arial, sans-serif" font-size="9" fill="#666666">Directions: Apply 3-4 drops morning and night to cleansed skin.</text>
+        <text x="85" y="490" font-family="Poppins, Arial, sans-serif" font-size="9" fill="#666666">Safety: Dermatologist tested, non-comedogenic, fragrance-free.</text>
+        
+</svg>

@@ -5,11 +5,13 @@ import Badge from '../ui/Badge';
 import ProductIllustration from '../ui/ProductIllustration';
 import { useCart } from '../../context/CartContext';
 import { useToast } from '../ui/Toast';
+import { normalizeMediaUrl } from '../../services/api';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const [adding, setAdding] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   if (!product) return null;
 
@@ -51,8 +53,10 @@ export default function ProductCard({ product }) {
       ? (product.slug?.includes('serum') ? 'serum' : product.slug?.includes('cream') ? 'jar' : 'tube')
       : 'bottle';
 
+  const rawPrimary = product.thumbnail || (product.images && product.images.length > 0 && product.images[0].image);
+  const primaryImage = normalizeMediaUrl(rawPrimary);
   const hasMultipleImages = Boolean(product.images && product.images.length >= 2);
-  const secondaryImage = hasMultipleImages ? product.images[1]?.image : null;
+  const secondaryImage = hasMultipleImages ? normalizeMediaUrl(product.images[1]?.image) : null;
 
   return (
     <div className="group bg-surface-card border border-surface-border rounded-md shadow-card hover:shadow-hover transition-all duration-200 flex flex-col justify-between overflow-hidden relative">
@@ -91,15 +95,16 @@ export default function ProductCard({ product }) {
         tabIndex="-1"
         aria-hidden="true"
       >
-        {product.thumbnail || (product.images && product.images.length > 0 && product.images[0].image) ? (
+        {primaryImage && !imgError ? (
           <div className="w-full h-44 flex items-center justify-center relative">
             <img
               loading="lazy"
-              src={product.thumbnail || product.images[0].image}
+              src={primaryImage}
               alt={product.name}
               width="300"
               height="176"
-              className={hasMultipleImages ? 'w-full h-44 object-contain transition-all duration-300 group-hover:opacity-0 group-hover:scale-105' : 'w-full h-44 object-contain transition-all duration-300 group-hover:scale-105'}
+              onError={() => setImgError(true)}
+              className={secondaryImage ? 'w-full h-44 object-contain transition-all duration-300 group-hover:opacity-0 group-hover:scale-105' : 'w-full h-44 object-contain transition-all duration-300 group-hover:scale-105'}
             />
             {secondaryImage && (
               <img

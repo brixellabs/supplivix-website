@@ -1,3 +1,12 @@
+export function normalizeMediaUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  if (url.includes('/media/')) {
+    const idx = url.indexOf('/media/');
+    return url.substring(idx);
+  }
+  return url;
+}
+
 export function getApiBaseUrl() {
   const envUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
   if (typeof window !== 'undefined' && window.location) {
