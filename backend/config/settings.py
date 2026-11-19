@@ -40,6 +40,10 @@ if render_external_hostname and render_external_hostname not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(render_external_hostname)
 if '.onrender.com' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('.onrender.com')
+if '.supplivix.com' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('.supplivix.com')
+if 'supplivix.com' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('supplivix.com')
 
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:5173')
 
@@ -217,6 +221,7 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     r"^https://.*\.vercel\.app$",
+    r"^https://([a-zA-Z0-9-]+\.)*supplivix\.com$",
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = list(default_headers) + [
@@ -232,6 +237,12 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 if 'https://*.vercel.app' not in CSRF_TRUSTED_ORIGINS:
     CSRF_TRUSTED_ORIGINS.append('https://*.vercel.app')
+if 'https://supplivix.com' not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append('https://supplivix.com')
+if 'https://www.supplivix.com' not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append('https://www.supplivix.com')
+if 'https://*.supplivix.com' not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append('https://*.supplivix.com')
 
 # Security Defaults
 SESSION_COOKIE_HTTPONLY = True
