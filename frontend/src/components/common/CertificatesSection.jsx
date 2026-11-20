@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
+import Icon from '../ui/Icon';
 
 export const DEFAULT_CERTIFICATES = [
   {
@@ -39,7 +41,7 @@ export const DEFAULT_CERTIFICATES = [
     id: 4,
     name: 'U.S. FDA Registered Facility',
     badge_code: 'fda',
-    subtitle: 'Registration #18061715504',
+    subtitle: 'Registration #18061715604',
     issuer: 'U.S. Food & Drug Administration',
     image_url: '/media/certificates/fda.png',
     description: 'Formulated and produced in facilities registered with the U.S. FDA, meeting stringent international facility, equipment, and sanitation requirements.',
@@ -83,10 +85,11 @@ export const DEFAULT_CERTIFICATES = [
 
 export default function CertificatesSection({
   bg = 'white',
-  showHeader = true,
-  title = 'Certified Quality & Compliance Standards',
-  subtitle = 'Every Supplivix formula is produced and tested in compliance with globally recognized health, safety, and regulatory authorities.',
-  badge = 'Accreditations & Certifications',
+  title = 'WE ARE BACKED BY SCIENCE',
+  subtitle = 'Our carefully curated formulations are prepared in controlled environment under strict supervision of our healthcare experts.',
+  buttonText = 'KNOW MORE',
+  buttonLink = '/about',
+  illustrationUrl = '/media/science-lab-illustration.png',
 }) {
   const [certificates, setCertificates] = useState(DEFAULT_CERTIFICATES);
   const [selectedCert, setSelectedCert] = useState(null);
@@ -112,98 +115,182 @@ export default function CertificatesSection({
     };
   }, []);
 
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!selectedCert) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedCert(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCert]);
+
+  // Divide certificates into two matching rows matching reference image
+  const row1Codes = ['gmp', 'haccp', 'iso', 'fda'];
+  const row2Codes = ['usa-lab', 'drap', 'halal'];
+
+  const row1Badges = certificates.filter((c) => row1Codes.includes(c.badge_code))
+    .sort((a, b) => row1Codes.indexOf(a.badge_code) - row1Codes.indexOf(b.badge_code));
+
+  const row2Badges = certificates.filter((c) => row2Codes.includes(c.badge_code))
+    .sort((a, b) => row2Codes.indexOf(a.badge_code) - row2Codes.indexOf(b.badge_code));
+
+  // If dynamic API returned non-standard codes, fallback gracefully
+  const displayRow1 = row1Badges.length > 0 ? row1Badges : certificates.slice(0, 4);
+  const displayRow2 = row2Badges.length > 0 ? row2Badges : certificates.slice(4);
+
   const bgClasses = bg === 'subtle' ? 'bg-surface-subtle' : 'bg-white';
+
+  const renderBadge = (cert) => {
+    const imgSrc = cert.image_url || cert.image || `/media/certificates/${cert.badge_code}.png`;
+    return (
+      <button
+        key={cert.id || cert.badge_code}
+        type="button"
+        onClick={() => setSelectedCert(cert)}
+        title={`${cert.name} - ${cert.subtitle || ''} (Click to view full accreditation)`}
+        aria-label={`${cert.name} accreditation details`}
+        className="w-16 h-16 sm:w-20 sm:h-20 lg:w-[86px] lg:h-[86px] flex items-center justify-center p-0.5 rounded-full hover:scale-108 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/40 cursor-pointer bg-transparent group"
+      >
+        <img
+          src={imgSrc}
+          alt={`${cert.name} Accreditation Seal`}
+          className="w-full h-full object-contain filter drop-shadow-xs group-hover:drop-shadow-md transition-all duration-200"
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = `/media/certificates/${cert.badge_code}.png`;
+          }}
+        />
+      </button>
+    );
+  };
 
   return (
     <section
       aria-labelledby="certificates-section-heading"
-      className={`py-12 md:py-16 border-b border-surface-border ${bgClasses}`}
+      className={`py-12 md:py-16 lg:py-20 border-b border-surface-border ${bgClasses}`}
     >
-      <div className="max-w-site mx-auto px-4 sm:px-6">
-        {showHeader && (
-          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-brand-green block mb-2">
-              {badge}
-            </span>
+      <div className="max-w-site mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          {/* Left Column: Scientists Laboratory Illustration */}
+          <div className="lg:col-span-6 flex justify-center items-center">
+            <div className="relative w-full max-w-[520px]">
+              <img
+                src={illustrationUrl}
+                alt="Supplivix Backed by Science Laboratory"
+                className="w-full h-auto object-contain select-none"
+                loading="lazy"
+              />
+            </div>
+          </div>
+
+          {/* Right Column: Heading, Paragraph, Action, Badges */}
+          <div className="lg:col-span-6 flex flex-col justify-center items-start text-left">
             <h2
               id="certificates-section-heading"
-              className="text-2xl sm:text-3xl font-bold uppercase tracking-tight text-brand-ink"
+              className="text-2xl sm:text-3xl lg:text-[32px] font-extrabold uppercase tracking-tight text-brand-ink leading-tight mb-3"
             >
               {title}
             </h2>
-            <p className="text-xs sm:text-sm text-ink-muted mt-2 leading-relaxed">
+            <p className="text-sm sm:text-[15px] text-[#4a4a4a] leading-relaxed mb-6 max-w-xl">
               {subtitle}
             </p>
-          </div>
-        )}
 
-        {/* Certificate Badges Flex Grid (Centered) */}
-        <div className="flex flex-wrap justify-center gap-5">
-          {certificates.map((cert) => {
-            const imgSrc = cert.image_url || cert.image || `/media/certificates/${cert.badge_code}.png`;
-            const widthClass =
-              certificates.length === 3
-                ? 'w-full sm:w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(33.333%-14px)] max-w-sm'
-                : 'w-full sm:w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(25%-15px)] max-w-sm';
-            return (
-              <div
-                key={cert.id || cert.badge_code}
-                onClick={() => setSelectedCert(selectedCert?.id === cert.id ? null : cert)}
-                className={`${widthClass} flex-shrink-0 bg-white border border-surface-border rounded-lg p-5 shadow-card hover:shadow-hover hover:border-brand-green/40 transition-all flex flex-col items-center text-center group cursor-pointer`}
-              >
-                <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center p-2 mb-3 bg-white rounded-md">
-                  <img
-                    src={imgSrc}
-                    alt={`${cert.name} Accreditation Seal`}
-                    className="max-w-full max-h-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform duration-200"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = `/media/certificates/${cert.badge_code}.png`;
-                    }}
-                  />
-                </div>
+            <Link
+              to={buttonLink}
+              className="inline-flex items-center justify-center bg-[#232323] hover:bg-brand-green text-white font-bold text-xs uppercase tracking-widest px-8 py-3 rounded-[3px] shadow-solid-sm hover:shadow-solid-md transition-all duration-200 mb-8 cursor-pointer"
+            >
+              {buttonText}
+            </Link>
 
-                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-green block mb-1">
-                  {cert.issuer || 'Certified Standard'}
-                </span>
-
-                <h3 className="text-sm font-bold uppercase tracking-wide text-brand-ink mb-1 group-hover:text-brand-green transition-colors">
-                  {cert.name}
-                </h3>
-
-                {cert.subtitle && (
-                  <p className="text-[11px] font-medium text-brand-ink/80 mb-2">
-                    {cert.subtitle}
-                  </p>
-                )}
-
-                {cert.description && (
-                  <p className="text-xs text-ink-muted leading-relaxed line-clamp-3 mt-auto pt-2 border-t border-surface-border/60 w-full">
-                    {cert.description}
-                  </p>
-                )}
+            {/* Accreditation Badges Rows */}
+            <div className="w-full space-y-3 sm:space-y-4">
+              {/* Row 1: GMP, HACCP, ISO, U.S. FDA */}
+              <div className="flex items-center gap-3 sm:gap-4 md:gap-5 flex-wrap">
+                {displayRow1.map((cert) => renderBadge(cert))}
               </div>
-            );
-          })}
-        </div>
 
-        {/* Bottom Trust Assurance Strip */}
-        <div className="mt-10 p-4 sm:p-5 bg-surface-subtle border border-surface-border rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-          <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wide text-brand-ink block">
-              100% Authentic, Lab-Verified &amp; DRAP Compliant
-            </span>
-            <p className="text-[11px] text-ink-muted">
-              Supplivix adheres strictly to Good Manufacturing Practices, third-party purity testing, and Islamic Halal formulation guidelines.
-            </p>
+              {/* Row 2: USA Lab Tested, DRAP, Halal */}
+              <div className="flex items-center gap-3 sm:gap-4 md:gap-5 flex-wrap">
+                {displayRow2.map((cert) => renderBadge(cert))}
+              </div>
+            </div>
           </div>
-          <span className="inline-flex items-center px-4 py-2 bg-brand-green text-white text-xs font-bold uppercase tracking-wider rounded-sm shadow-sm whitespace-nowrap">
-            Zero Compromise Quality
-          </span>
         </div>
       </div>
+
+      {/* Interactive Accreditation Details Modal */}
+      {selectedCert && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cert-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+          onClick={() => setSelectedCert(null)}
+        >
+          <div
+            className="bg-white rounded-lg p-6 sm:p-8 max-w-md w-full shadow-2xl relative border border-surface-border text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedCert(null)}
+              aria-label="Close certificate details"
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-surface-subtle hover:bg-surface-border flex items-center justify-center text-ink-muted hover:text-brand-ink transition-colors cursor-pointer"
+            >
+              <Icon name="close" className="w-4 h-4" />
+            </button>
+
+            <div className="w-24 h-24 sm:w-28 sm:h-28 mx-auto mb-4 flex items-center justify-center">
+              <img
+                src={selectedCert.image_url || `/media/certificates/${selectedCert.badge_code}.png`}
+                alt={`${selectedCert.name} Seal`}
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+
+            <span className="text-[11px] font-bold uppercase tracking-wider text-brand-green block mb-1">
+              {selectedCert.issuer || 'Official Accreditation'}
+            </span>
+
+            <h3
+              id="cert-modal-title"
+              className="text-lg sm:text-xl font-bold uppercase tracking-wide text-brand-ink mb-1"
+            >
+              {selectedCert.name}
+            </h3>
+
+            {selectedCert.subtitle && (
+              <p className="text-xs font-medium text-brand-ink/75 mb-4">
+                {selectedCert.subtitle}
+              </p>
+            )}
+
+            {selectedCert.description && (
+              <p className="text-xs sm:text-sm text-ink-muted leading-relaxed bg-surface-subtle p-3.5 rounded border border-surface-border/60 text-left mb-5">
+                {selectedCert.description}
+              </p>
+            )}
+
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-surface-border">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-green">
+                <Icon name="check" className="w-3.5 h-3.5 text-brand-green" />
+                Active Verified Standard
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedCert(null)}
+                className="px-4 py-2 bg-brand-ink hover:bg-brand-green text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors cursor-pointer"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
-
