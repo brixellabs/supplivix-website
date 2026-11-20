@@ -66,3 +66,4 @@ describe('Heartbeat & Keep-Alive Service', () => {
     expect(removeEventSpy).toHaveBeenCalledWith('online', expect.any(Function));
   });
 });
+

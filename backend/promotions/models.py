@@ -173,11 +173,13 @@ class Offer(models.Model):
     def to_dict(self, request=None):
         img_url = None
         if self.image:
-            img_url = request.build_absolute_uri(self.image.url) if request else self.image.url
+            img_url = self.image.url
         elif self.product:
             prim = self.product.images.order_by('sort_order', 'id').first()
             if prim and prim.image:
-                img_url = request.build_absolute_uri(prim.image.url) if request else prim.image.url
+                img_url = prim.image.url
+            elif getattr(self.product, 'slug', None):
+                img_url = f"/media/products/clean-{self.product.slug}.jpg"
 
         product_data = None
         if self.product:
@@ -185,7 +187,7 @@ class Offer(models.Model):
                 'id': self.product.id,
                 'name': self.product.name,
                 'slug': self.product.slug,
-                'price': self.price or self.product.price,
+                'price': self.price if (self.price and self.price > 0) else self.product.price,
                 'compare_at_price': self.original_price or self.product.compare_at_price,
                 'stock': self.product.stock,
                 'inventory_count': self.product.stock,

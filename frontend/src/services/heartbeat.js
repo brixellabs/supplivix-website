@@ -207,3 +207,4 @@ export function startHeartbeat() {
     window.removeEventListener('keydown', handleUserActivity);
   };
 }
+
