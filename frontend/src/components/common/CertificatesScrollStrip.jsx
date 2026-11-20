@@ -67,21 +67,8 @@ export default function CertificatesScrollStrip() {
   return (
     <section
       aria-label="Quality and Regulatory Accreditations"
-      className="bg-white border-b border-surface-border py-6 sm:py-8 overflow-hidden relative"
+      className="bg-white border-b border-surface-border py-4 sm:py-6 overflow-hidden relative"
     >
-      {/* Top Section Header */}
-      <div className="max-w-site mx-auto px-4 sm:px-6 mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-brand-green animate-pulse" />
-          <span className="text-xs sm:text-sm font-extrabold uppercase tracking-widest text-brand-green">
-            Certified Quality &amp; Compliance Standards
-          </span>
-        </div>
-        <span className="hidden sm:inline-block text-[11px] text-ink-muted">
-          Hover to pause &bull; Click badge to verify
-        </span>
-      </div>
-
       {/* Infinite Scrolling Horizontal Marquee */}
       <div className="relative w-full overflow-hidden py-3 group">
         {/* Soft edge gradient fades */}
