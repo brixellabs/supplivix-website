@@ -127,7 +127,7 @@ export default function PrivacyPolicyPage() {
             <div><strong className="text-brand-ink">Supplivix Pakistan</strong></div>
             <div>Email: <a href="https://mail.google.com/mail/?view=cm&fs=1&to=supplivix@gmail.com" target="_blank" rel="noopener noreferrer" className="text-brand-green underline">supplivix@gmail.com</a></div>
             <div>Support WhatsApp / Phone: <a href="https://wa.me/923025222405" target="_blank" rel="noopener noreferrer" className="text-brand-green underline">0302-5222405</a></div>
-            <div>Location: <a href="https://www.google.com/maps/search/?api=1&query=Kohinoor+City,+Jaranwala+Road,+Faisalabad,+Punjab,+Pakistan" target="_blank" rel="noopener noreferrer" className="text-brand-green underline">Kohinoor City, Jaranwala Road, Faisalabad, Punjab, Pakistan</a></div>
+            <div>Location: <a href="https://www.google.com/maps/search/?api=1&query=Chak+No.+79+NB,+Sillanwali+Road,+near+bypass,+Sargodha,+Punjab,+Pakistan" target="_blank" rel="noopener noreferrer" className="text-brand-green underline">Chak No. 79 NB, Sillanwali Road, near bypass, Sargodha, Punjab, Pakistan</a></div>
           </div>
         </section>
       </div>

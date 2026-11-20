@@ -200,7 +200,7 @@ export default function ContactPage() {
                 </a>
 
                 <a
-                  href="https://www.google.com/maps/search/?api=1&query=Kohinoor+City,+Jaranwala+Road,+Faisalabad,+Punjab,+Pakistan"
+                  href="https://www.google.com/maps/search/?api=1&query=Chak+No.+79+NB,+Sillanwali+Road,+near+bypass,+Sargodha,+Punjab,+Pakistan"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-start gap-3 group transition-colors cursor-pointer"
@@ -214,7 +214,7 @@ export default function ContactPage() {
                       Corporate Office
                     </span>
                     <span className="text-ink-muted group-hover:text-brand-green group-hover:underline transition-colors">
-                      Kohinoor City, Jaranwala Road, Faisalabad, Punjab, Pakistan
+                      Chak No. 79 NB, Sillanwali Road, near bypass, Sargodha, Punjab, Pakistan
                     </span>
                   </div>
                 </a>

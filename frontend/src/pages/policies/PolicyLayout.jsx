@@ -91,7 +91,7 @@ export default function PolicyLayout({ title, description, canonical, lastUpdate
                 <div className="mt-5 pt-4 border-t border-surface-border text-xs text-ink-muted">
                   <span className="block font-semibold text-brand-ink mb-1">Need assistance?</span>
                   <p className="leading-snug">
-                    Our Faisalabad care team is available Mon-Sat via WhatsApp at{' '}
+                    Our Sargodha care team is available Mon-Sat via WhatsApp at{' '}
                     <a
                       href="https://wa.me/923025222405"
                       target="_blank"

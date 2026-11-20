@@ -80,14 +80,14 @@ export default function Footer() {
               </a>
 
               <a
-                href="https://www.google.com/maps/search/?api=1&query=Kohinoor+City,+Jaranwala+Road,+Faisalabad,+Punjab,+Pakistan"
+                href="https://www.google.com/maps/search/?api=1&query=Chak+No.+79+NB,+Sillanwali+Road,+near+bypass,+Sargodha,+Punjab,+Pakistan"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-start gap-2 group cursor-pointer hover:text-brand-green transition-colors"
                 title="View on Google Maps"
               >
                 <Icon name="location" className="text-brand-green text-xs mt-0.5 group-hover:scale-110 transition-transform" />
-                <span className="group-hover:underline">Kohinoor City, Jaranwala Road, Faisalabad, Pakistan</span>
+                <span className="group-hover:underline">Chak No. 79 NB, Sillanwali Road, near bypass, Sargodha, Pakistan</span>
               </a>
             </div>
           </div>

@@ -129,6 +129,13 @@ export default function SEOHead({
           areaServed: 'PK',
           availableLanguage: ['English', 'Urdu'],
         },
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Chak No. 79 NB, Sillanwali Road, near bypass',
+          addressLocality: 'Sargodha',
+          addressRegion: 'Punjab',
+          addressCountry: 'PK',
+        },
       };
 
       const defaultWebSite = {
