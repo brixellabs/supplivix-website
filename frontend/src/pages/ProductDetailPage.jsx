@@ -426,14 +426,30 @@ export default function ProductDetailPage() {
               </h1>
 
               {/* AEO 40-60 Word Direct Summary: What is it, who is it for, how is it used */}
-              <div className="mb-4 p-3 bg-surface-subtle border-l-4 border-brand-green text-xs text-brand-ink leading-relaxed rounded-r-sm">
-                <strong className="block text-[10px] uppercase tracking-wider text-brand-green mb-1 font-bold">
-                  Direct Formulation Summary:
+              <div
+                className={`mb-4 p-3 bg-surface-subtle text-xs text-brand-ink leading-relaxed rounded-r-sm ${
+                  isUrdu
+                    ? 'border-r-4 border-l-0 border-brand-green text-right font-urdu text-sm sm:text-base'
+                    : 'border-l-4 border-brand-green'
+                }`}
+                dir={isUrdu ? 'rtl' : 'ltr'}
+              >
+                <strong
+                  className={`block text-[10px] uppercase tracking-wider text-brand-green mb-1 font-bold ${
+                    isUrdu ? 'text-xs text-right font-urdu font-bold' : ''
+                  }`}
+                >
+                  {isUrdu ? 'فارمولیشن کا براہ راست خلاصہ (Formulation Summary):' : 'Direct Formulation Summary:'}
                 </strong>
-                <span>
-                  {product.product_type === 'multivitamin'
-                    ? `${product.name} is a high-potency bioavailable multivitamin formulated for adults to address documented micronutrient gaps. It supports metabolic cellular energy and daily immune resilience. Adults take one tablet daily in the morning with a full glass of water and breakfast alongside a balanced diet.`
-                    : `${product.name} is a science-backed topical skincare formulation engineered for all skin types to fortify the epidermal barrier and restore natural skin hydration. Apply a few drops gently to clean skin daily in the morning or evening before heavier moisturizers.`}
+                <span className={isUrdu ? 'urdu-text-block' : ''}>
+                  {isUrdu
+                    ? (product.summary_ur ||
+                        (product.product_type === 'multivitamin'
+                          ? `${product.name} بالغ افراد کے لیے تیار کردہ اعلیٰ طاقت کا بائیو اویلیبل ملٹی وٹامن فارمولا ہے جو غذائی کمیوں کو پورا کرتا ہے۔ یہ میٹابولک سیلولر توانائی اور قدرتی مدافعت کو مضبوط بناتا ہے۔ بالغ افراد روزانہ صبح ناشتے کے ساتھ ایک گلاس پانی کے ساتھ ایک گولی لیں۔`
+                          : `${product.name} ہر قسم کی جلد کے لیے سائنسی بنیادوں پر تیار کردہ سکن کیئر فارمولا ہے جو جلد کی حفاظتی تہہ (ایپی ڈرمل بیریئر) کو مضبوط بناتا ہے اور قدرتی نمی بحال کرتا ہے۔ روزانہ صبح یا شام صاف جلد پر چند قطرے نرمی سے لگائیں۔`))
+                    : (product.product_type === 'multivitamin'
+                        ? `${product.name} is a high-potency bioavailable multivitamin formulated for adults to address documented micronutrient gaps. It supports metabolic cellular energy and daily immune resilience. Adults take one tablet daily in the morning with a full glass of water and breakfast alongside a balanced diet.`
+                        : `${product.name} is a science-backed topical skincare formulation engineered for all skin types to fortify the epidermal barrier and restore natural skin hydration. Apply a few drops gently to clean skin daily in the morning or evening before heavier moisturizers.`)}
                 </span>
               </div>
 
@@ -501,10 +517,14 @@ export default function ProductDetailPage() {
               <div className="mb-6 p-3 bg-white border border-surface-border rounded-md text-xs">
                 <div className="flex items-center gap-2 font-semibold text-brand-ink mb-1">
                   <Icon name="truck" className="text-brand-green" />
-                  <span>
-                    {product.price >= shippingThreshold
-                      ? 'This order qualifies for FREE nationwide delivery!'
-                      : `Add Rs. ${(shippingThreshold - product.price).toLocaleString()} more to unlock FREE shipping.`}
+                  <span className={isUrdu ? 'font-urdu' : ''}>
+                    {isUrdu
+                      ? (product.price >= shippingThreshold
+                          ? 'یہ آرڈر پورے پاکستان میں مفت ڈیلیوری کا اہل ہے!'
+                          : `مفت شپنگ حاصل کرنے کے لیے مزید Rs. ${(shippingThreshold - product.price).toLocaleString()} شامل کریں۔`)
+                      : (product.price >= shippingThreshold
+                          ? 'This order qualifies for FREE nationwide delivery!'
+                          : `Add Rs. ${(shippingThreshold - product.price).toLocaleString()} more to unlock FREE shipping.`)}
                   </span>
                 </div>
               </div>
@@ -512,7 +532,9 @@ export default function ProductDetailPage() {
               {/* Quantity Stepper & Buttons */}
               <div className="space-y-4 pt-4 border-t border-surface-border">
                 <div className="flex items-center gap-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-brand-ink">Quantity:</span>
+                  <span className={`text-xs font-bold uppercase tracking-wider text-brand-ink ${isUrdu ? 'font-urdu' : ''}`}>
+                    {isUrdu ? 'تعداد (Quantity):' : 'Quantity:'}
+                  </span>
                   <QuantityStepper
                     value={quantity}
                     onChange={setQuantity}
@@ -531,7 +553,7 @@ export default function ProductDetailPage() {
                     className="w-full"
                   >
                     <Icon name="cart" className="mr-2" />
-                    Add to Cart
+                    {isUrdu ? 'کارٹ میں شامل کریں' : 'Add to Cart'}
                   </Button>
                   <Button
                     variant="secondary"
@@ -540,7 +562,7 @@ export default function ProductDetailPage() {
                     disabled={isOutOfStock || adding}
                     className="w-full"
                   >
-                    Buy Now (COD)
+                    {isUrdu ? 'ابھی خریدیں (COD)' : 'Buy Now (COD)'}
                   </Button>
                 </div>
               </div>
@@ -549,15 +571,21 @@ export default function ProductDetailPage() {
               <div className="mt-8 pt-6 border-t border-surface-border grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 text-xs sm:text-[11px] text-ink-muted font-semibold">
                 <div className="p-3 sm:p-2.5 border border-surface-border rounded-sm bg-surface-subtle flex items-center sm:flex-col sm:justify-center gap-2.5 sm:gap-1.5 text-left sm:text-center min-h-[48px] sm:min-h-[72px]">
                   <Icon name="cod" className="text-brand-green text-base shrink-0" />
-                  <span className="leading-snug">Pay Cash on Delivery</span>
+                  <span className={`leading-snug ${isUrdu ? 'font-urdu' : ''}`}>
+                    {isUrdu ? 'کیش آن ڈیلیوری ادائیگی' : 'Pay Cash on Delivery'}
+                  </span>
                 </div>
                 <div className="p-3 sm:p-2.5 border border-surface-border rounded-sm bg-surface-subtle flex items-center sm:flex-col sm:justify-center gap-2.5 sm:gap-1.5 text-left sm:text-center min-h-[48px] sm:min-h-[72px]">
                   <Icon name="shield" className="text-brand-green text-base shrink-0" />
-                  <span className="leading-snug">Authentic Formula</span>
+                  <span className={`leading-snug ${isUrdu ? 'font-urdu' : ''}`}>
+                    {isUrdu ? '۱۰۰٪ اصل و مصدقہ فارمولا' : 'Authentic Formula'}
+                  </span>
                 </div>
                 <div className="p-3 sm:p-2.5 border border-surface-border rounded-sm bg-surface-subtle flex items-center sm:flex-col sm:justify-center gap-2.5 sm:gap-1.5 text-left sm:text-center min-h-[48px] sm:min-h-[72px]">
                   <Icon name="truck" className="text-brand-green text-base shrink-0" />
-                  <span className="leading-snug">Fast Nationwide Shipping</span>
+                  <span className={`leading-snug ${isUrdu ? 'font-urdu' : ''}`}>
+                    {isUrdu ? 'ملک بھر میں تیز رفتار شپنگ' : 'Fast Nationwide Shipping'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -575,7 +603,7 @@ export default function ProductDetailPage() {
                 : 'border-transparent text-ink-muted hover:text-brand-ink'
                 }`}
             >
-              Overview & Directions
+              {isUrdu ? 'جائزہ اور ہدایات (Overview)' : 'Overview & Directions'}
             </button>
             <button
               type="button"
@@ -585,7 +613,7 @@ export default function ProductDetailPage() {
                 : 'border-transparent text-ink-muted hover:text-brand-ink'
                 }`}
             >
-              Supplement Facts
+              {isUrdu ? 'اجزاء اور غذائی حقائق (Facts)' : 'Supplement Facts'}
             </button>
             <button
               type="button"
@@ -595,7 +623,7 @@ export default function ProductDetailPage() {
                 : 'border-transparent text-ink-muted hover:text-brand-ink'
                 }`}
             >
-              Verified Reviews ({reviews.length || product.reviews_count || 52})
+              {isUrdu ? `تصدیق شدہ تبصرے (${reviews.length || product.reviews_count || 52})` : `Verified Reviews (${reviews.length || product.reviews_count || 52})`}
             </button>
             <button
               type="button"
@@ -605,7 +633,7 @@ export default function ProductDetailPage() {
                 : 'border-transparent text-ink-muted hover:text-brand-ink'
                 }`}
             >
-              Frequently Asked Questions ({productFaqs.length})
+              {isUrdu ? `عام سوالات (${productFaqs.length})` : `Frequently Asked Questions (${productFaqs.length})`}
             </button>
           </div>
 
@@ -637,10 +665,16 @@ export default function ProductDetailPage() {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-brand-ink mb-2">
-                    Storage Guidelines
+                  <h3 className={`text-sm font-bold uppercase tracking-wide text-brand-ink mb-2 ${isUrdu ? 'text-right font-urdu text-base' : ''}`}>
+                    {isUrdu ? 'محفوظ رکھنے کی ہدایات (Storage Guidelines)' : 'Storage Guidelines'}
                   </h3>
-                  <p>{product.storage?.trim() || 'Not specified'}</p>
+                  {isUrdu ? (
+                    <p dir="rtl" lang="ur" className="urdu-text-block text-sm text-brand-ink bg-[#faf9f6] p-3 rounded-md border border-surface-border">
+                      {product.storage_ur || 'براہ راست دھوپ اور نمی سے دور کسی ٹھنڈی اور خشک جگہ پر رکھیں۔ بوتل کو مضبوطی سے بند رکھیں۔ بچوں کی پہنچ سے دور رکھیں۔'}
+                    </p>
+                  ) : (
+                    <p>{product.storage?.trim() || 'Not specified'}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -650,8 +684,8 @@ export default function ProductDetailPage() {
                 <h3 className={`text-base font-bold uppercase tracking-wide text-brand-ink border-b-2 border-brand-ink pb-2 mb-3 ${isUrdu ? 'text-right font-urdu' : ''}`}>
                   {isUrdu ? 'اجزاء اور غذائی حقائق (Supplement Facts)' : 'Supplement Facts'}
                 </h3>
-                <div className="text-xs text-ink-muted mb-4">
-                  Serving Size: {product.serving_size?.trim() || 'Not specified'}
+                <div className={`text-xs text-ink-muted mb-4 ${isUrdu ? 'text-right font-urdu' : ''}`}>
+                  {isUrdu ? `خوراک کا طریقہ: ${product.serving_size_ur || product.serving_size || 'روزانہ ۱ خوراک'}` : `Serving Size: ${product.serving_size?.trim() || 'Not specified'}`}
                 </div>
                 <div className="text-xs text-ink-muted leading-relaxed border-t border-surface-border pt-3">
                   <span className={`font-bold text-brand-ink block mb-2 ${isUrdu ? 'text-right font-urdu text-sm' : ''}`}>
