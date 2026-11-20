@@ -15,6 +15,9 @@ import heroSlide1 from '../assets/brand/hero-slide-1.jpg';
 import heroSlide2 from '../assets/brand/hero-slide-2.jpg';
 import heroSlide3 from '../assets/brand/hero-slide-3.jpg';
 import heroSlide4 from '../assets/brand/hero-slide-4.jpg';
+import heroSlide5 from '../assets/brand/hero-slide-5.jpg';
+import heroSlide6 from '../assets/brand/hero-slide-6.jpg';
+import heroSlide7 from '../assets/brand/hero-slide-7.jpg';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../services/api';
 
@@ -194,6 +197,30 @@ const HERO_SLIDES = [
     alt: 'Supplivix 100% Bioavailable Daily Vitality Multivitamin',
     link: '/multivitamins',
   },
+  {
+    id: 4,
+    image: heroSlide4,
+    alt: 'Supplivix Strong Bones Active Life Calcium D3',
+    link: '/shop?category=bones-joints',
+  },
+  {
+    id: 5,
+    image: heroSlide5,
+    alt: 'Supplivix Immunity Power Daily Shield Vitamin C',
+    link: '/shop?category=immunity',
+  },
+  {
+    id: 6,
+    image: heroSlide6,
+    alt: 'Supplivix Thicker Hair Radiant Glow Biotin',
+    link: '/shop?category=skincare',
+  },
+  {
+    id: 7,
+    image: heroSlide7,
+    alt: 'Supplivix Yummy Multi Gummies Made Healthy',
+    link: '/shop?category=kids',
+  },
 ];
 
 export default function HomePage() {
@@ -212,14 +239,14 @@ export default function HomePage() {
   const [heroSlideIndex, setHeroSlideIndex] = useState(0);
   const [isHeroHovered, setIsHeroHovered] = useState(false);
 
-  // Auto-advance hero slides every 5 seconds (paused on user hover)
+  // Auto-advance hero slides every 5 seconds (5000ms), paused on user hover, resets on slide change
   useEffect(() => {
     if (isHeroHovered) return;
     const timer = setInterval(() => {
       setHeroSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [isHeroHovered]);
+  }, [isHeroHovered, heroSlideIndex]);
   const [deal1, setDeal1] = useState({
     badge: 'Special Bundle',
     title: 'Complete Daily Glow Duo',
