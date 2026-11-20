@@ -8,6 +8,7 @@ import ProductCard from '../components/product/ProductCard';
 import Input from '../components/ui/Input';
 import SEOHead from '../components/seo/SEOHead';
 import CertificatesSection from '../components/common/CertificatesSection';
+import CertificatesScrollStrip from '../components/common/CertificatesScrollStrip';
 import SaleCountdownTimer from '../components/common/SaleCountdownTimer';
 import CategoryFunkyIcon, { getCategoryTheme } from '../components/ui/CategoryFunkyIcon';
 import heroSlide1 from '../assets/brand/hero-slide-1.jpg';
@@ -483,6 +484,9 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* 1b. Circular Quality & Regulatory Accreditations Scrolling Strip (Directly Below Hero Section) */}
+      <CertificatesScrollStrip />
 
       {/* Seasonal / Occasion Active Sale Event Banner */}
       {activeSaleEvent && (
