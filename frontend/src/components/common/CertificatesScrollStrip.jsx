@@ -112,25 +112,23 @@ export default function CertificatesScrollStrip() {
         </div>
       </div>
 
-      {/* Nutrifactor Reference-Style Regulatory Authority Banner */}
-      <div className="max-w-site mx-auto px-4 sm:px-6 mt-4 sm:mt-6">
-        <div className="bg-gradient-to-r from-brand-green via-brand-green-dark to-[#083b1d] text-white rounded-lg px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left shadow-sm">
-          <div>
-            <span className="text-base sm:text-lg md:text-xl font-black uppercase tracking-tight block text-white leading-tight">
-              7+ Certificates &amp; Global Accreditations
-            </span>
-            <p className="text-xs sm:text-sm text-white/90 font-medium mt-0.5">
-              From Global &amp; National Regulatory Authorities: DRAP, U.S. FDA Registered, ISO 9001:2015 &amp; Halal Certified
-            </p>
-          </div>
-          <Link
-            to="/about"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-brand-green hover:bg-[#f2faf5] font-bold text-xs uppercase tracking-wider rounded-xs shadow-sm transition-all whitespace-nowrap cursor-pointer flex-shrink-0"
-          >
-            <span>Our Quality Standards</span>
-            <Icon name="arrow-right" className="text-[10px]" />
-          </Link>
-        </div>
+      {/* Nutrifactor Reference-Style Centered Regulatory Authority Banner */}
+      <div className="max-w-md sm:max-w-lg mx-auto px-4 mt-4 sm:mt-6">
+        <Link
+          to="/about"
+          className="group relative block overflow-hidden bg-gradient-to-r from-brand-green via-brand-green-dark to-[#083b1d] hover:brightness-105 text-white rounded-xl py-3.5 px-6 sm:px-8 text-center shadow-card hover:shadow-hover transition-all duration-200 cursor-pointer"
+        >
+          {/* Subtle decorative concentric circle accents matching reference */}
+          <div className="pointer-events-none absolute -right-6 -bottom-6 w-24 h-24 rounded-full border-2 border-white/10" />
+          <div className="pointer-events-none absolute -left-6 -top-6 w-24 h-24 rounded-full border-2 border-white/10" />
+
+          <span className="text-base sm:text-lg font-black uppercase tracking-tight block text-white leading-tight">
+            7+ Certificates
+          </span>
+          <span className="text-xs sm:text-sm text-white/90 font-medium block mt-0.5">
+            From Global &amp; National Regulatory Authorities
+          </span>
+        </Link>
       </div>
 
       {/* Interactive Accreditation Details Modal */}
