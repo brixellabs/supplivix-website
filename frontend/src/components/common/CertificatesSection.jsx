@@ -10,7 +10,7 @@ export const DEFAULT_CERTIFICATES = [
     badge_code: 'gmp',
     subtitle: 'Good Manufacturing Practice',
     issuer: 'WHO / cGMP Standard',
-    image_url: '/media/certificates/gmp.png',
+    image_url: '/media/certificates/gmp.webp',
     description: 'Manufactured in strict adherence to Good Manufacturing Practice standards for dietary supplements, ensuring consistent purity, strength, and composition.',
     sort_order: 1,
     is_active: true,
@@ -21,7 +21,7 @@ export const DEFAULT_CERTIFICATES = [
     badge_code: 'haccp',
     subtitle: 'Hazard Analysis & Critical Control Point',
     issuer: 'RICI International',
-    image_url: '/media/certificates/haccp.png',
+    image_url: '/media/certificates/haccp.webp',
     description: 'Systematic preventative food safety certification ensuring biological, chemical, and physical hazards are identified and controlled at every formulation step.',
     sort_order: 2,
     is_active: true,
@@ -32,7 +32,7 @@ export const DEFAULT_CERTIFICATES = [
     badge_code: 'iso',
     subtitle: 'Quality Management Systems',
     issuer: 'ISO International',
-    image_url: '/media/certificates/iso.png',
+    image_url: '/media/certificates/iso.webp',
     description: 'Certified quality management standard demonstrating consistent product safety, rigorous batch inspection, and international regulatory compliance.',
     sort_order: 3,
     is_active: true,
@@ -43,7 +43,7 @@ export const DEFAULT_CERTIFICATES = [
     badge_code: 'fda',
     subtitle: 'Registration #18061715604',
     issuer: 'U.S. Food & Drug Administration',
-    image_url: '/media/certificates/fda.png',
+    image_url: '/media/certificates/fda.webp',
     description: 'Formulated and produced in facilities registered with the U.S. FDA, meeting stringent international facility, equipment, and sanitation requirements.',
     sort_order: 4,
     is_active: true,
@@ -54,7 +54,7 @@ export const DEFAULT_CERTIFICATES = [
     badge_code: 'usa-lab',
     subtitle: '3rd Party Certification for Purity & Efficacy',
     issuer: 'Accredited Independent USA Labs',
-    image_url: '/media/certificates/usa-lab.png',
+    image_url: '/media/certificates/usa-lab.webp',
     description: 'Every production lot undergoes independent third-party laboratory verification for raw ingredient purity, bio-potency, and heavy metal screening.',
     sort_order: 5,
     is_active: true,
@@ -65,7 +65,7 @@ export const DEFAULT_CERTIFICATES = [
     badge_code: 'drap',
     subtitle: 'Drug Regulatory Authority of Pakistan',
     issuer: 'DRAP (Government of Pakistan)',
-    image_url: '/media/certificates/drap.png',
+    image_url: '/media/certificates/drap.webp',
     description: 'Produced in full compliance with Drug Regulatory Authority of Pakistan (DRAP) health and wellness facility standards for consumable supplements.',
     sort_order: 6,
     is_active: true,
@@ -76,7 +76,7 @@ export const DEFAULT_CERTIFICATES = [
     badge_code: 'halal',
     subtitle: '100% Halal Formulations',
     issuer: 'Recognized Halal Accreditation Authority',
-    image_url: '/media/certificates/halal.png',
+    image_url: '/media/certificates/halal.webp',
     description: '100% Halal certified ingredients, plant-derived vegetarian capsules, zero porcine gelatin, and strict adherence to Islamic dietary jurisprudence.',
     sort_order: 7,
     is_active: true,
@@ -89,7 +89,7 @@ export default function CertificatesSection({
   subtitle = 'At Supplivix, every multivitamin and skincare formulation is developed in DRAP and cGMP-certified sterile facilities. Under strict oversight by certified healthcare pharmacologists, we verify raw ingredient purity, eliminate synthetic binders, and guarantee 100% Halal bioavailable nutrients for your daily vitality.',
   buttonText = 'EXPLORE OUR STANDARDS',
   buttonLink = '/about',
-  illustrationUrl = '/media/science-lab-illustration.png',
+  illustrationUrl = '/media/science-lab-illustration.webp',
 }) {
   const [certificates, setCertificates] = useState(DEFAULT_CERTIFICATES);
   const [selectedCert, setSelectedCert] = useState(null);
@@ -144,7 +144,9 @@ export default function CertificatesSection({
   const bgClasses = bg === 'subtle' ? 'bg-surface-subtle' : 'bg-white';
 
   const renderBadge = (cert) => {
-    const imgSrc = cert.image_url || cert.image || `/media/certificates/${cert.badge_code}.png`;
+    const webpSrc = `/media/certificates/${cert.badge_code}.webp`;
+    const pngFallback = `/media/certificates/${cert.badge_code}.png`;
+    const imgSrc = cert.image_url || cert.image || webpSrc;
     return (
       <button
         key={cert.id || cert.badge_code}
@@ -154,16 +156,22 @@ export default function CertificatesSection({
         aria-label={`${cert.name} accreditation details`}
         className="w-16 h-16 sm:w-20 sm:h-20 lg:w-[86px] lg:h-[86px] flex items-center justify-center p-0.5 rounded-full hover:scale-108 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/40 cursor-pointer bg-transparent group"
       >
-        <img
-          src={imgSrc}
-          alt={`${cert.name} Accreditation Seal`}
-          className="w-full h-full object-contain filter drop-shadow-xs group-hover:drop-shadow-md transition-all duration-200"
-          loading="lazy"
-          onError={(e) => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.src = `/media/certificates/${cert.badge_code}.png`;
-          }}
-        />
+        <picture>
+          <source srcSet={webpSrc} type="image/webp" />
+          <img
+            src={imgSrc}
+            alt={`${cert.name} Accreditation Seal`}
+            width="86"
+            height="86"
+            className="w-full h-full object-contain filter drop-shadow-xs group-hover:drop-shadow-md transition-all duration-200"
+            loading="eager"
+            decoding="async"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = pngFallback;
+            }}
+          />
+        </picture>
       </button>
     );
   };
@@ -178,12 +186,18 @@ export default function CertificatesSection({
           {/* Left Column: Scientists Laboratory Illustration */}
           <div className="lg:col-span-6 flex justify-center items-center">
             <div className="relative w-full max-w-[520px]">
-              <img
-                src={illustrationUrl}
-                alt="Supplivix Backed by Science Laboratory"
-                className="w-full h-auto object-contain select-none rounded-lg shadow-sm"
-                loading="lazy"
-              />
+              <picture>
+                <source srcSet="/media/science-lab-illustration.webp" type="image/webp" />
+                <img
+                  src={illustrationUrl}
+                  alt="Supplivix Backed by Science Laboratory"
+                  width="520"
+                  height="388"
+                  className="w-full h-auto object-contain select-none rounded-lg shadow-sm"
+                  loading="eager"
+                  decoding="async"
+                />
+              </picture>
             </div>
           </div>
 

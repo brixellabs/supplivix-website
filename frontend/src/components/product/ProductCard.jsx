@@ -7,11 +7,12 @@ import { useCart } from '../../context/CartContext';
 import { useToast } from '../ui/Toast';
 import { normalizeMediaUrl } from '../../services/api';
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, priority = false }) {
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const [adding, setAdding] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   if (!product) return null;
 
@@ -55,8 +56,10 @@ export default function ProductCard({ product }) {
 
   const rawPrimary = product.thumbnail || (product.images && product.images.length > 0 && product.images[0].image);
   const primaryImage = normalizeMediaUrl(rawPrimary);
+  const primaryWebp = primaryImage ? primaryImage.replace(/\.(jpg|jpeg|png)$/i, '.webp') : null;
   const hasMultipleImages = Boolean(product.images && product.images.length >= 2);
   const secondaryImage = hasMultipleImages ? normalizeMediaUrl(product.images[1]?.image) : null;
+  const secondaryWebp = secondaryImage ? secondaryImage.replace(/\.(jpg|jpeg|png)$/i, '.webp') : null;
 
   return (
     <div className="group bg-surface-card border border-surface-border rounded-md shadow-card hover:shadow-hover transition-all duration-200 flex flex-col justify-between overflow-hidden relative">
@@ -97,24 +100,41 @@ export default function ProductCard({ product }) {
       >
         {primaryImage && !imgError ? (
           <div className="w-full h-44 flex items-center justify-center relative">
-            <img
-              loading="lazy"
-              src={primaryImage}
-              alt={product.name}
-              width="300"
-              height="176"
-              onError={() => setImgError(true)}
-              className={secondaryImage ? 'w-full h-44 object-contain transition-all duration-300 group-hover:opacity-0 group-hover:scale-105' : 'w-full h-44 object-contain transition-all duration-300 group-hover:scale-105'}
-            />
-            {secondaryImage && (
+            {!loaded && (
+              <div className="absolute inset-0 bg-surface-subtle animate-pulse rounded-md" aria-hidden="true" />
+            )}
+            <picture className="w-full h-44 flex items-center justify-center">
+              {primaryWebp && <source srcSet={primaryWebp} type="image/webp" />}
               <img
-                loading="lazy"
-                src={secondaryImage}
-                alt={`${product.name} alternate view`}
+                loading={priority ? 'eager' : 'lazy'}
+                fetchPriority={priority ? 'high' : 'auto'}
+                decoding="async"
+                src={primaryImage}
+                alt={product.name}
                 width="300"
                 height="176"
-                className="w-full h-44 object-contain transition-all duration-300 absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105"
+                onLoad={() => setLoaded(true)}
+                onError={() => setImgError(true)}
+                className={`${loaded ? 'opacity-100' : 'opacity-0'} ${
+                  secondaryImage
+                    ? 'w-full h-44 object-contain transition-all duration-300 group-hover:opacity-0 group-hover:scale-105'
+                    : 'w-full h-44 object-contain transition-all duration-300 group-hover:scale-105'
+                }`}
               />
+            </picture>
+            {secondaryImage && (
+              <picture className="w-full h-44 flex items-center justify-center absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                {secondaryWebp && <source srcSet={secondaryWebp} type="image/webp" />}
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  src={secondaryImage}
+                  alt={`${product.name} alternate view`}
+                  width="300"
+                  height="176"
+                  className="w-full h-44 object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+              </picture>
             )}
             {hasMultipleImages && (
               <span className="absolute bottom-1 right-1 text-[9px] font-mono text-ink-muted bg-white/90 px-1.5 py-0.5 rounded border border-surface-border pointer-events-none">

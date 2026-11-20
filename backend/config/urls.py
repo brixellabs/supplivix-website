@@ -31,11 +31,14 @@ urlpatterns = [
     path('api/v1/', include('core.urls')),
 ]
 
+from django.views.static import serve
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # SPA Shell catch-all view with SSR head tag injection and noscript DB content
 urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
     re_path(r'^(?P<path>.*)$', spa_shell_view, name='spa-shell'),
 ]

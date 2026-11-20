@@ -18,129 +18,136 @@ import heroSlide4 from '../assets/brand/hero-slide-4.jpg';
 import heroSlide5 from '../assets/brand/hero-slide-5.jpg';
 import heroSlide6 from '../assets/brand/hero-slide-6.jpg';
 import heroSlide7 from '../assets/brand/hero-slide-7.jpg';
+import heroSlide1Webp from '../assets/brand/hero-slide-1.webp';
+import heroSlide2Webp from '../assets/brand/hero-slide-2.webp';
+import heroSlide3Webp from '../assets/brand/hero-slide-3.webp';
+import heroSlide4Webp from '../assets/brand/hero-slide-4.webp';
+import heroSlide5Webp from '../assets/brand/hero-slide-5.webp';
+import heroSlide6Webp from '../assets/brand/hero-slide-6.webp';
+import heroSlide7Webp from '../assets/brand/hero-slide-7.webp';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../services/api';
 
 const DEFAULT_PRODUCTS = [
   {
     id: 1,
-    name: 'Supplivix Complete Daily Multivitamin 60s',
-    slug: 'supplivix-complete-daily-multivitamin-60s',
+    name: 'Daily Balance Multivitamin 60s',
+    slug: 'daily-balance-multivitamin-60s',
     product_type: 'multivitamin',
     category_name: 'Multivitamins',
     price: 2450,
     compare_at_price: 2900,
-    rating: 4.9,
-    reviews_count: 52,
-    inventory_count: 100,
+    rating: 4.8,
+    reviews_count: 6,
+    inventory_count: 119,
     is_featured: true,
     serving_size: '60 Tablets',
-    thumbnail: '/media/products/supplivix-multivitamin.jpg',
+    thumbnail: '/media/products/clean-multivitamin.jpg',
   },
   {
     id: 2,
-    name: 'Advanced Vitamin C + Zinc Immunity Shield 30s',
-    slug: 'advanced-vitamin-c-zinc-immunity-shield-30s',
+    name: 'Daily Balance Gold High Potency 60s',
+    slug: 'daily-balance-gold-high-potency-60s',
     product_type: 'multivitamin',
-    category_name: 'Immunity',
-    price: 1850,
-    compare_at_price: 2200,
-    rating: 4.8,
-    reviews_count: 38,
+    category_name: 'Multivitamins',
+    price: 3200,
+    compare_at_price: 3800,
+    rating: 4.7,
+    reviews_count: 6,
     inventory_count: 85,
     is_featured: true,
-    serving_size: '30 Tablets',
-    thumbnail: '/media/products/supplivix-immune-shield.jpg',
+    serving_size: '60 Tablets',
+    thumbnail: '/media/products/clean-mv-gold.jpg',
   },
   {
     id: 3,
-    name: 'Radiant Glow Biotin & Collagen Complex',
-    slug: 'radiant-glow-biotin-collagen-complex',
+    name: 'Active Daily Multi Energy Blend 60s',
+    slug: 'active-daily-multi-energy-blend-60s',
+    product_type: 'multivitamin',
+    category_name: 'Multivitamins',
+    price: 2600,
+    compare_at_price: null,
+    rating: 4.7,
+    reviews_count: 6,
+    inventory_count: 95,
+    is_featured: true,
+    serving_size: '60 Tablets',
+    thumbnail: '/media/products/clean-daily-vitality.jpg',
+  },
+  {
+    id: 9,
+    name: 'Men Core Multi Active Formula 60s',
+    slug: 'men-core-multi-active-formula-60s',
+    product_type: 'multivitamin',
+    category_name: 'Multivitamins',
+    price: 2600,
+    compare_at_price: 3100,
+    rating: 4.9,
+    reviews_count: 6,
+    inventory_count: 90,
+    is_featured: true,
+    serving_size: '60 Tablets',
+    thumbnail: '/media/products/clean-men-core.jpg',
+  },
+  {
+    id: 17,
+    name: 'Kids Gummy Multi Fruit Bites 60s',
+    slug: 'kids-gummy-multi-demo-fruit-bites-60s',
+    product_type: 'multivitamin',
+    category_name: 'Multivitamins',
+    price: 1750,
+    compare_at_price: 2100,
+    rating: 4.8,
+    reviews_count: 6,
+    inventory_count: 130,
+    is_featured: true,
+    serving_size: '60 Gummies',
+    thumbnail: '/media/products/clean-multivitamin.jpg',
+  },
+  {
+    id: 20,
+    name: 'Immune Shield Blend Vitamin C + Zinc 60s',
+    slug: 'immune-shield-blend-vitamin-c-plus-zinc-60s',
+    product_type: 'multivitamin',
+    category_name: 'Immunity',
+    price: 1850,
+    compare_at_price: 2250,
+    rating: 4.7,
+    reviews_count: 6,
+    inventory_count: 149,
+    is_featured: true,
+    serving_size: '60 Tablets',
+    thumbnail: '/media/products/clean-immune-shield.jpg',
+  },
+  {
+    id: 24,
+    name: 'Beauty Bloom Complex Biotin 5000mcg 60s',
+    slug: 'beauty-bloom-complex-biotin-5000mcg-60s',
     product_type: 'multivitamin',
     category_name: 'Skin Care',
-    price: 2750,
-    compare_at_price: 3300,
-    rating: 4.9,
-    reviews_count: 44,
-    inventory_count: 60,
+    price: 2350,
+    compare_at_price: 2750,
+    rating: 4.8,
+    reviews_count: 6,
+    inventory_count: 115,
     is_featured: true,
     serving_size: '60 Capsules',
-    thumbnail: '/media/products/supplivix-skin-glow.jpg',
+    thumbnail: '/media/products/clean-skin-glow.jpg',
   },
   {
-    id: 4,
-    name: 'Niacinamide 10% + Zinc Clarifying Serum 30ml',
-    slug: 'niacinamide-10-zinc-clarifying-serum-30ml',
-    product_type: 'skincare',
-    category_name: 'Skin Care',
-    price: 1650,
-    compare_at_price: 1950,
-    rating: 4.7,
-    reviews_count: 29,
-    inventory_count: 45,
-    is_featured: false,
-    serving_size: '30ml Dropper',
-    thumbnail: '/media/products/supplivix-skincare-serum.jpg',
-  },
-  {
-    id: 5,
-    name: 'High Potency Vitamin D3 5000 IU + K2',
-    slug: 'high-potency-vitamin-d3-5000-iu-k2',
-    product_type: 'multivitamin',
-    category_name: 'Bone & Joint',
-    price: 1950,
-    compare_at_price: 2300,
-    rating: 4.9,
-    reviews_count: 31,
-    inventory_count: 70,
-    is_featured: true,
-    serving_size: '60 Softgels',
-    thumbnail: '/media/products/supplivix-bone-joints.jpg',
-  },
-  {
-    id: 6,
+    id: 56,
     name: 'Ultra Hydrating Hyaluronic Barrier Cream 50ml',
     slug: 'ultra-hydrating-hyaluronic-barrier-cream-50ml',
     product_type: 'skincare',
     category_name: 'Skin Care',
     price: 1890,
     compare_at_price: 2250,
-    rating: 4.8,
-    reviews_count: 26,
-    inventory_count: 55,
-    is_featured: false,
-    serving_size: '50ml Jar',
-    thumbnail: '/media/products/supplivix-skincare-serum.jpg',
-  },
-  {
-    id: 7,
-    name: 'Men\'s Active Daily Energy Multivitamin',
-    slug: 'mens-active-daily-energy-multivitamin',
-    product_type: 'multivitamin',
-    category_name: 'Multivitamins',
-    price: 2600,
-    compare_at_price: 3100,
-    rating: 4.9,
-    reviews_count: 35,
-    inventory_count: 40,
-    is_featured: true,
-    serving_size: '60 Tablets',
-    thumbnail: '/media/products/supplivix-daily-vitality.jpg',
-  },
-  {
-    id: 8,
-    name: 'Women\'s Complete Balanced Multivitamin',
-    slug: 'womens-complete-balanced-multivitamin',
-    product_type: 'multivitamin',
-    category_name: 'Multivitamins',
-    price: 2600,
-    compare_at_price: 3100,
     rating: 5.0,
-    reviews_count: 47,
-    inventory_count: 65,
+    reviews_count: 1,
+    inventory_count: 84,
     is_featured: true,
-    serving_size: '60 Tablets',
-    thumbnail: '/media/products/supplivix-multivitamin.jpg',
+    serving_size: '50ml Jar',
+    thumbnail: '/media/products/clean-cream-jar.jpg',
   },
 ];
 
@@ -182,42 +189,49 @@ const HERO_SLIDES = [
   {
     id: 1,
     image: heroSlide1,
+    webp: heroSlide1Webp,
     alt: 'Supplivix Summer Glow-on with Glutathione',
     link: '/shop?category=skincare',
   },
   {
     id: 2,
     image: heroSlide2,
+    webp: heroSlide2Webp,
     alt: 'Supplivix 6000mg Marine Collagen Powder',
     link: '/shop?category=anti-aging',
   },
   {
     id: 3,
     image: heroSlide3,
+    webp: heroSlide3Webp,
     alt: 'Supplivix 100% Bioavailable Daily Vitality Multivitamin',
     link: '/multivitamins',
   },
   {
     id: 4,
     image: heroSlide4,
+    webp: heroSlide4Webp,
     alt: 'Supplivix Strong Bones Active Life Calcium D3',
     link: '/shop?category=bones-joints',
   },
   {
     id: 5,
     image: heroSlide5,
+    webp: heroSlide5Webp,
     alt: 'Supplivix Immunity Power Daily Shield Vitamin C',
     link: '/shop?category=immunity',
   },
   {
     id: 6,
     image: heroSlide6,
+    webp: heroSlide6Webp,
     alt: 'Supplivix Thicker Hair Radiant Glow Biotin',
     link: '/shop?category=skincare',
   },
   {
     id: 7,
     image: heroSlide7,
+    webp: heroSlide7Webp,
     alt: 'Supplivix Yummy Multi Gummies Made Healthy',
     link: '/shop?category=kids',
   },
@@ -445,12 +459,19 @@ export default function HomePage() {
                   : 'opacity-0 z-0 pointer-events-none'
               }`}
             >
-              <img
-                src={slide.image}
-                alt={slide.alt}
-                className="w-full h-full object-cover object-center"
-                loading={idx === 0 ? 'eager' : 'lazy'}
-              />
+              <picture className="w-full h-full block">
+                {slide.webp && <source srcSet={slide.webp} type="image/webp" />}
+                <img
+                  src={slide.image}
+                  alt={slide.alt}
+                  width="1376"
+                  height="768"
+                  className="w-full h-full object-cover object-center"
+                  loading={idx === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={idx === 0 ? 'high' : 'auto'}
+                  decoding="async"
+                />
+              </picture>
             </Link>
           ))}
 
@@ -701,8 +722,8 @@ export default function HomePage() {
 
           {/* Product Grid (Responsive: 1-2 cols mobile, 3 tablet, 4 desktop) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {filteredProducts.map((p) => (
-              <ProductCard key={p.id} product={p} />
+            {filteredProducts.map((p, idx) => (
+              <ProductCard key={p.id} product={p} priority={idx < 4} />
             ))}
           </div>
 

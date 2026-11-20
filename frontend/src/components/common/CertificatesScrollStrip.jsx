@@ -77,7 +77,11 @@ export default function CertificatesScrollStrip() {
 
         <div className="animate-marquee-scroll flex items-center gap-8 sm:gap-12 md:gap-16">
           {marqueeItems.map((cert, index) => {
-            const imgSrc = cert.image_url || cert.image || `/media/certificates/${cert.badge_code}.png`;
+            const webpSrc = cert.badge_code
+              ? `/media/certificates/${cert.badge_code}.webp`
+              : (cert.image_url || '').replace(/\.png$/i, '.webp');
+            const pngFallback = `/media/certificates/${cert.badge_code}.png`;
+            const imgSrc = cert.image_url || cert.image || webpSrc;
             const label = getBadgeLabel(cert.badge_code, cert.name);
             return (
               <button
@@ -89,16 +93,23 @@ export default function CertificatesScrollStrip() {
                 className="flex-shrink-0 flex flex-col items-center justify-center text-center group/item cursor-pointer focus:outline-none transition-transform duration-200"
               >
                 <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-[84px] md:h-[84px] rounded-full flex items-center justify-center p-1 bg-white transition-all duration-200 group-hover/item:scale-110 drop-shadow-xs group-hover/item:drop-shadow-md">
-                  <img
-                    src={imgSrc}
-                    alt={`${cert.name} Accreditation Seal`}
-                    className="w-full h-full object-contain filter"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = `/media/certificates/${cert.badge_code}.png`;
-                    }}
-                  />
+                  <picture>
+                    <source srcSet={webpSrc} type="image/webp" />
+                    <img
+                      src={imgSrc}
+                      alt={`${cert.name} Accreditation Seal`}
+                      width="84"
+                      height="84"
+                      className="w-full h-full object-contain filter"
+                      loading="eager"
+                      fetchPriority="high"
+                      decoding="async"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = pngFallback;
+                      }}
+                    />
+                  </picture>
                 </div>
                 <span className="mt-2 text-[11px] sm:text-xs font-bold uppercase tracking-tight text-brand-ink group-hover/item:text-brand-green transition-colors whitespace-nowrap">
                   {label}
@@ -154,11 +165,19 @@ export default function CertificatesScrollStrip() {
             </button>
 
             <div className="w-24 h-24 sm:w-28 sm:h-28 mx-auto mb-4 flex items-center justify-center">
-              <img
-                src={selectedCert.image_url || `/media/certificates/${selectedCert.badge_code}.png`}
-                alt={`${selectedCert.name} Seal`}
-                className="max-w-full max-h-full object-contain"
-              />
+              <picture>
+                <source
+                  srcSet={`/media/certificates/${selectedCert.badge_code}.webp`}
+                  type="image/webp"
+                />
+                <img
+                  src={selectedCert.image_url || `/media/certificates/${selectedCert.badge_code}.png`}
+                  alt={`${selectedCert.name} Seal`}
+                  width="112"
+                  height="112"
+                  className="max-w-full max-h-full object-contain"
+                />
+              </picture>
             </div>
 
             <span className="text-[11px] font-bold uppercase tracking-wider text-brand-green block mb-1">
