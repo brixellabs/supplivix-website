@@ -179,22 +179,20 @@ const HERO_SLIDES = [
   {
     id: 1,
     image: heroSlide1,
-    alt: 'Supplivix Multivitamins & Immune Shield Flagship Trio',
+    alt: 'Supplivix Summer Glow-on with Glutathione',
+    link: '/shop?category=skincare',
   },
   {
     id: 2,
     image: heroSlide2,
-    alt: 'Supplivix Value Bundles & Travertine Clinical Skincare',
+    alt: 'Supplivix 6000mg Marine Collagen Powder',
+    link: '/shop?category=anti-aging',
   },
   {
     id: 3,
     image: heroSlide3,
-    alt: 'Pure Botanical Extracts & Bioactive Amber Vials',
-  },
-  {
-    id: 4,
-    image: heroSlide4,
-    alt: 'Advanced Anti-Aging Collagen & Peptide Formulations',
+    alt: 'Supplivix 100% Bioavailable Daily Vitality Multivitamin',
+    link: '/multivitamins',
   },
 ];
 
@@ -212,14 +210,16 @@ export default function HomePage() {
   const [dealsEnabled, setDealsEnabled] = useState(true);
   const [bundleOffers, setBundleOffers] = useState(null);
   const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+  const [isHeroHovered, setIsHeroHovered] = useState(false);
 
-  // Auto-advance hero background slides every 5 seconds
+  // Auto-advance hero slides every 5 seconds (paused on user hover)
   useEffect(() => {
+    if (isHeroHovered) return;
     const timer = setInterval(() => {
       setHeroSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isHeroHovered]);
   const [deal1, setDeal1] = useState({
     badge: 'Special Bundle',
     title: 'Complete Daily Glow Duo',
@@ -404,84 +404,78 @@ export default function HomePage() {
   return (
     <div className="bg-white">
       <SEOHead title="Bioavailable Multivitamins & Skincare Pakistan" description="Pakistan's premier multivitamins and science-backed skincare formulations. Crafted for maximum bioavailability with Cash on Delivery nationwide." canonical="/" />
-      {/* 1. Hero Section: Multivitamins & Skincare Focus with Seamless Background Photography Slider */}
-      <section className="relative overflow-hidden bg-[#faf9f6] border-b border-surface-border py-14 sm:py-20 lg:py-28">
-        {/* Background Image Slider (4 Different Panoramic Studio Slides, Auto-transitions every 5 seconds) */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
+      {/* 1. Hero Section: Full-Width Responsive Funky Graphic Carousel (No HTML Text Overlay) */}
+      <section
+        aria-label="Promotional Hero Banners"
+        className="relative overflow-hidden bg-surface-subtle border-b border-surface-border select-none"
+        onMouseEnter={() => setIsHeroHovered(true)}
+        onMouseLeave={() => setIsHeroHovered(false)}
+      >
+        <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[2.35/1] max-h-[580px] min-h-[200px]">
           {HERO_SLIDES.map((slide, idx) => (
-            <img
+            <Link
               key={slide.id}
-              src={slide.image}
-              alt={slide.alt}
-              className={`absolute inset-0 w-full h-full object-cover lg:object-contain object-right transition-opacity duration-1000 ease-in-out ${
-                idx === heroSlideIndex ? 'opacity-100' : 'opacity-0'
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* Soft gradient wash for 100% WCAG contrast and readability on text */}
-        <div
-          className="absolute inset-0 bg-gradient-to-r from-[#faf9f6] via-[#faf9f6]/95 via-45% lg:via-[#faf9f6]/70 lg:via-50% to-transparent pointer-events-none z-10"
-          aria-hidden="true"
-        />
-
-        <div className="max-w-site mx-auto px-4 sm:px-6 relative z-10">
-          <div className="max-w-xl lg:max-w-2xl">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold uppercase tracking-tight text-brand-ink leading-[1.15] mb-4">
-              Daily vitamins for a <span className="text-brand-green">healthier, glowing</span> you
-            </h1>
-            <p className="text-sm md:text-base text-ink-muted max-w-xl leading-relaxed mb-8">
-              Pakistan's premier multivitamins and science-backed skincare formulations. Crafted for maximum bioavailability with Cash on Delivery nationwide.
-            </p>
-
-            {/* CTAs */}
-            <div className="flex flex-wrap items-center gap-4 mb-8">
-              <Link to="/multivitamins">
-                <Button variant="primary" size="lg" className="h-[48px] px-7">
-                  Shop Multivitamins
-                </Button>
-              </Link>
-              <Link to="/shop">
-                <Button variant="outline" size="lg" className="h-[48px] px-7">
-                  Explore All Products
-                </Button>
-              </Link>
-            </div>
-
-            {/* Quality Badges */}
-            <div className="flex flex-wrap items-center gap-5 pt-6 border-t border-surface-border text-xs font-semibold text-ink-muted">
-              <div className="flex items-center gap-1.5">
-                <Icon name="check" className="text-brand-green" />
-                <span>Bioavailable Minerals</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Icon name="check" className="text-brand-green" />
-                <span>Zero Harmful Binders</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Icon name="check" className="text-brand-green" />
-                <span>Cash on Delivery</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Slide Navigation Dots / Indicators */}
-        <div className="absolute bottom-4 right-4 sm:right-8 z-20 flex items-center gap-1.5 bg-white/85 border border-surface-border px-3 py-1.5 rounded-full shadow-sm">
-          {HERO_SLIDES.map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => setHeroSlideIndex(idx)}
-              className={`h-2 rounded-full transition-all duration-300 ${
+              to={slide.link}
+              className={`absolute inset-0 w-full h-full block transition-opacity duration-700 ease-in-out ${
                 idx === heroSlideIndex
-                  ? 'w-6 bg-brand-green'
-                  : 'w-2 bg-gray-300 hover:bg-gray-400'
+                  ? 'opacity-100 z-10 pointer-events-auto'
+                  : 'opacity-0 z-0 pointer-events-none'
               }`}
-              aria-label={`Go to hero slide ${idx + 1}`}
-            />
+            >
+              <img
+                src={slide.image}
+                alt={slide.alt}
+                className="w-full h-full object-cover object-center"
+                loading={idx === 0 ? 'eager' : 'lazy'}
+              />
+            </Link>
           ))}
+
+          {/* Left Arrow (Nutrifactor Style) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              setHeroSlideIndex((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+            }}
+            className="absolute left-2 sm:left-4 md:left-6 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white/85 hover:bg-white text-brand-ink shadow-md flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer focus:outline-none"
+            aria-label="Previous promotional slide"
+          >
+            <Icon name="chevron-right" className="rotate-180 text-xs sm:text-sm" />
+          </button>
+
+          {/* Right Arrow (Nutrifactor Style) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              setHeroSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+            }}
+            className="absolute right-2 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white/85 hover:bg-white text-brand-ink shadow-md flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer focus:outline-none"
+            aria-label="Next promotional slide"
+          >
+            <Icon name="chevron-right" className="text-xs sm:text-sm" />
+          </button>
+
+          {/* Pagination Indicators (Centered at bottom) */}
+          <div className="absolute bottom-2.5 sm:bottom-4 md:bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/30 backdrop-blur-xs px-3 py-1.5 rounded-full">
+            {HERO_SLIDES.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setHeroSlideIndex(idx);
+                }}
+                className={`rounded-full transition-all duration-300 ${
+                  idx === heroSlideIndex
+                    ? 'w-6 sm:w-7 h-2 sm:h-2.5 bg-brand-green'
+                    : 'w-2 sm:w-2.5 h-2 sm:h-2.5 bg-white/80 hover:bg-white'
+                }`}
+                aria-label={`Go to slide ${idx + 1}`}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
