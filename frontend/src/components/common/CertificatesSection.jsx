@@ -181,7 +181,7 @@ export default function CertificatesSection({
               <img
                 src={illustrationUrl}
                 alt="Supplivix Backed by Science Laboratory"
-                className="w-full h-auto object-contain select-none"
+                className="w-full h-auto object-contain select-none rounded-lg shadow-sm"
                 loading="lazy"
               />
             </div>
