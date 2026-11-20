@@ -8,6 +8,9 @@ import { api } from '../../services/api';
 
 export default function Header({ cartCount: propCartCount }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [drawerMultiOpen, setDrawerMultiOpen] = useState(false);
+  const [drawerShopOpen, setDrawerShopOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -87,12 +90,39 @@ export default function Header({ cartCount: propCartCount }) {
     return () => { active = false; };
   }, []);
 
-  // Close open popovers on route change
+  // Close open popovers and drawer on route change
   useEffect(() => {
     setActiveDropdown(null);
     setSearchFocused(false);
     setMobileMenuOpen(false);
+    setMobileSearchOpen(false);
+    setDrawerMultiOpen(false);
+    setDrawerShopOpen(false);
   }, [location.pathname]);
+
+  // Lock body scroll when mobile drawer is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
+  // Escape key listener to close drawer and search
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+        setMobileSearchOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Click outside listener for interactive dropdowns
   useEffect(() => {
@@ -117,6 +147,7 @@ export default function Header({ cartCount: propCartCount }) {
       navigate(`/shop?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchFocused(false);
       setMobileMenuOpen(false);
+      setMobileSearchOpen(false);
     }
   };
 
@@ -156,22 +187,109 @@ export default function Header({ cartCount: propCartCount }) {
 
       {/* 2. Main Sticky Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-surface-border">
-        <div className="max-w-site mx-auto px-3 sm:px-6 h-[64px] sm:h-[74px] md:h-[80px] lg:h-[84px] flex items-center justify-between gap-2 sm:gap-3 xl:gap-4">
-          {/* Logo */}
+        {/* A. Mobile View Navbar (lg:hidden) - Exactly like Nutrifactor reference */}
+        <div className="lg:hidden max-w-site mx-auto px-3 h-[60px] flex items-center justify-between">
+          {/* Left: Hamburger Button + Search Button */}
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 text-brand-ink hover:text-brand-green rounded-md focus:outline-none transition-colors"
+              aria-label="Open navigation drawer"
+            >
+              <Icon name="bars" className="text-xl" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+              className="p-2 text-brand-ink hover:text-brand-green rounded-md focus:outline-none transition-colors"
+              aria-label="Toggle search bar"
+            >
+              <Icon name={mobileSearchOpen ? 'close' : 'search'} className="text-lg" />
+            </button>
+          </div>
+
+          {/* Center: Brand Logo */}
+          <Link to="/" className="flex items-center justify-center py-1" aria-label="Supplivix Home">
+            <img
+              src={logoImg}
+              alt="Supplivix"
+              width="150"
+              height="48"
+              className="h-10 sm:h-11 w-auto object-contain cursor-pointer"
+            />
+          </Link>
+
+          {/* Right: Cart Button */}
+          <Link
+            to="/cart"
+            className="relative p-2 text-brand-ink hover:text-brand-green transition-colors flex items-center justify-center"
+            aria-label="Shopping Cart"
+          >
+            <Icon name="cart" className="text-xl" />
+            <span
+              className={`absolute top-1 right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white transition-transform ${
+                cartCount > 0 ? 'bg-brand-green scale-100' : 'bg-brand-ink scale-95'
+              }`}
+            >
+              {cartCount}
+            </span>
+          </Link>
+        </div>
+
+        {/* Mobile Search Bar Dropdown */}
+        {mobileSearchOpen && (
+          <div className="lg:hidden bg-surface-subtle border-t border-surface-border px-4 py-2.5 shadow-sm animate-fadeIn">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="flex items-center bg-white border border-surface-border rounded-md px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand-green"
+            >
+              <input
+                type="text"
+                placeholder="Search vitamins, skin care..."
+                value={searchQuery}
+                autoFocus
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none outline-none text-xs text-brand-ink w-full placeholder:text-ink-muted"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                  className="text-ink-muted hover:text-brand-ink mr-2 focus:outline-none"
+                >
+                  <Icon name="close" className="text-[10px]" />
+                </button>
+              )}
+              <button
+                type="submit"
+                aria-label="Search"
+                className="text-ink-muted hover:text-brand-green ml-1 focus:outline-none"
+              >
+                <Icon name="search" className="text-xs" />
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* B. Desktop View Navbar (hidden lg:flex) */}
+        <div className="hidden lg:flex max-w-site mx-auto px-4 xl:px-6 h-[80px] xl:h-[84px] items-center justify-between gap-3 xl:gap-4">
+          {/* Logo on Left */}
           <Link to="/" className="flex-shrink-0" aria-label="Supplivix Home">
             <img
               src={logoImg}
               alt="Supplivix"
               width="210"
               height="70"
-              className="h-11 sm:h-12 md:h-14 lg:h-16 xl:h-[70px] w-auto object-contain cursor-pointer transition-transform duration-150 hover:scale-[1.02]"
+              className="h-16 xl:h-[70px] w-auto object-contain cursor-pointer transition-transform duration-150 hover:scale-[1.02]"
             />
           </Link>
 
           {/* Desktop Navigation with Interactive Links & Dropdowns */}
           <nav
             ref={navMenuRef}
-            className="hidden lg:flex items-center gap-3.5 xl:gap-5 text-[13px] xl:text-sm font-medium tracking-wide whitespace-nowrap"
+            className="flex items-center gap-3.5 xl:gap-5 text-[13px] xl:text-sm font-medium tracking-wide whitespace-nowrap"
           >
             <Link
               to="/"
@@ -518,153 +636,349 @@ export default function Header({ cartCount: propCartCount }) {
               <span className="sr-only">items in cart</span>
             </Link>
 
-            {/* Mobile Hamburger Button */}
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-1.5 sm:p-2 text-brand-ink hover:text-brand-green rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green transition-colors"
-              aria-label="Toggle navigation menu"
-              aria-expanded={mobileMenuOpen}
-            >
-              <Icon name={mobileMenuOpen ? 'close' : 'bars'} className="text-xl" />
-            </button>
           </div>
         </div>
+      </header>
 
-        {/* Mobile Navigation Sheet (Solid background, NO glassmorphism) */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-white border-b border-surface-border px-6 py-4 shadow-md flex flex-col gap-3 animate-fadeIn">
-            <form
-              onSubmit={handleSearchSubmit}
-              className="flex items-center bg-surface-subtle border border-surface-border rounded-md px-3 py-2 mb-2 focus-within:ring-2 focus-within:ring-brand-green"
-            >
-              <input
-                type="text"
-                placeholder="Search vitamins, skin care..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none outline-none text-sm text-brand-ink w-full"
-              />
-              <button type="submit" aria-label="Search" className="text-ink-muted hover:text-brand-green ml-2">
-                <Icon name="search" />
+      {/* 3. Mobile Off-Canvas Side Drawer */}
+      {/* Backdrop Overlay */}
+      <div
+        className={`fixed inset-0 bg-black/60 z-50 transition-opacity duration-300 lg:hidden ${
+          mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setMobileMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Side Drawer Panel */}
+      <aside
+        className={`fixed top-0 bottom-0 left-0 w-[300px] sm:w-[340px] max-w-[85vw] bg-white z-50 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out lg:hidden ${
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        aria-label="Navigation Drawer"
+        aria-hidden={!mobileMenuOpen}
+      >
+        {/* Drawer Header with Logo & Close Button */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-surface-border">
+          <Link
+            to="/"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center"
+            aria-label="Supplivix Home"
+          >
+            <img
+              src={logoImg}
+              alt="Supplivix"
+              width="150"
+              height="48"
+              className="h-10 w-auto object-contain cursor-pointer"
+            />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(false)}
+            className="p-2 text-ink-muted hover:text-brand-ink rounded-md transition-colors"
+            aria-label="Close menu drawer"
+          >
+            <Icon name="close" className="text-lg" />
+          </button>
+        </div>
+
+        {/* Drawer Search Bar */}
+        <div className="p-4 border-b border-surface-border bg-surface-subtle">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex items-center bg-white border border-surface-border rounded-md px-3 py-2 focus-within:ring-2 focus-within:ring-brand-green"
+          >
+            <input
+              type="text"
+              placeholder="Search vitamins, skin care..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent border-none outline-none text-xs text-brand-ink w-full placeholder:text-ink-muted"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="text-ink-muted hover:text-brand-ink mr-2 focus:outline-none"
+              >
+                <Icon name="close" className="text-[10px]" />
               </button>
-            </form>
+            )}
+            <button
+              type="submit"
+              aria-label="Search"
+              className="text-ink-muted hover:text-brand-green ml-1 focus:outline-none"
+            >
+              <Icon name="search" className="text-xs" />
+            </button>
+          </form>
+        </div>
 
+        {/* Scrollable Navigation Menu */}
+        <nav className="flex-1 overflow-y-auto px-4 py-3 divide-y divide-surface-border text-sm">
+          {/* Home */}
+          <div className="py-2.5">
             <Link
               to="/"
               onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm font-semibold py-2 border-b border-surface-border transition-colors ${
+              className={`block font-semibold transition-colors ${
                 isActive('/') ? 'text-brand-green font-bold' : 'text-brand-ink hover:text-brand-green'
               }`}
             >
               Home
             </Link>
-            <Link
-              to="/multivitamins"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm py-2 border-b border-surface-border transition-colors ${
-                isActive('/multivitamins') ? 'text-brand-green font-bold' : 'text-brand-ink hover:text-brand-green'
-              }`}
-            >
-              Multivitamins Hub
-            </Link>
-            <Link
-              to="/shop"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm font-semibold py-2 border-b border-surface-border transition-colors ${
-                isActive('/shop') ? 'text-brand-green font-bold' : 'text-brand-ink hover:text-brand-green'
-              }`}
-            >
-              All Products
-            </Link>
-            {dealsEnabled && (
+          </div>
+
+          {/* Multivitamins (Collapsible Accordion) */}
+          <div className="py-2.5">
+            <div className="flex items-center justify-between">
+              <Link
+                to="/multivitamins"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`font-semibold transition-colors ${
+                  isActive('/multivitamins') ? 'text-brand-green font-bold' : 'text-brand-ink hover:text-brand-green'
+                }`}
+              >
+                Multivitamins Hub
+              </Link>
+              <button
+                type="button"
+                onClick={() => setDrawerMultiOpen(!drawerMultiOpen)}
+                className="p-1.5 text-ink-muted hover:text-brand-green transition-transform"
+                aria-label="Toggle multivitamins submenu"
+              >
+                <Icon
+                  name="chevron-down"
+                  className={`text-xs transition-transform duration-200 ${
+                    drawerMultiOpen ? 'rotate-180 text-brand-green' : ''
+                  }`}
+                />
+              </button>
+            </div>
+            {drawerMultiOpen && (
+              <div className="mt-2 ml-2 pl-3 border-l-2 border-brand-green/30 space-y-1.5 pt-1 text-xs text-ink-muted animate-fadeIn">
+                <Link
+                  to="/multivitamins"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block hover:text-brand-green py-1 font-semibold text-brand-green"
+                >
+                  Overview & Formulations
+                </Link>
+                <Link
+                  to="/shop?q=immunity"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block hover:text-brand-green py-1"
+                >
+                  Immune Shield (Vitamin C + Zinc)
+                </Link>
+                <Link
+                  to="/shop?q=multivitamin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block hover:text-brand-green py-1"
+                >
+                  Complete Daily Multi 60s
+                </Link>
+                <Link
+                  to="/shop?q=biotin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block hover:text-brand-green py-1"
+                >
+                  Biotin Glow Complex
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* All Products (Collapsible Accordion) */}
+          <div className="py-2.5">
+            <div className="flex items-center justify-between">
+              <Link
+                to="/shop"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`font-semibold transition-colors ${
+                  isActive('/shop') ? 'text-brand-green font-bold' : 'text-brand-ink hover:text-brand-green'
+                }`}
+              >
+                All Products
+              </Link>
+              <button
+                type="button"
+                onClick={() => setDrawerShopOpen(!drawerShopOpen)}
+                className="p-1.5 text-ink-muted hover:text-brand-green transition-transform"
+                aria-label="Toggle all products submenu"
+              >
+                <Icon
+                  name="chevron-down"
+                  className={`text-xs transition-transform duration-200 ${
+                    drawerShopOpen ? 'rotate-180 text-brand-green' : ''
+                  }`}
+                />
+              </button>
+            </div>
+            {drawerShopOpen && (
+              <div className="mt-2 ml-2 pl-3 border-l-2 border-brand-green/30 space-y-1.5 pt-1 text-xs text-ink-muted animate-fadeIn">
+                <Link
+                  to="/shop"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block hover:text-brand-green py-1 font-semibold text-brand-ink"
+                >
+                  Browse Entire Catalog
+                </Link>
+                {navCategories.map((c) => (
+                  <Link
+                    key={c.slug}
+                    to={c.slug === 'multivitamins' ? '/multivitamins' : `/shop?category=${c.slug}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block hover:text-brand-green py-1"
+                  >
+                    {c.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Special Offers */}
+          {dealsEnabled && (
+            <div className="py-2.5">
               <Link
                 to="/offers"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`text-sm font-semibold py-2 border-b border-surface-border transition-colors ${
+                className={`flex items-center justify-between font-semibold transition-colors ${
                   isActive('/offers') ? 'text-brand-green font-bold' : 'text-brand-ink hover:text-brand-green'
                 }`}
               >
-                Special Offers
+                <span>Special Offers</span>
+                <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full uppercase">
+                  Deals
+                </span>
               </Link>
-            )}
+            </div>
+          )}
+
+          {/* About Us */}
+          <div className="py-2.5">
             <Link
               to="/about"
               onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm font-semibold py-2 border-b border-surface-border transition-colors ${
+              className={`block font-semibold transition-colors ${
                 isActive('/about') ? 'text-brand-green font-bold' : 'text-brand-ink hover:text-brand-green'
               }`}
             >
               About Us
             </Link>
+          </div>
+
+          {/* Contact Us */}
+          <div className="py-2.5">
             <Link
               to="/contact"
               onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm font-semibold py-2 border-b border-surface-border transition-colors ${
+              className={`block font-semibold transition-colors ${
                 isActive('/contact') ? 'text-brand-green font-bold' : 'text-brand-ink hover:text-brand-green'
               }`}
             >
               Contact Us
             </Link>
+          </div>
+
+          {/* Track Order */}
+          <div className="py-2.5">
             <Link
               to="/track"
               onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm font-semibold py-2 border-b border-surface-border transition-colors ${
+              className={`block font-semibold transition-colors ${
                 isActive('/track') ? 'text-brand-green font-bold' : 'text-brand-ink hover:text-brand-green'
               }`}
             >
               Track Your Order
             </Link>
-            {user?.is_staff ? (
-              <Link
-                to="/admin-panel"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`text-sm font-bold py-2 transition-colors ${
-                  isActive('/admin-panel') ? 'text-brand-green font-bold' : 'text-brand-green hover:underline'
-                }`}
-              >
-                Admin Dashboard
-              </Link>
-            ) : (
-              <Link
-                to="/account"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`text-sm font-semibold py-2 transition-colors ${
-                  isActive('/account') ? 'text-brand-green font-bold' : 'text-brand-ink hover:text-brand-green'
-                }`}
-              >
-                My Account / Orders
-              </Link>
-            )}
-
-            {/* Mobile Drawer Social Links */}
-            <div className="pt-3 border-t border-surface-border flex items-center justify-between text-xs text-ink-muted">
-              <span className="font-semibold text-brand-ink">Follow Us:</span>
-              <div className="flex items-center gap-3 text-base text-brand-ink">
-                <a
-                  href="https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Supplivix on Instagram (@supp.livix)"
-                  className="hover:text-brand-green transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                >
-                  <Icon name="instagram" className="text-base text-brand-green" />
-                  <span>@supp.livix</span>
-                </a>
-                <a
-                  href="https://wa.me/923025222405"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="WhatsApp"
-                  className="hover:text-brand-green transition-colors"
-                >
-                  <Icon name="whatsapp" className="text-base text-brand-green" />
-                </a>
-              </div>
-            </div>
           </div>
-        )}
-      </header>
+
+          {/* Customer Account / Sign In */}
+          <div className="py-3">
+            {user ? (
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-ink-muted uppercase block font-semibold">
+                  Signed in as {user.full_name || user.email}
+                </span>
+                {user.is_staff ? (
+                  <Link
+                    to="/admin-panel"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block text-brand-green font-bold hover:underline"
+                  >
+                    Admin Dashboard
+                  </Link>
+                ) : (
+                  <Link
+                    to="/account"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block text-brand-ink hover:text-brand-green font-medium"
+                  >
+                    Account Dashboard
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (logout) logout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-xs text-status-error font-medium hover:underline pt-1 block"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 pt-1">
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex-1 text-center py-2 px-3 bg-brand-green text-white rounded-sm text-xs font-bold hover:bg-brand-ink transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex-1 text-center py-2 px-3 border border-surface-border text-brand-ink rounded-sm text-xs font-semibold hover:bg-surface-subtle transition-colors"
+                >
+                  Register
+                </Link>
+              </div>
+            )}
+          </div>
+        </nav>
+
+        {/* Drawer Footer with Quick Contact */}
+        <div className="p-4 bg-surface-subtle border-t border-surface-border text-xs space-y-2.5">
+          <a
+            href="https://wa.me/923025222405"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-brand-ink hover:text-brand-green font-semibold"
+          >
+            <Icon name="whatsapp" className="text-base text-[#25D366]" />
+            <span>WhatsApp Care: 0302-5222405</span>
+          </a>
+          <a
+            href="https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-brand-ink hover:text-brand-green font-semibold"
+          >
+            <Icon name="instagram" className="text-base text-[#E4405F]" />
+            <span>Follow @supp.livix</span>
+          </a>
+          <p className="text-[11px] text-ink-muted leading-tight pt-1">
+            Chak No. 79 NB, Sillanwali Road, near bypass, Sargodha
+          </p>
+        </div>
+      </aside>
     </>
   );
 }
