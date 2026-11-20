@@ -156,15 +156,15 @@ export default function Header({ cartCount: propCartCount }) {
 
       {/* 2. Main Sticky Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-surface-border">
-        <div className="max-w-site mx-auto px-3 sm:px-6 h-[58px] sm:h-[68px] flex items-center justify-between gap-2 sm:gap-3 xl:gap-4">
+        <div className="max-w-site mx-auto px-3 sm:px-6 h-[64px] sm:h-[74px] md:h-[80px] lg:h-[84px] flex items-center justify-between gap-2 sm:gap-3 xl:gap-4">
           {/* Logo */}
           <Link to="/" className="flex-shrink-0" aria-label="Supplivix Home">
             <img
               src={logoImg}
               alt="Supplivix"
-              width="160"
-              height="44"
-              className="h-8 sm:h-10 md:h-11 w-auto object-contain cursor-pointer transition-transform duration-150 hover:scale-[1.02]"
+              width="210"
+              height="70"
+              className="h-11 sm:h-12 md:h-14 lg:h-16 xl:h-[70px] w-auto object-contain cursor-pointer transition-transform duration-150 hover:scale-[1.02]"
             />
           </Link>
 

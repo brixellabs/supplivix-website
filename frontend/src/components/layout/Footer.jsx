@@ -38,10 +38,10 @@ export default function Footer() {
               <img
                 src={logoImg}
                 alt="Supplivix"
-                width="160"
-                height="40"
+                width="200"
+                height="56"
                 loading="lazy"
-                className="h-10 w-auto object-contain"
+                className="h-12 sm:h-14 w-auto object-contain"
               />
             </Link>
             <p className="text-xs font-bold uppercase tracking-wide text-brand-ink mt-2 mb-1">
