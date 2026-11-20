@@ -140,7 +140,7 @@ export default function CertificatesScrollStrip() {
             to="/about"
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-brand-green hover:bg-[#f2faf5] font-bold text-xs uppercase tracking-wider rounded-xs shadow-sm transition-all whitespace-nowrap cursor-pointer flex-shrink-0"
           >
-            <span>Backed by Science</span>
+            <span>Our Quality Standards</span>
             <Icon name="arrow-right" className="text-[10px]" />
           </Link>
         </div>

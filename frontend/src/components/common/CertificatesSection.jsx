@@ -85,9 +85,9 @@ export const DEFAULT_CERTIFICATES = [
 
 export default function CertificatesSection({
   bg = 'white',
-  title = 'WE ARE BACKED BY SCIENCE',
-  subtitle = 'Our carefully curated formulations are prepared in controlled environment under strict supervision of our healthcare experts.',
-  buttonText = 'KNOW MORE',
+  title = 'ENGINEERED BY SCIENCE, CRAFTED FOR PURITY',
+  subtitle = 'At Supplivix, every multivitamin and skincare formulation is developed in DRAP and cGMP-certified sterile facilities. Under strict oversight by certified healthcare pharmacologists, we verify raw ingredient purity, eliminate synthetic binders, and guarantee 100% Halal bioavailable nutrients for your daily vitality.',
+  buttonText = 'EXPLORE OUR STANDARDS',
   buttonLink = '/about',
   illustrationUrl = '/media/science-lab-illustration.png',
 }) {
