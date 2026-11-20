@@ -237,16 +237,14 @@ export default function HomePage() {
   const [dealsEnabled, setDealsEnabled] = useState(true);
   const [bundleOffers, setBundleOffers] = useState(null);
   const [heroSlideIndex, setHeroSlideIndex] = useState(0);
-  const [isHeroHovered, setIsHeroHovered] = useState(false);
 
-  // Auto-advance hero slides every 5 seconds (5000ms), paused on user hover, resets on slide change
+  // Auto-advance hero slides every 5 seconds (5000ms), continuously looping through all 7 banners
   useEffect(() => {
-    if (isHeroHovered) return;
     const timer = setInterval(() => {
       setHeroSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [isHeroHovered, heroSlideIndex]);
+  }, [heroSlideIndex]);
   const [deal1, setDeal1] = useState({
     badge: 'Special Bundle',
     title: 'Complete Daily Glow Duo',
@@ -435,8 +433,6 @@ export default function HomePage() {
       <section
         aria-label="Promotional Hero Banners"
         className="relative overflow-hidden bg-surface-subtle border-b border-surface-border select-none"
-        onMouseEnter={() => setIsHeroHovered(true)}
-        onMouseLeave={() => setIsHeroHovered(false)}
       >
         <div className="relative w-full aspect-[16/9]">
           {HERO_SLIDES.map((slide, idx) => (
