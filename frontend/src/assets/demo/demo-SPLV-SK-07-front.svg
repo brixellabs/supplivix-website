@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+    <!-- DEMO: Supplivix Original Vector Asset - Variant 1 (Front) -->
+    <defs>
+        <linearGradient id="bg_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fdfdfd" />
+            <stop offset="100%" stop-color="#f3f4f6" />
+        </linearGradient>
+        <radialGradient id="halo_grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#e1d6f9" stop-opacity="0.35" />
+            <stop offset="100%" stop-color="#e1d6f9" stop-opacity="0" />
+        </radialGradient>
+        <filter id="subtle_shadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.06" />
+        </filter>
+    </defs>
+    <!-- Background -->
+    <rect width="600" height="600" fill="url(#bg_grad)" />
+    <!-- Ambient Halo -->
+    <circle cx="300" cy="320" r="220" fill="url(#halo_grad)" />
+    <!-- Product Shadow -->
+    <ellipse cx="300" cy="525" rx="140" ry="16" fill="#000000" fill-opacity="0.08" />
+    <!-- Product Rendering -->
+    <g filter="url(#subtle_shadow)">
+        
+        <!-- Jar Body -->
+        <rect x="180" y="250" width="240" height="230" rx="20" fill="#ffffff" stroke="#232323" stroke-width="4" />
+        <!-- Jar Lid -->
+        <rect x="165" y="190" width="270" height="60" rx="10" fill="#7a2fd0" stroke="#232323" stroke-width="4" />
+        <!-- Label Area -->
+        <rect x="195" y="280" width="210" height="170" rx="8" fill="#f8f8f8" stroke="#e8e8e8" stroke-width="2" />
+        <!-- Brand Badge -->
+        <text x="300" y="320" font-family="Poppins, Arial, sans-serif" font-size="12" font-weight="700" fill="#7a2fd0" text-anchor="middle" letter-spacing="1.5">SUPPLIVIX LABS</text>
+        <!-- Product Name -->
+        <text x="300" y="360" font-family="Poppins, Arial, sans-serif" font-size="13" font-weight="700" fill="#232323" text-anchor="middle">Intensive Overnight Recovery Cream</text>
+        <text x="300" y="385" font-family="Poppins, Arial, sans-serif" font-size="10" font-weight="500" fill="#666666" text-anchor="middle">DERMATOLOGICALLY TESTED</text>
+        <!-- Seal Badge -->
+        <circle cx="300" cy="415" r="14" fill="#7a2fd0" />
+        <path d="M294 415 L298 419 L306 411" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+        
+    </g>
+</svg>

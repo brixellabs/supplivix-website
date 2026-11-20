@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" width="800" height="300">
+    <!-- DEMO: Supplivix Original Vector Asset - Category Banner (IMMUNITY SHIELD) -->
+    <rect width="800" height="300" fill="#f8f8f8" />
+    <circle cx="700" cy="150" r="160" fill="#016a38" fill-opacity="0.12" />
+    <circle cx="620" cy="220" r="90" fill="#e1d6f9" fill-opacity="0.4" />
+    <!-- Graphic Elements -->
+    <g transform="translate(620, 100) rotate(-15)">
+        <rect x="0" y="0" width="50" height="24" rx="12" fill="#016a38" />
+        <rect x="25" y="0" width="25" height="24" rx="12" fill="#ffffff" />
+    </g>
+    <text x="60" y="130" font-family="Poppins, Arial, sans-serif" font-size="12" font-weight="700" fill="#016a38" letter-spacing="2">SUPPLIVIX COLLECTION</text>
+    <text x="60" y="175" font-family="Poppins, Arial, sans-serif" font-size="28" font-weight="700" fill="#232323">IMMUNITY SHIELD</text>
+    <text x="60" y="210" font-family="Poppins, Arial, sans-serif" font-size="13" font-weight="500" fill="#666666">Pure Science Formulations | Cash on Delivery Nationwide</text>
+</svg>

@@ -88,6 +88,9 @@ export async function apiRequest(endpoint, options = {}) {
 }
 
 export const api = {
+  // Heartbeat & Health Check (Keeps Render and Neon active)
+  healthCheck: (quick = false) => apiRequest(`/health/${quick ? '?quick=1' : ''}`),
+
   // Public settings
   getPublicSettings: () => apiRequest('/settings/public/'),
 

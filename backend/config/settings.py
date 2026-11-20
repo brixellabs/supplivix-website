@@ -221,6 +221,7 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     r"^https://.*\.vercel\.app$",
+    r"^https://.*\.onrender\.com$",
     r"^https://([a-zA-Z0-9-]+\.)*supplivix\.com$",
 ]
 CORS_ALLOW_CREDENTIALS = True

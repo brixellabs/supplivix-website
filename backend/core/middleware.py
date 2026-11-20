@@ -83,7 +83,7 @@ class BotProtectionMiddleware:
         "img-src 'self' data: https:; "
         "font-src 'self'; "
         "frame-src https://challenges.cloudflare.com; "
-        "connect-src 'self' https://challenges.cloudflare.com;"
+        "connect-src 'self' https://challenges.cloudflare.com https://*.onrender.com https://api.supplivix.com;"
     )
 
     def __init__(self, get_response):

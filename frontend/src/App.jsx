@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Layout from './components/layout/Layout';
 import ScrollToTop from './components/common/ScrollToTop';
+import { startHeartbeat } from './services/heartbeat';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -39,6 +40,13 @@ import TermsPage from './pages/policies/TermsPage';
 import ShippingPolicyPage from './pages/policies/ShippingPolicyPage';
 
 export default function App() {
+  useEffect(() => {
+    const stop = startHeartbeat();
+    return () => {
+      if (typeof stop === 'function') stop();
+    };
+  }, []);
+
   return (
     <ToastProvider>
       <AuthProvider>

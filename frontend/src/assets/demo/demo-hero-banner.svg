@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+    <!-- DEMO: Supplivix Original Vector Asset - Hero Banner -->
+    <defs>
+        <linearGradient id="hero_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="60%" stop-color="#fdfbf7" />
+            <stop offset="100%" stop-color="#f5f3ff" />
+        </linearGradient>
+    </defs>
+    <rect width="1200" height="400" fill="url(#hero_grad)" />
+    <!-- Abstract Organic Flow Waves -->
+    <path d="M0 350 C300 280, 500 420, 800 320 C1000 240, 1150 360, 1200 300 L1200 400 L0 400 Z" fill="#e1d6f9" fill-opacity="0.5" />
+    <path d="M0 380 C350 330, 600 400, 900 350 C1100 310, 1180 390, 1200 360 L1200 400 L0 400 Z" fill="#016a38" fill-opacity="0.12" />
+    <!-- Botanical Curves -->
+    <circle cx="1050" cy="150" r="160" fill="#016a38" fill-opacity="0.06" />
+    <circle cx="980" cy="220" r="90" fill="#b497ed" fill-opacity="0.2" />
+    <!-- Floating Vector Capsules -->
+    <g transform="translate(900, 120) rotate(-20)">
+        <rect x="0" y="0" width="60" height="30" rx="15" fill="#016a38" />
+        <rect x="30" y="0" width="30" height="30" rx="15" fill="#e1d6f9" />
+    </g>
+    <g transform="translate(1040, 190) rotate(40)">
+        <rect x="0" y="0" width="50" height="25" rx="12.5" fill="#7a2fd0" />
+        <rect x="25" y="0" width="25" height="25" rx="12.5" fill="#b497ed" />
+    </g>
+</svg>

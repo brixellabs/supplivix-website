@@ -12,7 +12,7 @@ from promotions.models import Coupon
 
 @pytest.mark.django_db
 class TestHealthEndpoint:
-    """Verify /api/health/ endpoint returns 200 with database connectivity."""
+    """Verify health check endpoints return 200 with database connectivity and keep-alive headers."""
 
     def test_health_check_success(self, client):
         response = client.get('/api/health/')
@@ -21,6 +21,26 @@ class TestHealthEndpoint:
         assert data['status'] == 'healthy'
         assert data['database'] == 'connected'
         assert data['service'] == 'supplivix-backend'
+
+    def test_health_check_routes(self, client):
+        for path in ['/health/', '/healthz/', '/ping/', '/api/v1/health/']:
+            response = client.get(path)
+            assert response.status_code == 200
+            assert response.json()['status'] == 'healthy'
+            assert 'no-cache' in response['Cache-Control']
+
+    def test_health_check_quick(self, client):
+        response = client.get('/health/?quick=1')
+        assert response.status_code == 200
+        data = response.json()
+        assert data['status'] == 'healthy'
+        assert data['database'] == 'skipped'
+
+    def test_health_check_head_and_options(self, client):
+        res_head = client.head('/health/')
+        assert res_head.status_code == 200
+        res_opt = client.options('/health/')
+        assert res_opt.status_code == 200
 
 
 @pytest.mark.django_db

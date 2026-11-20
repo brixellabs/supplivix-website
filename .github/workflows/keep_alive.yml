@@ -1,0 +1,34 @@
+name: Supplivix Render Backend Keep-Alive
+
+on:
+  schedule:
+    # Run every 10 minutes to prevent Render free tier 15-minute inactivity spin-down
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keep_alive_ping:
+    name: Keep-Alive Heartbeat
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping Supplivix Backend Services
+        run: |
+          echo "Starting 24/7 Render Keep-Alive Heartbeat ping..."
+          
+          ENDPOINTS=(
+            "https://supplivix-backend.onrender.com/api/v1/health/"
+            "https://api.supplivix.com/api/v1/health/"
+            "https://supplivix-website.onrender.com/api/v1/health/"
+          )
+
+          for url in "${ENDPOINTS[@]}"; do
+            echo "Checking: $url"
+            curl -s -S -f --max-time 25 \
+              -H "User-Agent: Supplivix-Heartbeat-Bot/1.0" \
+              -H "X-Heartbeat: 1" \
+              "$url" || echo "Ping to $url completed with status (or server waking up)"
+          done
+
+          echo "Keep-alive ping cycle completed successfully."
