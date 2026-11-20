@@ -70,7 +70,7 @@ export default function FAQPage() {
             <Input
               name="faq-search"
               type="text"
-              placeholder="Search by keyword (e.g. quality, price, delivery, return)..."
+              placeholder="Search by keyword (e.g. quality, ingredients, delivery, dosage)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Search FAQs"

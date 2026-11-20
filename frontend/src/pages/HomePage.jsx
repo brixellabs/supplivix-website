@@ -554,11 +554,11 @@ export default function HomePage() {
 
             <div className="border border-surface-border bg-surface-subtle p-4 rounded-md flex items-center gap-3.5 shadow-sm">
               <div className="w-10 h-10 rounded-sm bg-white border border-surface-border flex items-center justify-center flex-shrink-0 text-brand-green">
-                <Icon name="returns" className="text-lg" />
+                <Icon name="leaf" className="text-lg" />
               </div>
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-wide text-brand-ink">Easy Returns</h3>
-                <p className="text-[11px] text-ink-muted">Hassle-free 7-day guarantee</p>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-brand-ink">100% Halal Certified</h3>
+                <p className="text-[11px] text-ink-muted">Zero porcine gelatin &amp; pure</p>
               </div>
             </div>
           </div>
