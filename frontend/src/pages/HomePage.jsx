@@ -438,7 +438,7 @@ export default function HomePage() {
         onMouseEnter={() => setIsHeroHovered(true)}
         onMouseLeave={() => setIsHeroHovered(false)}
       >
-        <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[2.35/1] max-h-[580px] min-h-[200px]">
+        <div className="relative w-full aspect-[16/9]">
           {HERO_SLIDES.map((slide, idx) => (
             <Link
               key={slide.id}
