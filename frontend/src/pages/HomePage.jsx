@@ -531,7 +531,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. Scrollable Categories Carousel / Strip (Directly Below Hero Section) */}
+      {/* 1b. Circular Quality & Regulatory Accreditations Scrolling Strip (Directly Below Hero Section) */}
+      <CertificatesScrollStrip />
+
+      {/* 2. Scrollable Categories Carousel / Strip */}
       <section className="py-6 sm:py-8 bg-white border-b border-surface-border">
         <div className="max-w-site mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between mb-4 sm:mb-5 gap-4">
@@ -615,9 +618,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* 1b. Circular Quality & Regulatory Accreditations Scrolling Strip (Directly Below Hero Section) */}
-      <CertificatesScrollStrip />
 
       {/* Seasonal / Occasion Active Sale Event Banner */}
       {activeSaleEvent && (
