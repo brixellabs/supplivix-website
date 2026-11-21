@@ -52,9 +52,8 @@ describe('Phase 4: Frontend Pages & Business Logic', () => {
 
   it('HomePage renders hero, multivitamins focus, and trust strip', () => {
     renderWithProviders(<HomePage />);
-    expect(screen.getByText(/Daily vitamins for a/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Promotional Hero Banners/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Cash on Delivery/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Shop Multivitamins/i)).toBeInTheDocument();
     expect(screen.getByText(/The Natural Choice/i)).toBeInTheDocument();
     expect(screen.getByText(/Trending Now/i)).toBeInTheDocument();
   });

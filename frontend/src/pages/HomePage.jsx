@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Icon from '../components/ui/Icon';
 import Button from '../components/ui/Button';
@@ -251,6 +251,14 @@ export default function HomePage() {
   const [dealsEnabled, setDealsEnabled] = useState(true);
   const [bundleOffers, setBundleOffers] = useState(null);
   const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+  const categoryScrollRef = useRef(null);
+
+  const scrollCategories = (direction) => {
+    if (categoryScrollRef.current) {
+      const amount = direction === 'left' ? -280 : 280;
+      categoryScrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  };
 
   // Auto-advance hero slides every 5 seconds (5000ms), continuously looping through all 7 banners
   useEffect(() => {
@@ -468,7 +476,7 @@ export default function HomePage() {
                   height="768"
                   className="w-full h-full object-cover object-center"
                   loading={idx === 0 ? 'eager' : 'lazy'}
-                  fetchPriority={idx === 0 ? 'high' : 'auto'}
+                  fetchpriority={idx === 0 ? 'high' : 'auto'}
                   decoding="async"
                 />
               </picture>
@@ -519,6 +527,91 @@ export default function HomePage() {
                 aria-label={`Go to slide ${idx + 1}`}
               />
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 2. Scrollable Categories Carousel / Strip (Directly Below Hero Section) */}
+      <section className="py-6 sm:py-8 bg-white border-b border-surface-border">
+        <div className="max-w-site mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-5 gap-4">
+            <div>
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-widest text-brand-green block mb-0.5">
+                Tailored Formulations
+              </span>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold uppercase tracking-tight text-brand-ink">
+                The Natural Choice
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link
+                to="/shop"
+                className="hidden sm:inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-brand-green hover:underline mr-1"
+              >
+                <span>View All</span>
+                <Icon name="arrow-right" className="text-xs" />
+              </Link>
+
+              {/* Prev Button */}
+              <button
+                type="button"
+                onClick={() => scrollCategories('left')}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-surface-border bg-white hover:bg-surface-subtle text-brand-ink flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-xs cursor-pointer focus:outline-none"
+                aria-label="Scroll categories left"
+              >
+                <Icon name="chevron-right" className="rotate-180 text-xs" />
+              </button>
+
+              {/* Next Button */}
+              <button
+                type="button"
+                onClick={() => scrollCategories('right')}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-surface-border bg-white hover:bg-surface-subtle text-brand-ink flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-xs cursor-pointer focus:outline-none"
+                aria-label="Scroll categories right"
+              >
+                <Icon name="chevron-right" className="text-xs" />
+              </button>
+            </div>
+          </div>
+
+          {/* Horizontally Scrollable Categories Track */}
+          <div
+            ref={categoryScrollRef}
+            className="flex items-stretch gap-3 sm:gap-4 md:gap-5 overflow-x-auto py-2 px-1 scroll-smooth snap-x snap-mandatory"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {categories.map((cat, idx) => {
+              const theme = getCategoryTheme(cat.slug, cat.name);
+              return (
+                <Link
+                  key={cat.slug || idx}
+                  to={cat.path}
+                  className="w-28 sm:w-36 md:w-40 flex-shrink-0 snap-start bg-white hover:bg-surface-subtle border border-surface-border rounded-2xl p-3 sm:p-4 text-center flex flex-col items-center justify-between transition-all duration-300 hover:shadow-card hover:-translate-y-1.5 group cursor-pointer"
+                >
+                  <div
+                    className={`w-full h-18 sm:h-20 rounded-2xl flex items-center justify-center mb-2.5 transition-transform duration-300 group-hover:scale-105 shadow-xs ${theme.bg} ${theme.hoverBg} border ${theme.border}`}
+                  >
+                    <CategoryFunkyIcon slug={cat.slug} name={cat.name} className="w-9 h-9 sm:w-11 sm:h-11" />
+                  </div>
+
+                  <h3 className="text-[11px] sm:text-xs font-bold text-brand-ink uppercase tracking-tight group-hover:text-brand-green transition-colors leading-tight line-clamp-2">
+                    {cat.name}
+                  </h3>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Mobile View All Link */}
+          <div className="mt-3 text-center sm:hidden">
+            <Link
+              to="/shop"
+              className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-brand-green hover:underline"
+            >
+              <span>View All Categories</span>
+              <Icon name="arrow-right" className="text-xs" />
+            </Link>
           </div>
         </div>
       </section>
@@ -632,50 +725,6 @@ export default function HomePage() {
                 New Customer FAQs
               </Button>
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Natural Choice Category Grid */}
-      <section className="py-12 md:py-16 bg-white border-b border-surface-border">
-        <div className="max-w-site mx-auto px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-brand-green">
-                Tailored Formulations
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-bold uppercase tracking-tight text-brand-ink">
-                The Natural Choice
-              </h2>
-            </div>
-            <Link to="/shop" className="text-xs font-bold uppercase tracking-wider text-brand-green hover:underline flex items-center gap-1">
-              <span>View All Categories</span>
-              <Icon name="arrow-right" className="text-xs" />
-            </Link>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 md:gap-5">
-            {categories.map((cat, idx) => {
-              const theme = getCategoryTheme(cat.slug, cat.name);
-              return (
-                <Link
-                  key={cat.slug || idx}
-                  to={cat.path}
-                  className="w-[calc(50%-8px)] sm:w-[calc(33.333%-12px)] md:w-[calc(25%-14px)] lg:w-[calc(20%-14px)] xl:flex-1 xl:min-w-[115px] xl:max-w-[135px] flex-shrink-0 bg-white hover:bg-surface-subtle border border-surface-border rounded-2xl p-3.5 sm:p-4 text-center flex flex-col items-center justify-between transition-all duration-300 hover:shadow-card hover:-translate-y-1.5 group cursor-pointer"
-                >
-                  {/* Funky Color Badge / Block with Playful Outline Illustration (Nutrifactor Style) */}
-                  <div
-                    className={`w-full max-w-[96px] h-16 sm:h-20 rounded-2xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-105 shadow-sm ${theme.bg} ${theme.hoverBg} border ${theme.border}`}
-                  >
-                    <CategoryFunkyIcon slug={cat.slug} name={cat.name} className="w-10 h-10 sm:w-12 sm:h-12" />
-                  </div>
-
-                  <h3 className="text-[11px] sm:text-xs font-bold text-brand-ink uppercase tracking-tight group-hover:text-brand-green transition-colors leading-tight">
-                    {cat.name}
-                  </h3>
-                </Link>
-              );
-            })}
           </div>
         </div>
       </section>

@@ -37,3 +37,4 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(fix_offers, reverse_code=noop),
     ]
+
