@@ -655,53 +655,6 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* 2. Trust Strip (4 Solid Cards, WCAG AA Contrast, No Glassmorphism) */}
-      <section className="border-b border-surface-border bg-white py-8">
-        <div className="max-w-site mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="border border-surface-border bg-surface-subtle p-4 rounded-md flex items-center gap-3.5 shadow-sm">
-              <div className="w-10 h-10 rounded-sm bg-white border border-surface-border flex items-center justify-center flex-shrink-0 text-brand-green">
-                <Icon name="cod" className="text-lg" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wide text-brand-ink">Cash on Delivery</h3>
-                <p className="text-[11px] text-ink-muted">Verify & pay at your door</p>
-              </div>
-            </div>
-
-            <div className="border border-surface-border bg-surface-subtle p-4 rounded-md flex items-center gap-3.5 shadow-sm">
-              <div className="w-10 h-10 rounded-sm bg-white border border-surface-border flex items-center justify-center flex-shrink-0 text-brand-green">
-                <Icon name="truck" className="text-lg" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wide text-brand-ink">Free Delivery</h3>
-                <p className="text-[11px] text-ink-muted">On orders above Rs. {shippingThreshold.toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="border border-surface-border bg-surface-subtle p-4 rounded-md flex items-center gap-3.5 shadow-sm">
-              <div className="w-10 h-10 rounded-sm bg-white border border-surface-border flex items-center justify-center flex-shrink-0 text-brand-green">
-                <Icon name="shield" className="text-lg" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wide text-brand-ink">100% Authentic</h3>
-                <p className="text-[11px] text-ink-muted">Lab-tested bioavailable purity</p>
-              </div>
-            </div>
-
-            <div className="border border-surface-border bg-surface-subtle p-4 rounded-md flex items-center gap-3.5 shadow-sm">
-              <div className="w-10 h-10 rounded-sm bg-white border border-surface-border flex items-center justify-center flex-shrink-0 text-brand-green">
-                <Icon name="leaf" className="text-lg" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wide text-brand-ink">100% Halal Certified</h3>
-                <p className="text-[11px] text-ink-muted">Zero porcine gelatin &amp; pure</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Brand Value Proposition Banner */}
       <section className="bg-brand-ink text-white py-10 sm:py-14 border-b border-surface-border">
         <div className="max-w-site mx-auto px-4 sm:px-6 text-center">
@@ -1033,6 +986,53 @@ export default function HomePage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      </section>
+
+      {/* 9. Trust Strip (At Very End of Page Above Footer) */}
+      <section className="border-t border-surface-border bg-white py-8">
+        <div className="max-w-site mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="border border-surface-border bg-surface-subtle p-4 rounded-md flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-sm bg-white border border-surface-border flex items-center justify-center flex-shrink-0 text-brand-green">
+                <Icon name="cod" className="text-lg" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-brand-ink">Cash on Delivery</h3>
+                <p className="text-[11px] text-ink-muted">Verify &amp; pay at your door</p>
+              </div>
+            </div>
+
+            <div className="border border-surface-border bg-surface-subtle p-4 rounded-md flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-sm bg-white border border-surface-border flex items-center justify-center flex-shrink-0 text-brand-green">
+                <Icon name="truck" className="text-lg" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-brand-ink">Free Delivery</h3>
+                <p className="text-[11px] text-ink-muted">On orders above Rs. {shippingThreshold.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="border border-surface-border bg-surface-subtle p-4 rounded-md flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-sm bg-white border border-surface-border flex items-center justify-center flex-shrink-0 text-brand-green">
+                <Icon name="shield" className="text-lg" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-brand-ink">100% Authentic</h3>
+                <p className="text-[11px] text-ink-muted">Lab-tested bioavailable purity</p>
+              </div>
+            </div>
+
+            <div className="border border-surface-border bg-surface-subtle p-4 rounded-md flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-sm bg-white border border-surface-border flex items-center justify-center flex-shrink-0 text-brand-green">
+                <Icon name="leaf" className="text-lg" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-brand-ink">100% Halal Certified</h3>
+                <p className="text-[11px] text-ink-muted">Zero porcine gelatin &amp; pure</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
