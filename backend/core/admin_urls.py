@@ -7,6 +7,8 @@ from .admin_views import (
     AdminCategoryReorderView,
     AdminCertificateDetailView,
     AdminCertificateListView,
+    AdminHeroSlideDetailView,
+    AdminHeroSlideListView,
     AdminOfferDetailView,
     AdminOfferListView,
     AdminSaleEventDetailView,
@@ -91,6 +93,10 @@ urlpatterns = [
     # 5b. Certificates
     path('certificates/', AdminCertificateListView.as_view(), name='admin-certificates'),
     path('certificates/<int:pk>/', AdminCertificateDetailView.as_view(), name='admin-certificate-detail'),
+
+    # 5b-2. Hero Banner Slides
+    path('hero-slides/', AdminHeroSlideListView.as_view(), name='admin-hero-slides'),
+    path('hero-slides/<int:pk>/', AdminHeroSlideDetailView.as_view(), name='admin-hero-slide-detail'),
 
     # 5c. Promotional Offers & Deals
     path('offers/', AdminOfferListView.as_view(), name='admin-offers'),

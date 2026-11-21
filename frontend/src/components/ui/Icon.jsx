@@ -47,6 +47,7 @@ import {
   faCertificate,
   faAward,
   faLanguage,
+  faImage,
 } from '@fortawesome/free-solid-svg-icons';
 
 import {
@@ -112,6 +113,8 @@ const ICON_MAP = {
   instagram: faInstagram,
   tiktok: faTiktok,
   language: faLanguage,
+  image: faImage,
+  camera: faImage,
 };
 
 /**

@@ -405,6 +405,37 @@ export const api = {
       method: 'DELETE',
     }),
 
+  // Hero Banners Management
+  getHeroSlides: () => apiRequest('/hero-slides/'),
+  getAdminHeroSlides: () => apiRequest('/admin/hero-slides/'),
+  getAdminHeroSlideDetail: (id) => apiRequest(`/admin/hero-slides/${id}/`),
+  createAdminHeroSlide: (formDataOrPayload) => {
+    const isForm =
+      Boolean(formDataOrPayload) &&
+      ((typeof FormData !== 'undefined' && formDataOrPayload instanceof FormData) ||
+        (typeof window !== 'undefined' && window.FormData && formDataOrPayload instanceof window.FormData) ||
+        Object.prototype.toString.call(formDataOrPayload) === '[object FormData]');
+    return apiRequest('/admin/hero-slides/', {
+      method: 'POST',
+      body: isForm ? formDataOrPayload : JSON.stringify(formDataOrPayload),
+    });
+  },
+  updateAdminHeroSlide: (id, formDataOrPayload) => {
+    const isForm =
+      Boolean(formDataOrPayload) &&
+      ((typeof FormData !== 'undefined' && formDataOrPayload instanceof FormData) ||
+        (typeof window !== 'undefined' && window.FormData && formDataOrPayload instanceof window.FormData) ||
+        Object.prototype.toString.call(formDataOrPayload) === '[object FormData]');
+    return apiRequest(`/admin/hero-slides/${id}/`, {
+      method: 'PATCH',
+      body: isForm ? formDataOrPayload : JSON.stringify(formDataOrPayload),
+    });
+  },
+  deleteAdminHeroSlide: (id) =>
+    apiRequest(`/admin/hero-slides/${id}/`, {
+      method: 'DELETE',
+    }),
+
   // Sale Events & Campaigns (Seasonal & Occasion Engine)
   getActiveSaleEvent: () => apiRequest('/sale-events/active/'),
   getSaleEventDetail: (slug) => apiRequest(`/sale-events/${slug}/`),

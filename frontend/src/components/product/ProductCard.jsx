@@ -107,7 +107,7 @@ export default function ProductCard({ product, priority = false }) {
               {primaryWebp && <source srcSet={primaryWebp} type="image/webp" />}
               <img
                 loading={priority ? 'eager' : 'lazy'}
-                fetchPriority={priority ? 'high' : 'auto'}
+                fetchpriority={priority ? 'high' : 'auto'}
                 decoding="async"
                 src={primaryImage}
                 alt={product.name}

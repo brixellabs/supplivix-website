@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from core.security import evaluate_risk, generate_time_token
 
-from .models import Certificate, SiteSetting, WaitlistEntry
+from .models import Certificate, HeroSlide, SiteSetting, WaitlistEntry
 from .serializers import CertificateSerializer, ContactMessageSerializer, WaitlistSerializer
 
 
@@ -236,3 +236,15 @@ class PublicSaleEventDetailView(APIView):
             'count': len(eligible),
             'products': serializer.data,
         })
+
+
+class PublicHeroSlideListView(APIView):
+    """Public endpoint returning active hero slides ordered by sort_order."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        slides = HeroSlide.objects.filter(is_active=True).order_by('sort_order', 'id')
+        results = [s.to_dict(request) for s in slides]
+        return Response({'count': len(results), 'results': results}, status=status.HTTP_200_OK)
+

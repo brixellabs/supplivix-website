@@ -11,12 +11,14 @@ import { useToast } from '../../components/ui/Toast';
 import { api } from '../../services/api';
 import AdminSaleEventsTab from './AdminSaleEventsTab';
 import AdminBundlesTab from './AdminBundlesTab';
+import AdminHeroBannersTab from './AdminHeroBannersTab';
 
 const ADMIN_TABS = [
   { key: 'overview', label: 'Overview', icon: 'chart' },
   { key: 'orders', label: 'Orders (COD)', icon: 'cod' },
   { key: 'products', label: 'Products', icon: 'box' },
   { key: 'categories', label: 'Categories', icon: 'tag' },
+  { key: 'hero_banners', label: 'Hero Banners', icon: 'image' },
   { key: 'sale_events', label: 'Sale Events', icon: 'tag' },
   { key: 'bundles', label: 'Promotional Bundles', icon: 'tag' },
   { key: 'settings', label: 'Shipping & Settings', icon: 'sliders' },
@@ -1604,6 +1606,11 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         )}
+
+        {/* ================================================================== */}
+        {/* HERO BANNERS MANAGEMENT TAB */}
+        {/* ================================================================== */}
+        {activeTab === 'hero_banners' && <AdminHeroBannersTab />}
 
         {/* ================================================================== */}
         {/* SALE EVENTS & CAMPAIGNS TAB */}

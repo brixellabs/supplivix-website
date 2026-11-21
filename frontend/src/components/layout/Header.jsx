@@ -195,7 +195,7 @@ export default function Header({ cartCount: propCartCount }) {
               type="button"
               onClick={() => setMobileMenuOpen(true)}
               className="p-2 text-brand-ink hover:text-brand-green rounded-md focus:outline-none transition-colors"
-              aria-label="Open navigation drawer"
+              aria-label="Toggle navigation menu"
             >
               <Icon name="bars" className="text-xl" />
             </button>
@@ -214,9 +214,9 @@ export default function Header({ cartCount: propCartCount }) {
             <img
               src={logoImg}
               alt="Supplivix"
-              width="150"
-              height="48"
-              className="h-10 sm:h-11 w-auto object-contain cursor-pointer"
+              width="160"
+              height="44"
+              className="h-8 sm:h-10 md:h-11 w-auto object-contain cursor-pointer"
             />
           </Link>
 
@@ -279,7 +279,7 @@ export default function Header({ cartCount: propCartCount }) {
           <Link to="/" className="flex-shrink-0" aria-label="Supplivix Home">
             <img
               src={logoImg}
-              alt="Supplivix"
+              alt="Supplivix - Pure Science & Wellness"
               width="210"
               height="70"
               className="h-16 xl:h-[70px] w-auto object-contain cursor-pointer transition-transform duration-150 hover:scale-[1.02]"
@@ -289,7 +289,7 @@ export default function Header({ cartCount: propCartCount }) {
           {/* Desktop Navigation with Interactive Links & Dropdowns */}
           <nav
             ref={navMenuRef}
-            className="flex items-center gap-3.5 xl:gap-5 text-[13px] xl:text-sm font-medium tracking-wide whitespace-nowrap"
+            className="hidden lg:flex items-center gap-3.5 xl:gap-5 text-[13px] xl:text-sm font-medium tracking-wide whitespace-nowrap"
           >
             <Link
               to="/"
@@ -668,7 +668,7 @@ export default function Header({ cartCount: propCartCount }) {
           >
             <img
               src={logoImg}
-              alt="Supplivix"
+              alt="Supplivix Drawer Logo"
               width="150"
               height="48"
               className="h-10 w-auto object-contain cursor-pointer"

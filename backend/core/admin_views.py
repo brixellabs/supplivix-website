@@ -23,7 +23,7 @@ from rest_framework.response import Response
 from accounts.models import User
 from accounts.serializers import StaffMemberSerializer, StaffRegisterSerializer
 from catalog.models import Category, Product, ProductAttribute, ProductFAQ, ProductImage, Review
-from content.models import Certificate, ContactMessage, SiteSetting, WaitlistEntry
+from content.models import Certificate, ContactMessage, HeroSlide, SiteSetting, WaitlistEntry
 from content.serializers import CertificateSerializer
 from core.models import AdminAuditLog, BlockedIP, BotEvent, FailedLoginLog
 from orders.models import Order
@@ -1581,6 +1581,125 @@ class AdminCertificateDetailView(views.APIView):
         cert.delete()
         log_admin_action(request, 'delete_certificate', 'Certificate', pk, f"Deleted certificate: {name}")
         return Response({'message': f'Certificate "{name}" deleted successfully.'})
+
+
+# ==============================================================================
+# 5b-2. HERO BANNER SLIDES MANAGEMENT
+# ==============================================================================
+
+class AdminHeroSlideListView(views.APIView):
+    """List and create promotional hero banner slides."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        slides = HeroSlide.objects.all().order_by('sort_order', 'id')
+        results = [s.to_dict(request) for s in slides]
+        active_count = HeroSlide.objects.filter(is_active=True).count()
+        return Response({
+            'count': len(results),
+            'active_count': active_count,
+            'results': results,
+        })
+
+    def post(self, request):
+        title = request.data.get('title', '').strip()
+        if not title:
+            return Response(
+                {'code': 'validation_error', 'message': 'Banner title is required.', 'fields': {'title': ['This field is required.']}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        link = request.data.get('link', '/shop').strip() or '/shop'
+        subtitle = request.data.get('subtitle', '').strip()
+        button_text = request.data.get('button_text', 'Shop Now').strip()
+        image_url_path = request.data.get('image_url_path', '').strip()
+
+        try:
+            sort_order = int(request.data.get('sort_order', 0) or 0)
+        except (ValueError, TypeError):
+            sort_order = 0
+
+        is_active = str(request.data.get('is_active', 'true')).lower() in ['true', '1', 'yes']
+
+        slide = HeroSlide.objects.create(
+            title=title,
+            subtitle=subtitle,
+            link=link,
+            button_text=button_text,
+            image_url_path=image_url_path,
+            sort_order=sort_order,
+            is_active=is_active,
+        )
+
+        if 'image' in request.FILES:
+            slide.image = request.FILES['image']
+            slide.save()
+
+        log_admin_action(request, 'create_hero_slide', 'HeroSlide', slide.id, f"Created hero banner: {slide.title}")
+        return Response(
+            {'message': 'Hero banner created successfully.', 'slide': slide.to_dict(request)},
+            status=status.HTTP_201_CREATED
+        )
+
+
+class AdminHeroSlideDetailView(views.APIView):
+    """Retrieve, update, and delete individual hero banner slides."""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, pk):
+        try:
+            slide = HeroSlide.objects.get(pk=pk)
+        except HeroSlide.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Hero slide not found.', 'fields': {}}, status=status.HTTP_404_NOT_FOUND)
+        return Response(slide.to_dict(request))
+
+    def patch(self, request, pk):
+        try:
+            slide = HeroSlide.objects.get(pk=pk)
+        except HeroSlide.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Hero slide not found.', 'fields': {}}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'title' in request.data:
+            val = request.data.get('title', '').strip()
+            if val:
+                slide.title = val
+        if 'subtitle' in request.data:
+            slide.subtitle = request.data.get('subtitle', '').strip()
+        if 'link' in request.data:
+            val = request.data.get('link', '').strip()
+            if val:
+                slide.link = val
+        if 'button_text' in request.data:
+            slide.button_text = request.data.get('button_text', '').strip()
+        if 'image_url_path' in request.data:
+            slide.image_url_path = request.data.get('image_url_path', '').strip()
+        if 'sort_order' in request.data:
+            try:
+                slide.sort_order = int(request.data.get('sort_order', slide.sort_order))
+            except (ValueError, TypeError):
+                pass
+        if 'is_active' in request.data:
+            val = request.data.get('is_active')
+            slide.is_active = val in [True, 'true', 'True', '1', 1]
+        if 'image' in request.FILES:
+            slide.image = request.FILES['image']
+
+        slide.save()
+        log_admin_action(request, 'update_hero_slide', 'HeroSlide', slide.id, f"Updated hero banner: {slide.title}")
+        return Response({'message': 'Hero banner updated successfully.', 'slide': slide.to_dict(request)})
+
+    def delete(self, request, pk):
+        try:
+            slide = HeroSlide.objects.get(pk=pk)
+        except HeroSlide.DoesNotExist:
+            return Response({'code': 'not_found', 'message': 'Hero slide not found.', 'fields': {}}, status=status.HTTP_404_NOT_FOUND)
+
+        title = slide.title
+        slide_id = slide.id
+        slide.delete()
+        log_admin_action(request, 'delete_hero_slide', 'HeroSlide', slide_id, f"Deleted hero banner: {title}")
+        return Response({'message': f'Hero banner "{title}" deleted successfully.'}, status=status.HTTP_200_OK)
+
 
 
 # ==============================================================================

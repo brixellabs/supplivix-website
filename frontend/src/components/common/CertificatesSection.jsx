@@ -242,7 +242,7 @@ export default function CertificatesSection({
           role="dialog"
           aria-modal="true"
           aria-labelledby="cert-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 animate-fade-in"
           onClick={() => setSelectedCert(null)}
         >
           <div

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Certificate, ContactMessage, WaitlistEntry
+from .models import Certificate, ContactMessage, HeroSlide, WaitlistEntry
 
 
 class CertificateSerializer(serializers.ModelSerializer):
@@ -46,3 +46,25 @@ class ContactMessageSerializer(serializers.ModelSerializer):
         if not (10 <= len(val) <= 1000):
             raise serializers.ValidationError('Message must be between 10 and 1000 characters.')
         return val
+
+
+class HeroSlideSerializer(serializers.ModelSerializer):
+    image_url = serializers.ReadOnlyField()
+
+    class Meta:
+        model = HeroSlide
+        fields = [
+            'id',
+            'title',
+            'subtitle',
+            'image',
+            'image_url_path',
+            'image_url',
+            'link',
+            'button_text',
+            'sort_order',
+            'is_active',
+            'created_at',
+            'updated_at',
+        ]
+

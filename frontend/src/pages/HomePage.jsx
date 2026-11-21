@@ -250,6 +250,7 @@ export default function HomePage() {
   const [activeSaleEvent, setActiveSaleEvent] = useState(null);
   const [dealsEnabled, setDealsEnabled] = useState(true);
   const [bundleOffers, setBundleOffers] = useState(null);
+  const [heroSlides, setHeroSlides] = useState(HERO_SLIDES);
   const [heroSlideIndex, setHeroSlideIndex] = useState(0);
   const categoryScrollRef = useRef(null);
 
@@ -260,13 +261,42 @@ export default function HomePage() {
     }
   };
 
-  // Auto-advance hero slides every 5 seconds (5000ms), continuously looping through all 7 banners
+  // Fetch active hero banner slides from the backend
   useEffect(() => {
+    let active = true;
+    api.getHeroSlides?.()
+      .then((res) => {
+        if (!active) return;
+        const list = res?.results || (Array.isArray(res) ? res : []);
+        if (list && list.length > 0) {
+          const formatted = list.map((slide) => {
+            const rawUrl = slide.image || slide.image_url_path || slide.image_url || '';
+            const normalized = rawUrl.startsWith('http') || rawUrl.startsWith('/')
+              ? rawUrl
+              : `/media/${rawUrl}`;
+            return {
+              id: slide.id,
+              image: normalized,
+              webp: normalized.replace(/\.(jpg|jpeg|png)$/i, '.webp'),
+              alt: slide.title || 'Supplivix Promotional Banner',
+              link: slide.link || '/shop',
+            };
+          });
+          setHeroSlides(formatted);
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  // Auto-advance hero slides every 5 seconds (5000ms), continuously looping through all banners
+  useEffect(() => {
+    if (!heroSlides.length) return;
     const timer = setInterval(() => {
-      setHeroSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+      setHeroSlideIndex((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [heroSlideIndex]);
+  }, [heroSlides.length, heroSlideIndex]);
   const [deal1, setDeal1] = useState({
     badge: 'Special Bundle',
     title: 'Complete Daily Glow Duo',
@@ -457,9 +487,9 @@ export default function HomePage() {
         className="relative overflow-hidden bg-surface-subtle border-b border-surface-border select-none"
       >
         <div className="relative w-full aspect-[16/9]">
-          {HERO_SLIDES.map((slide, idx) => (
+          {heroSlides.map((slide, idx) => (
             <Link
-              key={slide.id}
+              key={slide.id || idx}
               to={slide.link}
               className={`absolute inset-0 w-full h-full block transition-opacity duration-700 ease-in-out ${
                 idx === heroSlideIndex
@@ -488,7 +518,7 @@ export default function HomePage() {
             type="button"
             onClick={(e) => {
               e.preventDefault();
-              setHeroSlideIndex((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+              setHeroSlideIndex((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
             }}
             className="absolute left-2 sm:left-4 md:left-6 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white/85 hover:bg-white text-brand-ink shadow-md flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer focus:outline-none"
             aria-label="Previous promotional slide"
@@ -501,7 +531,7 @@ export default function HomePage() {
             type="button"
             onClick={(e) => {
               e.preventDefault();
-              setHeroSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+              setHeroSlideIndex((prev) => (prev + 1) % heroSlides.length);
             }}
             className="absolute right-2 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white/85 hover:bg-white text-brand-ink shadow-md flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer focus:outline-none"
             aria-label="Next promotional slide"
@@ -510,8 +540,8 @@ export default function HomePage() {
           </button>
 
           {/* Pagination Indicators (Centered at bottom) */}
-          <div className="absolute bottom-2.5 sm:bottom-4 md:bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/30 backdrop-blur-xs px-3 py-1.5 rounded-full">
-            {HERO_SLIDES.map((_, idx) => (
+          <div className="absolute bottom-2.5 sm:bottom-4 md:bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/40 px-3 py-1.5 rounded-full">
+            {heroSlides.map((_, idx) => (
               <button
                 key={idx}
                 type="button"
