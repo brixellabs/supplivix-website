@@ -786,6 +786,33 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* 5. Help Topics / Targeted Support Chips (Directly After Trending Now) */}
+      <section className="py-12 md:py-16 bg-white border-b border-surface-border">
+        <div className="max-w-site mx-auto px-4 sm:px-6 text-center">
+          <span className="text-xs font-bold uppercase tracking-widest text-brand-green mb-2 block">
+            Targeted Support
+          </span>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight text-brand-ink mb-3">
+            What are you looking to support today?
+          </h2>
+          <p className="text-xs sm:text-sm text-ink-muted max-w-xl mx-auto mb-8">
+            Filter our catalog directly by your specific health and skin wellness priority.
+          </p>
+
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 max-w-3xl mx-auto">
+            {HELP_TOPICS.map((topic, idx) => (
+              <Link
+                key={idx}
+                to={`/shop?support=${topic.filter}`}
+                className="bg-white border border-surface-border hover:border-brand-green hover:bg-surface-subtle px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold text-brand-ink hover:text-brand-green shadow-xs hover:shadow-sm transition-all"
+              >
+                {topic.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 5. Promotional Deals & Banners (Controlled by Admin: Shows only if dealsEnabled is true) */}
       {dealsEnabled && activeBundles.length > 0 && (
         <section className="py-12 md:py-16 bg-white border-b border-surface-border">
@@ -854,33 +881,6 @@ export default function HomePage() {
           </div>
         </section>
       )}
-
-      {/* 6. Help Topics Chips */}
-      <section className="py-12 bg-surface-subtle border-b border-surface-border">
-        <div className="max-w-site mx-auto px-4 sm:px-6 text-center">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-green mb-2 block">
-            Targeted Support
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-bold uppercase tracking-tight text-brand-ink mb-3">
-            What are you looking to support today?
-          </h2>
-          <p className="text-xs text-ink-muted max-w-md mx-auto mb-8">
-            Filter our catalog directly by your specific health and skin wellness priority.
-          </p>
-
-          <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
-            {HELP_TOPICS.map((topic, idx) => (
-              <Link
-                key={idx}
-                to={`/shop?support=${topic.filter}`}
-                className="bg-white border border-surface-border hover:border-brand-green px-4 py-2.5 rounded-full text-xs font-semibold text-brand-ink hover:text-brand-green shadow-sm transition-all"
-              >
-                {topic.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* 7. Why Supplivix: More Than Beauty. More Than Wellness. (4 Feature Columns) */}
       <section className="py-12 md:py-16 bg-white border-b border-surface-border">
