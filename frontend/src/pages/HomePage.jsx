@@ -813,75 +813,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 5. Promotional Deals & Banners (Controlled by Admin: Shows only if dealsEnabled is true) */}
-      {dealsEnabled && activeBundles.length > 0 && (
-        <section className="py-12 md:py-16 bg-white border-b border-surface-border">
-          <div className="max-w-site mx-auto px-4 sm:px-6">
-            <div
-              className={
-                activeBundles.length === 1
-                  ? 'max-w-xl mx-auto'
-                  : activeBundles.length === 2
-                  ? 'grid grid-cols-1 md:grid-cols-2 gap-6'
-                  : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
-              }
-            >
-              {activeBundles.map((deal, idx) => {
-                const isGreenStyle = idx % 2 === 1 || Boolean(deal.highlight);
-                return (
-                  <div
-                    key={deal.id || idx}
-                    className={`border rounded-lg p-8 flex flex-col justify-between shadow-card relative overflow-hidden ${
-                      isGreenStyle
-                        ? 'border-brand-green/30 bg-green-50/50'
-                        : 'border-surface-border bg-surface-subtle'
-                    }`}
-                  >
-                    <div className="max-w-md">
-                      {deal.badge && (
-                        <Badge variant={isGreenStyle ? 'pill' : 'sale'} className="mb-3">
-                          {deal.badge}
-                        </Badge>
-                      )}
-                      <h3 className="text-xl sm:text-2xl font-bold uppercase tracking-tight text-brand-ink mb-2">
-                        {deal.title}
-                      </h3>
-                      {deal.description && (
-                        <p className="text-xs text-ink-muted leading-relaxed mb-6">
-                          {deal.description}
-                        </p>
-                      )}
-                      {deal.price > 0 && (
-                        <div className="text-lg font-bold text-brand-ink mb-4">
-                          Rs. {Number(deal.price).toLocaleString()}{' '}
-                          {deal.original_price && Number(deal.original_price) > Number(deal.price) && (
-                            <span className="text-xs text-ink-muted line-through font-normal ml-2">
-                              Rs. {Number(deal.original_price).toLocaleString()}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      {deal.highlight && (
-                        <div className="text-lg font-bold text-brand-green mb-4">
-                          {deal.highlight}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <Link to={deal.link || '/shop'}>
-                        <Button variant="primary" size="sm" className="h-[40px] px-6">
-                          {deal.button_text || 'Shop The Deal'}
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* 7. Why Supplivix: More Than Beauty. More Than Wellness. (4 Feature Columns) */}
       <section className="py-12 md:py-16 bg-white border-b border-surface-border">
         <div className="max-w-site mx-auto px-4 sm:px-6">
@@ -964,6 +895,96 @@ export default function HomePage() {
 
       {/* 7b. Quality & Regulatory Accreditations / Certificates */}
       <CertificatesSection bg="white" />
+
+      {/* 7c. Special Offers & Bundles (Directly After Science & Regulatory Accreditations) */}
+      {dealsEnabled && activeBundles.length > 0 && (
+        <section className="py-12 md:py-16 bg-surface-subtle border-b border-surface-border">
+          <div className="max-w-site mx-auto px-4 sm:px-6">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4 pb-4 border-b border-surface-border">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-widest text-brand-green block mb-1">
+                  Exclusive Savings
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold uppercase tracking-tight text-brand-ink">
+                  Special Offers &amp; Bundles
+                </h2>
+                <p className="text-xs text-ink-muted mt-1">
+                  Hand-crafted promotional packages and family value bundles backed by science.
+                </p>
+              </div>
+              <Link
+                to="/offers"
+                className="text-xs font-bold uppercase tracking-wider text-brand-green hover:underline flex items-center gap-1 self-start sm:self-auto"
+              >
+                <span>View All Offers</span>
+                <Icon name="arrow-right" className="text-xs" />
+              </Link>
+            </div>
+
+            <div
+              className={
+                activeBundles.length === 1
+                  ? 'max-w-xl mx-auto'
+                  : activeBundles.length === 2
+                  ? 'grid grid-cols-1 md:grid-cols-2 gap-6'
+                  : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+              }
+            >
+              {activeBundles.map((deal, idx) => {
+                const isGreenStyle = idx % 2 === 1 || Boolean(deal.highlight);
+                return (
+                  <div
+                    key={deal.id || idx}
+                    className={`border rounded-lg p-8 flex flex-col justify-between shadow-card relative overflow-hidden bg-white hover:border-brand-green/40 transition-all ${
+                      isGreenStyle
+                        ? 'border-brand-green/30'
+                        : 'border-surface-border'
+                    }`}
+                  >
+                    <div className="max-w-md">
+                      {deal.badge && (
+                        <Badge variant={isGreenStyle ? 'pill' : 'sale'} className="mb-3">
+                          {deal.badge}
+                        </Badge>
+                      )}
+                      <h3 className="text-xl sm:text-2xl font-bold uppercase tracking-tight text-brand-ink mb-2">
+                        {deal.title}
+                      </h3>
+                      {deal.description && (
+                        <p className="text-xs text-ink-muted leading-relaxed mb-6">
+                          {deal.description}
+                        </p>
+                      )}
+                      {deal.price > 0 && (
+                        <div className="text-lg font-bold text-brand-ink mb-4">
+                          Rs. {Number(deal.price).toLocaleString()}{' '}
+                          {deal.original_price && Number(deal.original_price) > Number(deal.price) && (
+                            <span className="text-xs text-ink-muted line-through font-normal ml-2">
+                              Rs. {Number(deal.original_price).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {deal.highlight && (
+                        <div className="text-lg font-bold text-brand-green mb-4">
+                          {deal.highlight}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Link to={deal.link || '/offers'}>
+                        <Button variant="primary" size="sm" className="h-[40px] px-6 font-bold">
+                          {deal.button_text || 'Shop The Deal'}
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 8. Newsletter Section (Honeypot, Validation, WCAG Compliant) */}
       <section className="py-12 bg-surface-subtle">
