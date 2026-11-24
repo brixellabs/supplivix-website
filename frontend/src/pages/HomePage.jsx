@@ -237,6 +237,16 @@ const HERO_SLIDES = [
   },
 ];
 
+export const BUNDLED_HERO_ASSETS = {
+  1: { image: heroSlide1, webp: heroSlide1Webp },
+  2: { image: heroSlide2, webp: heroSlide2Webp },
+  3: { image: heroSlide3, webp: heroSlide3Webp },
+  4: { image: heroSlide4, webp: heroSlide4Webp },
+  5: { image: heroSlide5, webp: heroSlide5Webp },
+  6: { image: heroSlide6, webp: heroSlide6Webp },
+  7: { image: heroSlide7, webp: heroSlide7Webp },
+};
+
 export default function HomePage() {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState('bestsellers');
@@ -269,15 +279,29 @@ export default function HomePage() {
         if (!active) return;
         const list = res?.results || (Array.isArray(res) ? res : []);
         if (list && list.length > 0) {
-          const formatted = list.map((slide) => {
+          const formatted = list.map((slide, idx) => {
             const rawUrl = slide.image || slide.image_url_path || slide.image_url || '';
-            const normalized = rawUrl.startsWith('http') || rawUrl.startsWith('/')
-              ? rawUrl
-              : `/media/${rawUrl}`;
+            const order = slide.sort_order || slide.id || (idx + 1);
+            const defaultAsset = BUNDLED_HERO_ASSETS[order] || BUNDLED_HERO_ASSETS[((order - 1) % 7) + 1] || BUNDLED_HERO_ASSETS[1];
+
+            // If the rawUrl points to default slides (hero-slide-1..7 or banners/hero-slide-1..7)
+            const isDefaultSlide = !rawUrl || rawUrl.includes('hero-slide-') || rawUrl.includes('hero-banner');
+
+            let finalImage = defaultAsset.image;
+            let finalWebp = defaultAsset.webp;
+
+            if (!isDefaultSlide) {
+              const normalized = rawUrl.startsWith('http') || rawUrl.startsWith('/') ? rawUrl : `/media/${rawUrl}`;
+              finalImage = normalized;
+              finalWebp = normalized.replace(/\.(jpg|jpeg|png)$/i, '.webp');
+            }
+
             return {
               id: slide.id,
-              image: normalized,
-              webp: normalized.replace(/\.(jpg|jpeg|png)$/i, '.webp'),
+              sort_order: order,
+              image: finalImage,
+              webp: finalWebp,
+              fallback: defaultAsset.image,
               alt: slide.title || 'Supplivix Promotional Banner',
               link: slide.link || '/shop',
             };
@@ -508,6 +532,16 @@ export default function HomePage() {
                   loading={idx === 0 ? 'eager' : 'lazy'}
                   fetchpriority={idx === 0 ? 'high' : 'auto'}
                   decoding="async"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    const fallback = slide.fallback || BUNDLED_HERO_ASSETS[((idx) % 7) + 1]?.image || heroSlide1;
+                    e.currentTarget.src = fallback;
+                    const parent = e.currentTarget.parentElement;
+                    if (parent && parent.tagName.toLowerCase() === 'picture') {
+                      const source = parent.querySelector('source');
+                      if (source) source.srcset = '';
+                    }
+                  }}
                 />
               </picture>
             </Link>

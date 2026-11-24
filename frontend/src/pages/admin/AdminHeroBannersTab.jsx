@@ -6,6 +6,23 @@ import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { api } from '../../services/api';
+import heroSlide1 from '../../assets/brand/hero-slide-1.jpg';
+import heroSlide2 from '../../assets/brand/hero-slide-2.jpg';
+import heroSlide3 from '../../assets/brand/hero-slide-3.jpg';
+import heroSlide4 from '../../assets/brand/hero-slide-4.jpg';
+import heroSlide5 from '../../assets/brand/hero-slide-5.jpg';
+import heroSlide6 from '../../assets/brand/hero-slide-6.jpg';
+import heroSlide7 from '../../assets/brand/hero-slide-7.jpg';
+
+const BUNDLED_HERO_MAP = {
+  1: heroSlide1,
+  2: heroSlide2,
+  3: heroSlide3,
+  4: heroSlide4,
+  5: heroSlide5,
+  6: heroSlide6,
+  7: heroSlide7,
+};
 
 const DEFAULT_FORM_DATA = {
   title: '',
@@ -70,7 +87,10 @@ export default function AdminHeroBannersTab() {
   const handleOpenEdit = (slide) => {
     setEditingSlide(slide);
     setImageFile(null);
-    setImagePreview(slide.image || slide.image_url_path || '');
+    const defaultImg = BUNDLED_HERO_MAP[slide.sort_order] || heroSlide1;
+    const rawImg = slide.image || slide.image_url_path || '';
+    const isDefault = !rawImg || rawImg.includes('hero-slide-') || rawImg.includes('hero-banner');
+    setImagePreview(isDefault ? defaultImg : (rawImg || defaultImg));
     setFormData({
       title: slide.title || '',
       subtitle: slide.subtitle || '',
@@ -331,7 +351,10 @@ export default function AdminHeroBannersTab() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredSlides.map((slide) => {
-            const imgSrc = slide.image || slide.image_url_path || '/media/hero-banner.jpg';
+            const defaultImg = BUNDLED_HERO_MAP[slide.sort_order] || heroSlide1;
+            const rawImg = slide.image || slide.image_url_path || '';
+            const isDefault = !rawImg || rawImg.includes('hero-slide-') || rawImg.includes('hero-banner');
+            const imgSrc = isDefault ? defaultImg : rawImg;
             return (
               <div
                 key={slide.id}
@@ -345,7 +368,7 @@ export default function AdminHeroBannersTab() {
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = '/media/hero-banner.jpg';
+                      e.target.src = defaultImg;
                     }}
                   />
                   {/* Top Badges */}
