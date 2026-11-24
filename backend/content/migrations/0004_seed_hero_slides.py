@@ -98,3 +98,4 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(seed_hero_slides, rollback_hero_slides),
     ]
+

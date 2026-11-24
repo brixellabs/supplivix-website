@@ -7,7 +7,7 @@ import { api } from '../../services/api';
 export default function Footer() {
   const [dealsEnabled, setDealsEnabled] = useState(true);
   const [instagramUrl, setInstagramUrl] = useState('https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2');
-  const [facebookUrl, setFacebookUrl] = useState('https://facebook.com');
+  const [facebookUrl, setFacebookUrl] = useState('https://www.facebook.com/share/16RoXXSXb4L/');
 
   useEffect(() => {
     let active = true;

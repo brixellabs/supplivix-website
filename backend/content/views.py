@@ -147,7 +147,7 @@ class PublicSettingsView(APIView):
             'store_phone': SiteSetting.get_setting('store_phone', '0302-5222405'),
             'store_email': SiteSetting.get_setting('store_email', 'supplivix@gmail.com'),
             'instagram_url': SiteSetting.get_setting('instagram_url', 'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2'),
-            'facebook_url': SiteSetting.get_setting('facebook_url', 'https://facebook.com'),
+            'facebook_url': SiteSetting.get_setting('facebook_url', 'https://www.facebook.com/share/16RoXXSXb4L/'),
             'deals_enabled': SiteSetting.get_setting('deals_enabled', 'true').strip().lower() in ['true', '1', 'yes'],
             'deal_banner_1_badge': SiteSetting.get_setting('deal_banner_1_badge', 'Special Bundle'),
             'deal_banner_1_title': SiteSetting.get_setting('deal_banner_1_title', 'Complete Daily Glow Duo'),

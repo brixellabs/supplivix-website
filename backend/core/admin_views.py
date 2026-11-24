@@ -1797,7 +1797,7 @@ class AdminSettingsView(views.APIView):
                 'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2'
             )
         if not settings_data.get('facebook_url'):
-            settings_data['facebook_url'] = SiteSetting.get_setting('facebook_url', 'https://facebook.com')
+            settings_data['facebook_url'] = SiteSetting.get_setting('facebook_url', 'https://www.facebook.com/share/16RoXXSXb4L/')
 
         return Response(settings_data)
 

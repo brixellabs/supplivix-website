@@ -140,7 +140,7 @@ export default function AdminDashboardPage() {
     store_email: 'supplivix@gmail.com',
     corporate_address: 'Chak No. 79 NB, Sillanwali Road, near bypass, Sargodha, Pakistan',
     instagram_url: 'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2',
-    facebook_url: 'https://facebook.com',
+    facebook_url: 'https://www.facebook.com/share/16RoXXSXb4L/',
     site_mode: 'live',
     launch_date: '',
   });
@@ -221,7 +221,7 @@ export default function AdminDashboardPage() {
           store_email: data.store_email || 'supplivix@gmail.com',
           corporate_address: data.corporate_address || 'Chak No. 79 NB, Sillanwali Road, near bypass, Sargodha, Pakistan',
           instagram_url: data.instagram_url || 'https://www.instagram.com/supp.livix?utm_source=qr&xtok=YWhramgxNjNqOGI2',
-          facebook_url: data.facebook_url || 'https://facebook.com',
+          facebook_url: data.facebook_url || 'https://www.facebook.com/share/16RoXXSXb4L/',
           site_mode: data.site_mode || 'live',
           launch_date: data.launch_date || '',
         });
@@ -2043,7 +2043,7 @@ export default function AdminDashboardPage() {
                     type="url"
                     value={settingsData.facebook_url}
                     onChange={(e) => setSettingsData({ ...settingsData, facebook_url: e.target.value })}
-                    placeholder="https://facebook.com/supplivix"
+                    placeholder="https://www.facebook.com/share/16RoXXSXb4L/"
                   />
                 </div>
 

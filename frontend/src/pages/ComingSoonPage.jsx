@@ -217,7 +217,7 @@ export default function ComingSoonPage() {
           </Link>
         </div>
         <div className="flex items-center gap-4 text-brand-ink text-base">
-          <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Supplivix Facebook">
+          <a href="https://www.facebook.com/share/16RoXXSXb4L/" target="_blank" rel="noopener noreferrer" aria-label="Supplivix Facebook">
             <Icon name="facebook" className="hover:text-brand-green transition-colors" />
           </a>
           <a
